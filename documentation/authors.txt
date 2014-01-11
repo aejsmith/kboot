@@ -1,0 +1,9 @@
+Authors
+=======
+
+KBoot is primarily written by the following people:
+
+ * Alex Smith <alex@alex-smith.me.uk>
+
+A full list of contributors can be obtained by looking through the
+Git repository history.

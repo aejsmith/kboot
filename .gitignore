@@ -1,0 +1,7 @@
+*~
+*.pyc
+.DS_Store
+/build
+/.options.cache
+/.sconsign.dblite
+/documentation/markdown/output

@@ -1,0 +1,58 @@
+#
+# Copyright (C) 2014 Alex Smith
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+
+import os
+
+class ConfigDict(dict):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+
+    # Get a configuration value. This returns None for any accesses to
+    # undefined keys.
+    def __getitem__(self, key):
+        try:
+            return dict.__getitem__(self, key)
+        except KeyError:
+            return None
+
+def load_file(path, var):
+    vars = {}
+    execfile(path, vars, vars)
+    return vars[var]
+
+# Build a list of known configurations.
+configs = {}
+entries = Glob('*.def')
+for entry in entries:
+    config = load_file(entry.name, 'config')
+
+    def load_includes(curr):
+        if not curr.has_key('includes'):
+            return
+        for include in curr['includes']:
+            included = load_file('%s.inc' % (include), 'include')
+            a = included['config'].items() if included.has_key('config') else []
+            b = config['config'].items() if config.has_key('config') else []
+            config['config'] = dict(a + b)
+            load_includes(included)
+
+    load_includes(config)
+    config['config'] = ConfigDict(config['config'])
+
+    name, ext = os.path.splitext(entry.name)
+    configs[name] = config
+
+Return('configs')

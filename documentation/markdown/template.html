@@ -1,0 +1,68 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+		<title>{{ title }} - Kiwi</title>
+		<link rel="stylesheet" type="text/css" href="http://kiwi.alex-smith.me.uk/theme/base.css" />
+		<link rel="stylesheet" type="text/css" media="screen" href="http://kiwi.alex-smith.me.uk/theme/smallgrad_news.css" />
+		<link rel="stylesheet" type="text/css" media="screen" href="http://kiwi.alex-smith.me.uk/theme/screen.css" />
+		<link rel="stylesheet" type="text/css" media="print" href="http://kiwi.alex-smith.me.uk/theme/print.css" />
+
+		<!--[if IE 7]>
+		<link rel="stylesheet" type="text/css" media="screen" href="http://kiwi.alex-smith.me.uk/theme/ie7.css" />
+		<![endif]-->
+		<!--[if lte IE 6]>
+		<link rel="stylesheet" type="text/css" media="screen" href="http://kiwi.alex-smith.me.uk/theme/ie6.css" />
+		<![endif]-->
+	</head>
+	<body>
+		<div id="wrapper">
+			<div id="header">
+				<div class="leftings">
+					<span class="headertext">
+						{{ title|e }}
+					</span>
+					<div class="headernav">
+						<a href="http://kiwi.alex-smith.me.uk/">Home</a> :: <a href="http://bzr.alex-smith.me.uk">Source Code</a> :: <a href="http://kiwi.alex-smith.me.uk/wiki">Wiki</a>
+					</div>
+				</div>
+
+				<span class="headerlogo">
+					<img src="http://kiwi.alex-smith.me.uk/theme/smalllogo-notext.png" alt="Kiwi" />
+				</span>
+			</div>
+
+			<div id="content">
+				<div id="contentpage">
+					<div class="pagearticle">
+						<div class="pagebody"><p>{{ content }}</p></div>
+					</div>
+				</div>
+			</div>
+
+			<div id="sidebar">
+				<div class="sidebarblock">
+					<div class="blockheader">
+
+						<h2 style="color: #008500;">Documentation</h2>
+					</div>
+					<div class="blockcontent">
+						<ul>
+							{% for myname, mytitle, mycontent in docs %}
+							{% if myname == name %}
+							<li><b>{{ title|e }}</b></li>
+							{% else %}
+							<li><a href="{{ myname|e }}">{{ mytitle|e }}</a></li>
+							{% endif %}
+							{% endfor %}
+						</ul>
+					</div>
+				</div>
+
+				<div class="copyright">
+					&copy; 2009 The Kiwi Project
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
