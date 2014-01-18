@@ -204,3 +204,12 @@ SConscript('source/SConscript',
     exports = ['config', 'defaults', 'env'])
 
 Default(defaults)
+
+###############
+# QEMU target #
+###############
+
+# Add a target to run the test script for this configuration (if it exists).
+script = os.path.join('utilities', 'test', 'test-%s.sh' % (env['CONFIG']))
+if os.path.exists(script):
+    Alias('qemu', env.Command('__qemu', defaults, Action(script, None)))
