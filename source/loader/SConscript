@@ -1,0 +1,55 @@
+#
+# Copyright (C) 2014 Alex Smith
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+
+vars = ['config', 'defaults', 'env']
+
+Import(*vars)
+from util import FeatureSources
+
+sources = FeatureSources(config, [
+
+])
+
+# Set the include search paths.
+env['CPPPATH'] = [
+    Dir('include'),
+    Dir('arch/%s/include' % (config['ARCH'])),
+    Dir('platform/%s/include' % (config['PLATFORM'])),
+]
+
+# Include the generated configuration header.
+env['CCFLAGS'] += ['-include', 'build/%s/config.h' % (env['CONFIG'])]
+env['ASFLAGS'] += ['-include', 'build/%s/config.h' % (env['CONFIG'])]
+
+# Get the list of source files from the architecture/platform.
+arch_sources = SConscript(dirs = ['arch/' + config['ARCH']], exports = vars)
+platform_sources = SConscript(dirs = ['platform/' + config['PLATFORM']], exports = vars)
+sources = arch_sources + platform_sources + sources
+objects = map(env.Object, sources)
+
+# Link the loader.
+env.Program('loader.elf', objects, LINKFLAGS = env['LINKFLAGS'] + ['-Wl,-T,$LDSCRIPT'])
+Depends('loader.elf', env['LDSCRIPT'])
+
+# Generate various information files and the stripped loader binary.
+target = env.Command(['loader', 'loader.lst', 'loader.rde', 'loader.sym'], 'loader.elf', [
+    Action('$OBJCOPY -O binary --strip-all $SOURCE ${TARGETS[0]}', '$GENCOMSTR'),
+    Action('$OBJDUMP -d $SOURCE > ${TARGETS[1]}', None),
+    Action('$READELF -a $SOURCE > ${TARGETS[2]}', None),
+    Action('$NM -C $SOURCE | sort > ${TARGETS[3]}', None),
+])
+
+defaults.append(target)

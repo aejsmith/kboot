@@ -15,20 +15,29 @@
 #
 
 Import('config', 'defaults', 'env')
+from util import FeatureSources
 
-# Generate the configuration header.
-f = open('config.h', 'w')
-f.write('/* This file is automatically-generated, do not edit. */\n\n')
-for (k, v) in config.items():
-    if isinstance(v, str):
-        f.write("#define CONFIG_%s \"%s\"\n" % (k, v))
-    elif isinstance(v, bool):
-        if v:
-            f.write("#define CONFIG_%s 1\n" % (k))
-    elif isinstance(v, int):
-        f.write("#define CONFIG_%s %d\n" % (k, int(v)))
-    else:
-        raise Exception, "Unsupported type %s in config" % (type(v))
-f.close()
+sources = FeatureSources(config, [
 
-SConscript(dirs = ['loader'], exports = ['config', 'defaults', 'env'])
+])
+
+# Set 64-/32-bit-specific flags.
+if config['64BIT']:
+    env['CCFLAGS'] += ['-m64', '-mcmodel=small', '-mno-red-zone']
+    env['ASFLAGS'] += ['-m64']
+    env['LINKFLAGS'] += ['-m64']
+else:
+    env['CCFLAGS'] += ['-m32']
+    env['ASFLAGS'] += ['-m32']
+    env['LINKFLAGS'] += ['-m32']
+
+# Prevent FPU code generation.
+env['CCFLAGS'] += ['-mno-sse', '-mno-mmx', '-mno-sse2', '-mno-3dnow']
+
+# Warn on stack frames that are too large.
+env['CCFLAGS'] += ['-Wframe-larger-than=512']
+
+# Default page size may be larger which can result in a large output binary.
+env['LINKFLAGS'] += ['-Wl,-z,max-page-size=0x1000', '-Wl,-z,common-page-size=0x1000']
+
+Return('sources')
