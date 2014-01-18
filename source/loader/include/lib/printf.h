@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2009-2014 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,14 +16,19 @@
 
 /**
  * @file
- * @brief		x86 architecture core definitions.
+ * @brief		Formatted output function.
  */
 
-#ifndef __ARCH_LOADER_H
-#define __ARCH_LOADER_H
+#ifndef __LIB_PRINTF_H
+#define __LIB_PRINTF_H
 
-/** Properties of the architecture (functions we provide etc.). */
-#define ARCH_HAS_MEMCPY		1
-#define ARCH_HAS_MEMSET		2
+#include <types.h>
 
-#endif /* __ARCH_LOADER_H */
+/** Type for a do_printf() helper function. */
+typedef void (*printf_helper_t)(char, void *, int *);
+
+extern int do_vprintf(printf_helper_t helper, void *data, const char *fmt,
+	va_list args);
+extern int do_printf(printf_helper_t helper, void *data, const char *fmt, ...);
+
+#endif /* __LIB_PRINTF_H */

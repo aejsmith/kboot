@@ -18,7 +18,7 @@ Import('config', 'defaults', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
-
+    'lib/string.c',
 ])
 
 # Set 64-/32-bit-specific flags.
