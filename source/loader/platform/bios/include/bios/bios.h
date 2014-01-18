@@ -16,23 +16,15 @@
 
 /**
  * @file
- * @brief		BIOS platform startup code.
+ * @brief		BIOS platform main definitions.
  */
 
-#include <bios/bios.h>
+#ifndef __BIOS_BIOS_H
+#define __BIOS_BIOS_H
 
-#include <loader.h>
+#ifndef __ASM__
 
-/** Main function of the BIOS loader. */
-void platform_init(void) {
-	/* Initialize the console. */
-	bios_console_init();
+extern void bios_console_init(void);
 
-	dprintf("Hello, World\n");
-	while(true) {}
-}
-
-/** Reboot the system. */
-void platform_reboot(void) {
-	while(true) {}
-}
+#endif /* __ASM__ */
+#endif /* __BIOS_BIOS_H */

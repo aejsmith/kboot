@@ -16,23 +16,29 @@
 
 /**
  * @file
- * @brief		BIOS platform startup code.
+ * @brief		BIOS platform console functions.
  */
+
+#include <arch/io.h>
+
+#include <drivers/serial/ns16550.h>
 
 #include <bios/bios.h>
 
-#include <loader.h>
+/** Serial port definitions. */
+#define SERIAL_PORT		0x3f8
+#define SERIAL_CLOCK		1843200
+#define SERIAL_BAUD_RATE	115200
 
-/** Main function of the BIOS loader. */
-void platform_init(void) {
-	/* Initialize the console. */
-	bios_console_init();
+/** Initialize the console. */
+void bios_console_init(void) {
+	uint8_t status;
 
-	dprintf("Hello, World\n");
-	while(true) {}
-}
-
-/** Reboot the system. */
-void platform_reboot(void) {
-	while(true) {}
+	/* Initialize the serial port as the debug console. TODO: Disable for
+	 * non-debug builds? */
+        status = in8(SERIAL_PORT + 6);
+        if((status & ((1<<4) | (1<<5))) && status != 0xFF) {
+		ns16550_init(SERIAL_PORT);
+		ns16550_config(SERIAL_CLOCK, SERIAL_BAUD_RATE);
+	}
 }
