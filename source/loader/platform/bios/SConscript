@@ -23,24 +23,39 @@ sources = FeatureSources(config, [
     'start.S',
 ])
 
+# Set the linker script path.
+env['LDSCRIPT'] = env.LDScript('link.ld', 'link.ld.in')
+
 # Build the stage 1 loaders.
 env.LDScript('stage1/stage1.ld', 'stage1/stage1.ld.in')
 stage1s = ['cdboot']
 for f in stage1s:
-    name = 'stage1/%s' % (f)
+    # Build an ELF image.
+    linkflags = env['LINKFLAGS'] + ['-Wl,-T,${TARGET.dir}/stage1.ld', '-Wl,-N']
+    target = env.Program('stage1/%s.elf' % (f), 'stage1/%s.S' % (f), LINKFLAGS = linkflags)
+    Depends(target, File('stage1/stage1.ld'))
 
-    env.Program('%s.elf' % (name), '%s.S' % (name), LIBS = [],
-        LINKFLAGS = env['LINKFLAGS'] + ['-Wl,-T,${TARGET.dir}/stage1.ld', '-Wl,-N'])
-    Depends('%s.elf' % (name), File('stage1/stage1.ld'))
+    # Create a disassembly.
+    env.AddPostAction(target,
+        Action('$OBJDUMP -d -m i386 -M i8086 $TARGET > ${TARGET.base}.lst', None))
 
-    target = env.Command([name, '%s.lst' % (name)], '%s.elf' % (name), [
-        Action("$OBJCOPY -O binary --strip-all $SOURCE ${TARGETS[0]}", '$GENCOMSTR'),
-        Action('$OBJDUMP -d -m i386 -M i8086 $SOURCE > ${TARGETS[1]}', None),
-    ])
+    # Create the final stripped binary.
+    target = env.Command('stage1/%s.bin' % (f), target,
+        Action('$OBJCOPY -O binary --strip-all $SOURCE $TARGET', '$GENCOMSTR'))
 
     defaults.append(target)
 
-# Set the linker script path.
-env['LDSCRIPT'] = env.LDScript('link.ld', 'link.ld.in')
+# Build the final loader binary.
+loader = env.Command(env['OUTDIR'].File('loader'), env['LOADER'],
+    Action('$OBJCOPY -O binary --strip-all $SOURCE $TARGET', '$GENCOMSTR'))
+defaults.append(loader)
+
+# Create CD/PXE boot images by concatenating the boot sector with the loader.
+target = env.Command(env['OUTDIR'].File('cdboot.img'), ['stage1/cdboot.bin', loader],
+    Action('cat ${SOURCES[0]} ${SOURCES[1]} > $TARGET', '$GENCOMSTR'))
+defaults.append(target)
+
+# Copy the disk boot sectors to the output directory.
+# TODO
 
 Return('sources')

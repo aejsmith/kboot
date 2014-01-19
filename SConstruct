@@ -74,8 +74,8 @@ configs = SConscript('config/SConscript')
 helptext  = 'To build KBoot, a target system configuration must be specified on the command\n'
 helptext += 'line with the CONFIG option. The following configurations are available:\n'
 helptext += '\n'
-for name, config in configs.items():
-    helptext += '  %-12s - %s\n' % (name, config['description'])
+for name in sorted(configs.iterkeys()):
+    helptext += '  %-12s - %s\n' % (name, configs[name]['description'])
 helptext += '\n'
 helptext += 'The following build options can be set on the command line. These will be saved\n'
 helptext += 'for later invocations of SCons, so you do not need to specify them every time:\n'

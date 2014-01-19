@@ -37,6 +37,9 @@ env['CPPPATH'] = [
 env['CCFLAGS'] += ['-include', 'build/%s/config.h' % (env['CONFIG'])]
 env['ASFLAGS'] += ['-include', 'build/%s/config.h' % (env['CONFIG'])]
 
+# Platform code needs the location of the loader binary.
+env['LOADER'] = File('loader.elf')
+
 # Get the list of source files from the architecture/platform.
 arch_sources = SConscript(dirs = ['arch/' + config['ARCH']], exports = vars)
 platform_sources = SConscript(dirs = ['platform/' + config['PLATFORM']], exports = vars)
@@ -45,15 +48,13 @@ sources = arch_sources + platform_sources + drivers_sources + sources
 objects = map(env.Object, sources)
 
 # Link the loader.
-env.Program('loader.elf', objects, LINKFLAGS = env['LINKFLAGS'] + ['-Wl,-T,$LDSCRIPT'])
-Depends('loader.elf', env['LDSCRIPT'])
+linkflags = env['LINKFLAGS'] + ['-Wl,-T,$LDSCRIPT']
+target = env.Program('loader.elf', objects, LINKFLAGS = linkflags)
+Depends(target, env['LDSCRIPT'])
 
-# Generate various information files and the stripped loader binary.
-target = env.Command(['loader', 'loader.lst', 'loader.rde', 'loader.sym'], 'loader.elf', [
-    Action('$OBJCOPY -O binary --strip-all $SOURCE ${TARGETS[0]}', '$GENCOMSTR'),
-    Action('$OBJDUMP -d $SOURCE > ${TARGETS[1]}', None),
-    Action('$READELF -a $SOURCE > ${TARGETS[2]}', None),
-    Action('$NM -C $SOURCE | sort > ${TARGETS[3]}', None),
+# Generate various information files.
+env.AddPostAction(target, [
+    Action('$OBJDUMP -d $TARGET > ${TARGET.base}.lst', None),
+    Action('$READELF -a $TARGET > ${TARGET.base}.rde', None),
+    Action('$NM -C $TARGET | sort > ${TARGET.base}.sym', None),
 ])
-
-defaults.append(target)

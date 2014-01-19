@@ -31,4 +31,7 @@ for (k, v) in config.items():
         raise Exception, "Unsupported type %s in config" % (type(v))
 f.close()
 
+# We place the final output binaries in a single directory.
+env['OUTDIR'] = Dir('bin')
+
 SConscript(dirs = ['loader'], exports = ['config', 'defaults', 'env'])

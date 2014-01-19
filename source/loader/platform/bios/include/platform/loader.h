@@ -34,7 +34,6 @@
  */
 #define MULTIBOOT_LOAD_ADDR	0x100000
 
-
 /** Load offset for Multiboot. */
 #define MULTIBOOT_LOAD_OFFSET	(MULTIBOOT_LOAD_ADDR - LOADER_LOAD_ADDR)
 

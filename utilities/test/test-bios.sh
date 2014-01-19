@@ -6,7 +6,7 @@ isodir=${builddir}/iso
 mkdir ${isodir}
 mkdir ${isodir}/boot
 
-cat ${builddir}/loader/platform/bios/stage1/cdboot ${builddir}/loader/loader > ${isodir}/boot/cdboot.img
+cp ${builddir}/bin/cdboot.img ${isodir}/boot/
 #cp ${builddir}/test/test32.elf ${builddir}/test/test64.elf ${isodir}/
 
 cat > ${isodir}/boot/loader.cfg << EOF
