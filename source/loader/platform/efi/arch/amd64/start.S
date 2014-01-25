@@ -26,7 +26,25 @@
 .section .text, "ax", @progbits
 
 /** EFI entry point. */
-FUNCTION_START(_start)
+FUNCTION_START(loader_entry)
+	/* We are entered with interrupts enabled. We don't want them. */
+	cli
+
+	/* EFI uses the Microsoft x86_64 ABI. Arguments are passed in RCX/RDX. */
+	pushq	%rcx
+	pushq	%rdx
+
+	/* Relocate the loader. */
+	leaq	__start(%rip), %rdi
+	leaq	_DYNAMIC(%rip), %rsi
+	call	efi_arch_relocate
+	popq	%rsi
+	popq	%rdi
+	testq	%rax, %rax
+	jz	1f
+	ret
+1:
+
 	mov	$0x3f8, %dx
 	mov	$'H', %al
 	out	%al, (%dx)
@@ -43,7 +61,7 @@ FUNCTION_START(_start)
 	mov	$'\n', %al
 	out	%al, (%dx)
 1:	jmp	1b
-FUNCTION_END(_start)
+FUNCTION_END(loader_entry)
 
 /**
  * Dummy PE relocation so that the EFI loader recognizes us as relocatable.

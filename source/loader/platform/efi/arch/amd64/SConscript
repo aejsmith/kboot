@@ -18,6 +18,7 @@ Import('config', 'defaults', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
+    'relocate.c',
     'start.S',
 ])
 
