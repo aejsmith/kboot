@@ -30,6 +30,7 @@ SECTIONS {
 	__start = .;
 
 	.hash : { *(.hash) }
+	.gnu.hash : { *(.gnu.hash) }
 
 	. = ALIGN(PAGE_SIZE);
 	.text : {
@@ -46,9 +47,10 @@ SECTIONS {
 
 	. = ALIGN(PAGE_SIZE);
 	.data : {
-		/* Roll the read-only data into the main data section. It will
-		 * not be write protected, and PE requires page aligned sections
-		 * so we only waste space by splitting it into another section. */
+		/* Roll the read-only data into the main data section. It would
+		 * not be write protected even if we put it separately, and PE
+		 * requires page aligned sections so we only waste space by
+		 * splitting it into another section. */
 		__rodata_start = .;
 		*(.rodata)
 		*(.rodata.*)
