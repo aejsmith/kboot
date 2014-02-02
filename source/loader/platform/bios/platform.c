@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		BIOS platform startup code.
+ * @brief		BIOS platform main functions.
  */
 
 #include <bios/bios.h>

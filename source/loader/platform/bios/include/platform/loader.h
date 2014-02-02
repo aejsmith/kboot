@@ -45,9 +45,4 @@
 #define SEGMENT_CS64		0x28		/**< 64-bit code segment. */
 #define SEGMENT_DS64		0x30		/**< 64-bit data segment. */
 
-#ifndef __ASM__
-
-extern void platform_init(void);
-
-#endif /* __ASM__ */
 #endif /* __PLATFORM_LOADER_H */

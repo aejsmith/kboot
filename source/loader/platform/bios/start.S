@@ -30,7 +30,7 @@
 .section .init.text, "ax", @progbits
 
 /** Real-mode startup function. */
-FUNCTION_START(_start)
+FUNCTION_START(loader_entry)
 .code16
 	/* Don't want interrupts. */
 	cli
@@ -70,8 +70,8 @@ FUNCTION_START(_start)
 	mov	%ax, %ss
 
 	/* Jump to the common startup code. */
-	jmp	__loader_entry
-FUNCTION_END(_start)
+	jmp	__common_entry
+FUNCTION_END(loader_entry)
 
 /** Test whether the A20 line is enabled.
  * @note		Partially based on code found at
@@ -269,11 +269,11 @@ PRIVATE_FUNCTION_START(__multiboot_entry)
 	mov	%ax, %ss
 
 	/* Jump to the common startup code. */
-	jmp	__loader_entry
+	jmp	__common_entry
 FUNCTION_END(__multiboot_entry)
 
 /** Common startup function. */
-PRIVATE_FUNCTION_START(__loader_entry)
+PRIVATE_FUNCTION_START(__common_entry)
 	/* Set the stack pointer to the physical location of our stack and
 	 * clear the stack frame/EFLAGS. */
 	movl	$loader_stack + PAGE_SIZE, %esp
@@ -290,7 +290,7 @@ PRIVATE_FUNCTION_START(__loader_entry)
 
 	/* Call the main function. */
 	jmp	platform_init
-FUNCTION_END(__loader_entry)
+FUNCTION_END(__common_entry)
 
 /** Boot drive. */
 SYMBOL(boot_device_id)

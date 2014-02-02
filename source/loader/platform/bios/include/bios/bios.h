@@ -26,5 +26,7 @@
 
 extern void bios_console_init(void);
 
+extern void platform_init(void);
+
 #endif /* __ASM__ */
 #endif /* __BIOS_BIOS_H */
