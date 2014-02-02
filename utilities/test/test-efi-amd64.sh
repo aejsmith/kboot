@@ -21,7 +21,11 @@ entry "Test (64-bit)" {
 }
 EOF
 
-qemu-system-x86_64 -bios utilities/test/efi/ovmf-x86_64.bin -hda fat:${fsdir} \
-    -serial stdio -m 512 -monitor vc:1024x768
+if [ ! -e ".ovmf-x86_64.bin" ]; then
+    cp utilities/test/efi/ovmf-x86_64.bin .ovmf-x86_64.bin
+fi
+
+qemu-system-x86_64 -pflash .ovmf-x86_64.bin -hda fat:${fsdir} -serial stdio \
+    -serial vc:1024x768 -m 512 -monitor vc:1024x768
 
 rm -rf ${fsdir}

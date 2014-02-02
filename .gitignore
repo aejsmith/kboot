@@ -5,3 +5,4 @@
 /.options.cache
 /.sconsign.dblite
 /documentation/markdown/output
+/.ovmf-*.bin
