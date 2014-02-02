@@ -16,16 +16,22 @@
 
 /**
  * @file
- * @brief		EFI platform core definitions.
+ * @brief		EFI platform main functions.
  */
 
-#ifndef __EFI_EFI_H
-#define __EFI_EFI_H
+#include <efi/efi.h>
 
-#include <efi/api.h>
+#include <loader.h>
 
-extern efi_system_table_t *efi_system_table;
+/** Pointer to the EFI system table. */
+efi_system_table_t *efi_system_table;
 
-efi_status_t platform_init(efi_handle_t image, efi_system_table_t *systab);
+/** Main function of the EFI loader.
+ * @param image		Handle to the loader image.
+ * @param systab	Pointer to EFI system table.
+ * @return		EFI status code. */
+efi_status_t platform_init(efi_handle_t image, efi_system_table_t *systab) {
+	efi_system_table = systab;
 
-#endif /* __EFI_EFI_H */
+	while(true) {}
+}

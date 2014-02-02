@@ -38,29 +38,25 @@ FUNCTION_START(loader_entry)
 	leaq	__start(%rip), %rdi
 	leaq	_DYNAMIC(%rip), %rsi
 	call	efi_arch_relocate
+	testq	%rax, %rax
+	jnz	.Lreloc_err
+
+	/* Zero the BSS section. */
+	leaq	__bss_start(%rip), %rdi
+	leaq	__bss_end(%rip), %rcx
+	subq	%rdi, %rcx
+	xorb	%al, %al
+	rep stosb
+
+	/* Call the main function. */
 	popq	%rsi
 	popq	%rdi
-	testq	%rax, %rax
-	jz	1f
+	call	platform_init
 	ret
-1:
 
-	mov	$0x3f8, %dx
-	mov	$'H', %al
-	out	%al, (%dx)
-	mov	$'e', %al
-	out	%al, (%dx)
-	mov	$'l', %al
-	out	%al, (%dx)
-	mov	$'l', %al
-	out	%al, (%dx)
-	mov	$'o', %al
-	out	%al, (%dx)
-	mov	$'\r', %al
-	out	%al, (%dx)
-	mov	$'\n', %al
-	out	%al, (%dx)
-1:	jmp	1b
+.Lreloc_err:
+	addq	$16, %rsp
+	ret
 FUNCTION_END(loader_entry)
 
 /**

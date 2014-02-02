@@ -20,7 +20,7 @@ Import(*vars)
 from util import FeatureSources
 
 sources = FeatureSources(config, [
-
+    'platform.c',
 ])
 
 # Add architecture-specific headers.
