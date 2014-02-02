@@ -55,7 +55,7 @@ FUNCTION_START(loader_entry)
 	call	enable_a20
 
 	/* Now we need to switch to protected mode. */
-1:	addr32	lgdt	(loader_gdtp - LOADER_LOAD_ADDR)
+1:	addr32 lgdt (loader_gdtp - LOADER_LOAD_ADDR)
 	movl	%cr0, %eax
 	orl	$(1<<0), %eax
 	movl	%eax, %cr0
@@ -96,9 +96,9 @@ PRIVATE_FUNCTION_START(test_a20)
 	 * both equal the second value written, the A20 line is not enabled. */
 	movb	$0x00, %fs:(%di)
 	outb	%al, $0x80
-	movb	$0xFF, %gs:(%si)
+	movb	$0xff, %gs:(%si)
 	outb	%al, $0x80
-	cmpb	$0xFF, %fs:(%di)
+	cmpb	$0xff, %fs:(%di)
 	jne	2f
 	loop	1b
 	xor	%ax, %ax
@@ -129,13 +129,13 @@ PRIVATE_FUNCTION_START(enable_a20)
 .Lenable_kbd:
 	/* Try the keyboard controller. */
 	call	.Lflush
-	mov	$0xD1, %al
+	mov	$0xd1, %al
 	outb	%al, $0x64
 	call	.Lflush
-	mov	$0xDF, %al
+	mov	$0xdf, %al
 	outb	%al, $0x60
 	call	.Lflush
-	mov	$0xFF, %al
+	mov	$0xff, %al
 	outb	%al, $0x64
 	call	.Lflush
 	call	test_a20
@@ -157,7 +157,7 @@ PRIVATE_FUNCTION_START(enable_a20)
 .Lfail:
 	loop	.Lbegin
 	mov	$'a', %al
-	mov	$0x3F8, %dx
+	mov	$0x3f8, %dx
 	outb	%al, (%dx)
 1:	jmp	1b
 .Lflush:
@@ -333,6 +333,5 @@ multiboot_storage:
 .section .bss, "aw", @nobits
 
 /** Stack. */
-.align PAGE_SIZE
-SYMBOL(loader_stack)
+SYMBOL_ALIGNED(loader_stack, PAGE_SIZE)
 	.fill	PAGE_SIZE

@@ -118,7 +118,7 @@ PRIVATE_FUNCTION_START(puts)
 	test	%al, %al
 	jz	2f
 	pushw	%bx
-	movb	$0x0E, %ah
+	movb	$0x0e, %ah
 	movw	$1, %bx
 	int	$0x10
 	popw	%bx
@@ -145,5 +145,5 @@ dap_lba_low:		.long 0
 dap_lba_high:		.long 0
 
 /** Pad the file to 2KB. */
-. = _start + 0x7FF
+. = _start + 0x7ff
 .byte 0

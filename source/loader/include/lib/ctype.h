@@ -82,8 +82,8 @@ static inline int iscntrl(int ch) {
  * @param ch		Character to test.
  * @return		Non-zero if is printable, zero if not. */
 static inline int isprint(int ch) {
-	ch &= 0x7F;
-	return (ch >= 0x20 && ch < 0x7F);
+	ch &= 0x7f;
+	return (ch >= 0x20 && ch < 0x7f);
 }
 
 /** Check for any printable character except space.
@@ -123,7 +123,7 @@ static inline int isxdigit(int ch) {
  * @param ch		Character to convert.
  * @return		Converted value. */
 static inline int toascii(int ch) {
-	return (ch & 0x7F);
+	return (ch & 0x7f);
 }
 
 /** Convert a character to lower-case.

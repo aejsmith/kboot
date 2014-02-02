@@ -34,7 +34,7 @@ efi_status_t efi_arch_relocate(ptr_t load_base, elf_dyn_t *dyn) {
 	elf_addr_t *addr;
 	size_t size, ent, i;
 
-	for (i = 0; dyn[i].d_tag != ELF_DT_NULL; ++i) {
+	for (i = 0; dyn[i].d_tag != ELF_DT_NULL; i++) {
 		switch (dyn[i].d_tag) {
 		case ELF_DT_RELA:
 			reloc = (elf_rela_t *)(dyn[i].d_un.d_ptr + load_base);

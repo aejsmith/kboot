@@ -27,23 +27,29 @@
 #endif
 
 /** Macro to define the beginning of a global function. */
-#define FUNCTION_START(name)		\
-	.global name; \
-	.type name, @function; \
-	name:
+#define FUNCTION_START(_name)		\
+	.global _name; \
+	.type _name, @function; \
+	_name:
 
 /** Macro to define the beginning of a private function. */
-#define PRIVATE_FUNCTION_START(name)	\
-	.type name, @function; \
-	name:
+#define PRIVATE_FUNCTION_START(_name)	\
+	.type _name, @function; \
+	_name:
 
 /** Macro to define the end of a function. */
-#define FUNCTION_END(name)		\
-	.size name, . - name
+#define FUNCTION_END(_name)		\
+	.size _name, . - _name
 
 /** Macro to define a global symbol. */
-#define SYMBOL(name)			\
-	.global name; \
-	name:
+#define SYMBOL(_name)			\
+	.global _name; \
+	_name:
+
+/** Macro to define a global symbol with alignment. */
+#define SYMBOL_ALIGNED(_name, _align)	\
+	.align _align; \
+	.global _name; \
+	_name:
 
 #endif /* __X86_ASM_H */

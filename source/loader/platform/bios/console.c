@@ -36,8 +36,8 @@ void bios_console_init(void) {
 
 	/* Initialize the serial port as the debug console. TODO: Disable for
 	 * non-debug builds? */
-        status = in8(SERIAL_PORT + 6);
-        if((status & ((1<<4) | (1<<5))) && status != 0xFF) {
+	status = in8(SERIAL_PORT + 6);
+	if((status & ((1<<4) | (1<<5))) && status != 0xff) {
 		ns16550_init(SERIAL_PORT);
 		ns16550_config(SERIAL_CLOCK, SERIAL_BAUD_RATE);
 	}
