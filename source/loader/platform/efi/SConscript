@@ -23,6 +23,9 @@ sources = FeatureSources(config, [
 
 ])
 
+# Add architecture-specific headers.
+env['CPPPATH'] += [Dir('arch/%s/include' % (config['EFI_ARCH']))]
+
 # Get architecture-specific sources.
 arch_sources = SConscript(dirs = ['arch/' + config['EFI_ARCH']], exports = vars)
 sources = arch_sources + sources
@@ -30,6 +33,9 @@ sources = arch_sources + sources
 # EFI binaries must be relocatable, so build position independent code.
 env['CCFLAGS'] += ['-fpic']
 env['ASFLAGS'] += ['-fpic']
+
+# EFI uses UCS-2 strings.
+env['CCFLAGS'] += ['-fshort-wchar']
 
 # We build the loader as a relocatable ELF shared library, and then convert
 # that into a PE binary for use with EFI.
