@@ -16,16 +16,14 @@
 
 /**
  * @file
- * @brief		x86 architecture core definitions.
+ * @brief		x86 architecture main functions.
  */
 
-#ifndef __ARCH_LOADER_H
-#define __ARCH_LOADER_H
+#include <x86/descriptor.h>
 
-/** Properties of the architecture (functions we provide etc.). */
-#define ARCH_HAS_MEMCPY		1
-#define ARCH_HAS_MEMSET		2
+#include <loader.h>
 
-extern void arch_init(void);
-
-#endif /* __ARCH_LOADER_H */
+/** Perform early architecture initialization. */
+void arch_init(void) {
+	x86_descriptor_init();
+}

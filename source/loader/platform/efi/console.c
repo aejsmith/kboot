@@ -38,7 +38,7 @@ static void efi_console_putc(char ch) {
 		str[0] = ch & 0x7f;
 	}
 
-	console_out->output_string(console_out, str);
+	efi_call(console_out->output_string, console_out, str);
 }
 
 /** EFI main console implementation. */
@@ -50,6 +50,6 @@ static console_t efi_console = {
 void efi_console_init(void) {
 	/* Set up the main console. */
 	console_out = efi_system_table->con_out;
-	console_out->clear_screen(console_out);
+	efi_call(console_out->clear_screen, console_out);
 	main_console = &efi_console;
 }

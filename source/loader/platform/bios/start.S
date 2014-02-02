@@ -22,6 +22,7 @@
 #include <arch/page.h>
 
 #include <x86/asm.h>
+#include <x86/descriptor.h>
 #include <x86/multiboot.h>
 
 #include <platform/loader.h>
@@ -184,7 +185,7 @@ multiboot_header:
 	.long MULTIBOOT_HEADER_FLAGS
 	.long -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
 	.long multiboot_header + MULTIBOOT_LOAD_OFFSET
-	.long __text_start + MULTIBOOT_LOAD_OFFSET
+	.long __start + MULTIBOOT_LOAD_OFFSET
 	.long __data_end + MULTIBOOT_LOAD_OFFSET
 	.long __end + MULTIBOOT_LOAD_OFFSET
 	.long __multiboot_entry + MULTIBOOT_LOAD_OFFSET
@@ -292,6 +293,8 @@ PRIVATE_FUNCTION_START(__common_entry)
 	jmp	platform_init
 FUNCTION_END(__common_entry)
 
+.section .init.data, "aw", @progbits
+
 /** Boot drive. */
 SYMBOL(boot_device_id)
 	.byte	0
@@ -300,23 +303,7 @@ SYMBOL(boot_device_id)
 SYMBOL(boot_part_offset)
 	.quad	0
 
-/** GDT pointer. */
-SYMBOL(loader_gdtp)
-	.word .L__gdt_end-__gdt-1
-	.long __gdt
-
 .section .data, "aw", @progbits
-
-/** Global descriptor table. */
-__gdt:
-	.quad 0x0000000000000000                /**< NULL descriptor (0x00). */
-	.quad 0x00CF9A000000FFFF                /**< 32-bit code     (0x08). */
-	.quad 0x00CF92000000FFFF                /**< 32-bit data     (0x10). */
-	.quad 0x00009A010000FFFF		/**< 16-bit code     (0x18). */
-	.quad 0x000092000000FFFF		/**< 16-bit code     (0x20). */
-	.quad 0x00AF9A000000FFFF		/**< 64-bit code     (0x28). */
-	.quad 0x008F92000000FFFF		/**< 64-bit data     (0x30). */
-.L__gdt_end:
 
 /** Multiboot magic number. */
 SYMBOL(multiboot_magic)

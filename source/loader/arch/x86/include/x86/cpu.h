@@ -141,6 +141,19 @@ BUILD_WRITE_REG(cr4, unsigned long);
 #undef BUILD_READ_REG
 #undef BUILD_WRITE_REG
 
+/** Get the current frame pointer (ebp/rbp).
+ * @return		Current frame pointer. */
+static inline unsigned long x86_read_bp(void) {
+	unsigned long r;
+
+#ifdef CONFIG_64BIT
+	__asm__ __volatile__("mov %%rbp, %0" : "=r"(r));
+#else
+	__asm__ __volatile__("mov %%ebp, %0" : "=r"(r));
+#endif
+	return r;
+}
+
 /** Get current value of EFLAGS/RFLAGS.
  * @return		Current value of EFLAGS/RFLAGS. */
 static inline unsigned long x86_read_flags(void) {

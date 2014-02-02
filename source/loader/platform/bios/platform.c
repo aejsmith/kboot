@@ -28,6 +28,9 @@ void platform_init(void) {
 	/* Initialize the console. */
 	bios_console_init();
 
+	/* Initialize architecture code. */
+	arch_init();
+
 	dprintf("Hello, World\n");
 	while(true) {}
 }

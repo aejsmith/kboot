@@ -31,4 +31,23 @@
  */
 #define __eficall	__attribute__((ms_abi))
 
+/**
+ * EFI call wrapper.
+ *
+ * We must wrap EFI calls to restore the firmware's GDT/IDT before calling, and
+ * restore ours afterward. This is a slightly nasty hack to call functions via
+ * a wrapper (in start.S), that keeps type safety and relies on the compiler to
+ * put all arguments in the right place.
+ */
+#define efi_call(func, args...) \
+	__extension__ \
+	({ \
+		typeof(func) __wrapper = (typeof(func))__efi_call; \
+		__efi_call_func = (void *)func; \
+		__wrapper(args); \
+	})
+
+extern void *__efi_call_func;
+extern unsigned long __efi_call(void);
+
 #endif /* __EFI_ARCH_API_H */

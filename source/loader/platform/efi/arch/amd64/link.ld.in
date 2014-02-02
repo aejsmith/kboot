@@ -34,10 +34,9 @@ SECTIONS {
 
 	. = ALIGN(PAGE_SIZE);
 	.text : {
-		__text_start = .;
+		*(.init.text)
 		*(.text)
 		*(.text.*)
-		__text_end = .;
 	}
 
 	/* Dummy relocation section for the PE binary so that EFI recognizes
@@ -51,34 +50,32 @@ SECTIONS {
 		 * not be write protected even if we put it separately, and PE
 		 * requires page aligned sections so we only waste space by
 		 * splitting it into another section. */
-		__rodata_start = .;
 		*(.rodata)
 		*(.rodata.*)
-		__rodata_end = .;
-
 		*(.got)
 		*(.got.plt)
-
-		__data_start = .;
+		*(.init.data)
 		*(.data)
 		*(.data.*)
-		__data_end = .;
 	}
 
 	. = ALIGN(PAGE_SIZE);
 	.dynamic : { *(.dynamic) }
 
 	. = ALIGN(PAGE_SIZE);
-	.rela : {
-		*(.rela.data*)
+	.rela.dyn : {
+		*(.rela.init.text .rela.text .rela.text.*)
+		*(.rela.rodata .rela.rodata.*)
 		*(.rela.got)
+		*(.rela.init.data .rela.data .rela.data.*)
+		*(.rela.bss .rela.bss.*)
 	}
 
 	. = ALIGN(PAGE_SIZE);
-	.dynsym   : { *(.dynsym) }
+	.dynsym : { *(.dynsym) }
 
 	. = ALIGN(PAGE_SIZE);
-	.dynstr   : { *(.dynstr) }
+	.dynstr : { *(.dynstr) }
 
 	. = ALIGN(PAGE_SIZE);
 	.bss : {

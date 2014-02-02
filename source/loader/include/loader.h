@@ -37,4 +37,6 @@ extern int printf(const char *fmt, ...) __printf(1, 2);
 extern int dvprintf(const char *fmt, va_list args);
 extern int dprintf(const char *fmt, ...) __printf(1, 2);
 
+extern void backtrace(int (*print)(const char *fmt, ...));
+
 #endif /* __LOADER_H */

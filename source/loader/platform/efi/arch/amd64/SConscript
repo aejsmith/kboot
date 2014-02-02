@@ -27,7 +27,7 @@ env['LDSCRIPT'] = env.LDScript('link.ld', 'link.ld.in')
 
 # Build the final EFI binary.
 loader = env.Command(env['OUTDIR'].File('bootx64.efi'), env['LOADER'],
-    Action('$OBJCOPY -j .text -j .reloc -j .data -j .dynamic -j .rela ' +
+    Action('$OBJCOPY -j .text -j .reloc -j .data -j .dynamic -j .rela.dyn ' +
         '-j .dynsym -j .bss --target=efi-app-x86_64 ' +
         '$SOURCE $TARGET', '$GENCOMSTR'))
 defaults.append(loader)
