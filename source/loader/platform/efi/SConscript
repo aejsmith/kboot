@@ -20,6 +20,7 @@ Import(*vars)
 from util import FeatureSources
 
 sources = FeatureSources(config, [
+    'console.c',
     'platform.c',
 ])
 

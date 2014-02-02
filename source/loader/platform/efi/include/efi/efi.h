@@ -26,6 +26,8 @@
 
 extern efi_system_table_t *efi_system_table;
 
+extern void efi_console_init(void);
+
 efi_status_t platform_init(efi_handle_t image, efi_system_table_t *systab);
 
 #endif /* __EFI_EFI_H */

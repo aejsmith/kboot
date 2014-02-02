@@ -16,24 +16,32 @@
 
 /**
  * @file
- * @brief		EFI platform main functions.
+ * @brief		EFI console functions.
  */
 
 #include <efi/efi.h>
 
-#include <loader.h>
+#include <console.h>
 
-/** Pointer to the EFI system table. */
-efi_system_table_t *efi_system_table;
+/** Console out protocol. */
+static efi_simple_text_output_protocol_t *console_out;
 
-/** Main function of the EFI loader.
- * @param image		Handle to the loader image.
- * @param systab	Pointer to EFI system table.
- * @return		EFI status code. */
-efi_status_t platform_init(efi_handle_t image, efi_system_table_t *systab) {
-	efi_system_table = systab;
+/** Write a character to the console.
+ * @param ch		Character to write. */
+static void efi_console_putc(char ch) {
+	efi_char16_t str[2] = { ch & 0x7F, 0 };
+	console_out->output_string(console_out, str);
+}
 
-	efi_console_init();
-	printf("Hello, World!\n");
-	while(true) {}
+/** EFI main console implementation. */
+static console_t efi_console = {
+	.putc = efi_console_putc,
+};
+
+/** Initialize the EFI console. */
+void efi_console_init(void) {
+	/* Set up the main console. */
+	console_out = efi_system_table->con_out
+	console_out->clear_screen(console_out);
+	main_console = &efi_console;
 }
