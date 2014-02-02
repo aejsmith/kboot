@@ -40,6 +40,8 @@ env['CCFLAGS'] += ['-fshort-wchar']
 
 # We build the loader as a relocatable ELF shared library, and then convert
 # that into a PE binary for use with EFI.
-env['LINKFLAGS'] += ['-Wl,-Bsymbolic', '-Wl,-shared', '-Wl,-znocombreloc']
+env['LINKFLAGS'] += [
+    '-Wl,-Bsymbolic', '-Wl,-shared', '-Wl,-znocombreloc', '-Wl,--no-undefined'
+]
 
 Return('sources')
