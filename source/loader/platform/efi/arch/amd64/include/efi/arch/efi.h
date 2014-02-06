@@ -16,20 +16,16 @@
 
 /**
  * @file
- * @brief		EFI platform core definitions.
+ * @brief		AMD64 EFI core definitions.
  */
 
-#ifndef __EFI_EFI_H
-#define __EFI_EFI_H
-
-#include <efi/arch/efi.h>
+#ifndef __EFI_ARCH_EFI_H
+#define __EFI_ARCH_EFI_H
 
 #include <efi/api.h>
 
-extern efi_system_table_t *efi_system_table;
+#include <elf.h>
 
-extern void efi_console_init(void);
+extern efi_status_t efi_arch_relocate(ptr_t load_base, elf_dyn_t *dyn);
 
-efi_status_t platform_init(efi_handle_t image, efi_system_table_t *systab);
-
-#endif /* __EFI_EFI_H */
+#endif /* __EFI_ARCH_EFI_H */

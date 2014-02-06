@@ -21,18 +21,14 @@
 
 #include <efi/efi.h>
 
-#include <elf.h>
-
-extern efi_status_t efi_arch_relocate(ptr_t load_base, elf_dyn_t *dyn);
-
 /** Relocate the loader.
  * @param load_base	Load base address.
  * @param dyn		Pointer to dynamic section.
  * @return		Status code describing result of the operation. */
 efi_status_t efi_arch_relocate(ptr_t load_base, elf_dyn_t *dyn) {
-	elf_rela_t *reloc;
+	elf_rela_t *reloc = NULL;
 	elf_addr_t *addr;
-	size_t size, ent, i;
+	size_t size = 0, ent = 0, i;
 
 	for (i = 0; dyn[i].d_tag != ELF_DT_NULL; i++) {
 		switch (dyn[i].d_tag) {
@@ -47,6 +43,9 @@ efi_status_t efi_arch_relocate(ptr_t load_base, elf_dyn_t *dyn) {
 			break;
 		}
 	}
+
+	if(!reloc || !ent)
+		return EFI_LOAD_ERROR;
 
 	for(i = 0; i < size / ent; i++, reloc = (elf_rela_t *)((ptr_t)reloc + ent)) {
 		addr = (elf_addr_t *)(load_base + reloc->r_offset);
