@@ -29,7 +29,7 @@
  * mark all EFI APIs with the ms_abi attribute so that the right calling
  * convention is used.
  */
-#define __eficall	__attribute__((ms_abi))
+#define __efiapi	__attribute__((ms_abi))
 
 /**
  * EFI call wrapper.
@@ -48,6 +48,6 @@
 	})
 
 extern void *__efi_call_func;
-extern unsigned long __efi_call(void);
+extern unsigned long __efi_call(void) __efiapi;
 
 #endif /* __EFI_ARCH_API_H */

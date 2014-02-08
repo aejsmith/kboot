@@ -31,8 +31,8 @@
  */
 
 /** EFI calling convention attribute. */
-#ifndef __eficall
-# define __eficall
+#ifndef __efiapi
+# define __efiapi
 #endif
 
 /** Basic integer types. */
@@ -163,10 +163,10 @@ typedef struct efi_input_key {
 /** Simple text input protocol. */
 typedef struct efi_simple_text_input_protocol {
 	efi_status_t (*reset)(struct efi_simple_text_input_protocol *this,
-		efi_boolean_t extended_verification) __eficall;
+		efi_boolean_t extended_verification) __efiapi;
 	efi_status_t (*read_key_stroke)(
 		struct efi_simple_text_input_protocol *this,
-		efi_input_key_t *key) __eficall;
+		efi_input_key_t *key) __efiapi;
 
 	efi_event_t wait_for_key;
 } efi_simple_text_input_protocol_t;
@@ -212,29 +212,29 @@ typedef struct efi_simple_text_output_mode {
 /** Simple text output protocol. */
 typedef struct efi_simple_text_output_protocol {
 	efi_status_t (*reset)(struct efi_simple_text_output_protocol *this,
-		efi_boolean_t extended_verification) __eficall;
+		efi_boolean_t extended_verification) __efiapi;
 	efi_status_t (*output_string)(
 		struct efi_simple_text_output_protocol *this,
-		const efi_char16_t *string) __eficall;
+		const efi_char16_t *string) __efiapi;
 	efi_status_t (*test_string)(
 		struct efi_simple_text_output_protocol *this,
-		const efi_char16_t *string) __eficall;
+		const efi_char16_t *string) __efiapi;
 	efi_status_t (*query_mode)(struct efi_simple_text_output_protocol *this,
 		efi_uintn_t mode_number, efi_uintn_t *columns,
-		efi_uintn_t *rows) __eficall;
+		efi_uintn_t *rows) __efiapi;
 	efi_status_t (*set_mode)(struct efi_simple_text_output_protocol *this,
-		efi_uintn_t mode_number) __eficall;
+		efi_uintn_t mode_number) __efiapi;
 	efi_status_t (*set_attributes)(
 		struct efi_simple_text_output_protocol *this,
-		efi_uintn_t attribute) __eficall;
+		efi_uintn_t attribute) __efiapi;
 	efi_status_t (*clear_screen)(
-		struct efi_simple_text_output_protocol *this) __eficall;
+		struct efi_simple_text_output_protocol *this) __efiapi;
 	efi_status_t (*set_cursor_position)(
 		struct efi_simple_text_output_protocol *this,
-		efi_uintn_t column, efi_uintn_t row) __eficall;
+		efi_uintn_t column, efi_uintn_t row) __efiapi;
 	efi_status_t (*enable_cursor)(
 		struct efi_simple_text_output_protocol *this,
-		efi_boolean_t visible) __eficall;
+		efi_boolean_t visible) __efiapi;
 
 	efi_simple_text_output_mode_t *mode;
 } efi_simple_text_output_protocol_t;
@@ -294,7 +294,7 @@ typedef struct efi_memory_descriptor {
 #define EFI_MEMORY_DESCRIPTOR_VERSION	1
 
 /** Event notification function. */
-typedef void (*efi_event_notify_t)(efi_event_t event, void *context) __eficall;
+typedef void (*efi_event_notify_t)(efi_event_t event, void *context) __efiapi;
 
 /** EFI event types. */
 #define EFI_EVT_TIMER				0x80000000
@@ -383,129 +383,129 @@ typedef struct efi_boot_services {
 	efi_table_header_t hdr;
 
 	/** Task priority services. */
-	efi_tpl_t (*raise_tpl)(efi_tpl_t new_tpl) __eficall;
-	void (*restore_tpl)(efi_tpl_t old_tpl) __eficall;
+	efi_tpl_t (*raise_tpl)(efi_tpl_t new_tpl) __efiapi;
+	void (*restore_tpl)(efi_tpl_t old_tpl) __efiapi;
 
 	/** Memory services. */
 	efi_status_t (*allocate_pages)(efi_allocate_type_t type,
 		efi_memory_type_t memory_type, efi_uintn_t pages,
-		efi_physical_address_t *memory) __eficall;
+		efi_physical_address_t *memory) __efiapi;
 	efi_status_t (*free_pages)(efi_physical_address_t memory,
-		efi_uintn_t pages) __eficall;
+		efi_uintn_t pages) __efiapi;
 	efi_status_t (*get_memory_map)(efi_uintn_t *memory_map_size,
 		efi_memory_descriptor_t *memory_map, efi_uintn_t *map_key,
 		efi_uintn_t *descriptor_size, efi_uint32_t *descriptor_version)
-		__eficall;
+		__efiapi;
 	efi_status_t (*allocate_pool)(efi_memory_type_t pool_type,
-		efi_uintn_t size, void **buffer) __eficall;
-	efi_status_t (*free_pool)(void *buffer) __eficall;
+		efi_uintn_t size, void **buffer) __efiapi;
+	efi_status_t (*free_pool)(void *buffer) __efiapi;
 
 	/** Event and timer services. */
 	efi_status_t (*create_event)(efi_uint32_t type, efi_tpl_t notify_tpl,
 		efi_event_notify_t notify_func, void *notify_context,
-		efi_event_t *event) __eficall;
+		efi_event_t *event) __efiapi;
 	efi_status_t (*set_timer)(efi_event_t event, efi_timer_delay_t type,
-		efi_uint64_t trigger_time) __eficall;
+		efi_uint64_t trigger_time) __efiapi;
 	efi_status_t (*wait_for_event)(efi_uintn_t num_events,
-		efi_event_t *event, efi_uintn_t *index) __eficall;
-	efi_status_t (*signal_event)(efi_event_t event) __eficall;
-	efi_status_t (*close_event)(efi_event_t event) __eficall;
-	efi_status_t (*check_event)(efi_event_t event) __eficall;
+		efi_event_t *event, efi_uintn_t *index) __efiapi;
+	efi_status_t (*signal_event)(efi_event_t event) __efiapi;
+	efi_status_t (*close_event)(efi_event_t event) __efiapi;
+	efi_status_t (*check_event)(efi_event_t event) __efiapi;
 
 	/** Protocol handler services. */
 	efi_status_t (*install_protocol_interface)(efi_handle_t *handle,
 		efi_guid_t *protocol, efi_interface_type_t interface_type,
-		void *interface) __eficall;
+		void *interface) __efiapi;
 	efi_status_t (*reinstall_protocol_interface)(efi_handle_t handle,
 		efi_guid_t *protocol, void *old_interface, void *new_interface)
-		__eficall;
+		__efiapi;
 	efi_status_t (*uninstall_protocol_interface)(efi_handle_t handle,
-		efi_guid_t *protocol, void *interface) __eficall;
+		efi_guid_t *protocol, void *interface) __efiapi;
 	efi_status_t (*handle_protocol)(efi_handle_t handle,
-		efi_guid_t *protocol, void **interface) __eficall;
+		efi_guid_t *protocol, void **interface) __efiapi;
 	void *reserved;
 	efi_status_t (*register_protocol_notify)(efi_guid_t *protocol,
-		efi_event_t event, void **registration) __eficall;
+		efi_event_t event, void **registration) __efiapi;
 	efi_status_t (*locate_handle)(efi_locate_search_type_t search_type,
 		efi_guid_t *protocol, void *search_key,
-		efi_uintn_t *buffer_size, efi_handle_t *buffer) __eficall;
+		efi_uintn_t *buffer_size, efi_handle_t *buffer) __efiapi;
 	efi_status_t (*locate_device_path)(efi_guid_t *protocol,
 		efi_device_path_protocol_t **device_path, efi_handle_t *device)
-		__eficall;
+		__efiapi;
 	efi_status_t (*install_configuration_table)(efi_guid_t *guid,
-		void *table) __eficall;
+		void *table) __efiapi;
 
 	/** Image services. */
 	efi_status_t (*load_image)(efi_boolean_t boot_policy,
 		efi_handle_t parent_image_handle,
 		efi_device_path_protocol_t *device_path, void *source_buffer,
-		efi_uintn_t source_size, efi_handle_t *image_handle) __eficall;
+		efi_uintn_t source_size, efi_handle_t *image_handle) __efiapi;
 	efi_status_t (*start_image)(efi_handle_t image_handle,
 		efi_uintn_t *exit_data_size, efi_char16_t **exit_data)
-		__eficall;
+		__efiapi;
 	efi_status_t (*exit)(efi_handle_t image_handle,
 		efi_status_t exit_status, efi_uintn_t exit_data_size,
-		efi_char16_t *exit_data) __eficall;
-	efi_status_t (*unload_image)(efi_handle_t image_handle) __eficall;
+		efi_char16_t *exit_data) __efiapi;
+	efi_status_t (*unload_image)(efi_handle_t image_handle) __efiapi;
 	efi_status_t (*exit_boot_services)(efi_handle_t image_handle,
-		efi_uintn_t map_key) __eficall;
+		efi_uintn_t map_key) __efiapi;
 
 	/** Miscellaneous services. */
-	efi_status_t (*get_next_monotonic_count)(efi_uint64_t *count) __eficall;
-	efi_status_t (*stall)(efi_uintn_t microseconds) __eficall;
+	efi_status_t (*get_next_monotonic_count)(efi_uint64_t *count) __efiapi;
+	efi_status_t (*stall)(efi_uintn_t microseconds) __efiapi;
 	efi_status_t (*set_watchdog_timer)(efi_uintn_t timeout,
 		efi_uint64_t watchdog_code, efi_uintn_t data_size,
-		efi_char16_t *watchdog_data) __eficall;
+		efi_char16_t *watchdog_data) __efiapi;
 
 	/** Driver support services. */
 	efi_status_t (*connect_controller)(efi_handle_t controller_handle,
 		efi_handle_t *driver_image_handle,
 		efi_device_path_protocol_t *remaining_device_path,
-		efi_boolean_t recursive) __eficall;
+		efi_boolean_t recursive) __efiapi;
 	efi_status_t (*disconnect_controller)(efi_handle_t controller_handle,
 		efi_handle_t driver_image_handle, efi_handle_t child_handle)
-		__eficall;
+		__efiapi;
 
 	/** Open and close protocol services. */
 	efi_status_t (*open_protocol)(efi_handle_t handle, efi_guid_t *protocol,
 		void **interface, efi_handle_t agent_handle,
 		efi_handle_t controller_handle, efi_uint32_t attributes)
-		__eficall;
+		__efiapi;
 	efi_status_t (*close_protocol)(efi_handle_t handle,
 		efi_guid_t *protocol, efi_handle_t agent_handle,
-		efi_handle_t controller_handle) __eficall;
+		efi_handle_t controller_handle) __efiapi;
 	efi_status_t (*open_protocol_information)(efi_handle_t handle,
 		efi_guid_t *protocol,
 		efi_open_protocol_information_entry_t **entry_buffer,
-		efi_uintn_t *entry_count) __eficall;
+		efi_uintn_t *entry_count) __efiapi;
 
 	/** Library services. */
 	efi_status_t (*protocols_per_handle)(efi_handle_t handle,
 		efi_guid_t ***protocol_buffer,
-		efi_uintn_t *protocol_buffer_count) __eficall;
+		efi_uintn_t *protocol_buffer_count) __efiapi;
 	efi_status_t (*locate_handle_buffer)(
 		efi_locate_search_type_t search_type, efi_guid_t *protocol,
 		void *search_key, efi_uintn_t *num_handles,
-		efi_handle_t **buffer) __eficall;
+		efi_handle_t **buffer) __efiapi;
 	efi_status_t (*locate_protocol)(efi_guid_t *protocol,
-		void *registration, void **interface) __eficall;
+		void *registration, void **interface) __efiapi;
 	efi_status_t (*install_multiple_protocol_interfaces)(
-		efi_handle_t *handle, ...) __eficall;
+		efi_handle_t *handle, ...) __efiapi;
 	efi_status_t (*uninstall_multiple_protocol_interfaces)(
-		efi_handle_t handle, ...) __eficall;
+		efi_handle_t handle, ...) __efiapi;
 
 	/** 32-bit CRC services. */
 	efi_status_t (*calculate_crc32)(void *data, efi_uintn_t data_size,
-		efi_uint32_t *crc32) __eficall;
+		efi_uint32_t *crc32) __efiapi;
 
 	/** Miscellaneous services. */
 	void (*copy_mem)(void *destination, void *source, efi_uintn_t length)
-		__eficall;
+		__efiapi;
 	void (*set_mem)(void *buffer, efi_uintn_t size, efi_uint8_t value)
-		__eficall;
+		__efiapi;
 	efi_status_t (*create_event_ex)(efi_uint32_t type, efi_tpl_t notify_tpl,
 		efi_event_notify_t notify_func, const void *notify_context,
-		const efi_guid_t *event_group, efi_event_t *event) __eficall;
+		const efi_guid_t *event_group, efi_event_t *event) __efiapi;
 } efi_boot_services_t;
 
 /** EFI boot services table signature. */
@@ -517,36 +517,36 @@ typedef struct efi_runtime_services {
 
 	/** Time services. */
 	efi_status_t (*get_time)(efi_time_t *time,
-		efi_time_capabilities_t *capabilities) __eficall;
-	efi_status_t (*set_time)(efi_time_t *time) __eficall;
+		efi_time_capabilities_t *capabilities) __efiapi;
+	efi_status_t (*set_time)(efi_time_t *time) __efiapi;
 	efi_status_t (*get_wakeup_time)(efi_boolean_t *enabled,
-		efi_boolean_t *pending, efi_time_t *time) __eficall;
+		efi_boolean_t *pending, efi_time_t *time) __efiapi;
 	efi_status_t (*set_wakeup_time)(efi_boolean_t enabled,
-		efi_time_t *time) __eficall;
+		efi_time_t *time) __efiapi;
 
 	/** Virtual memory services. */
 	efi_status_t (*set_virtual_address_map)(efi_uintn_t memory_map_size,
 		efi_uintn_t descriptor_size, efi_uint32_t descriptor_version,
-		efi_memory_descriptor_t *virtual_map) __eficall;
+		efi_memory_descriptor_t *virtual_map) __efiapi;
 	efi_status_t (*convert_pointer)(efi_uintn_t debug_disposition,
-		void **address) __eficall;
+		void **address) __efiapi;
 
 	/** Variable services. */
 	efi_status_t (*get_variable)(efi_char16_t *variable_name,
 		efi_guid_t *vendor_guid, efi_uint32_t *attributes,
-		efi_uintn_t *data_size, void *data) __eficall;
+		efi_uintn_t *data_size, void *data) __efiapi;
 	efi_status_t (*get_next_variable_name)(efi_uintn_t *variable_name_size,
-		efi_char16_t *variable_name, efi_guid_t *vendor_guid) __eficall;
+		efi_char16_t *variable_name, efi_guid_t *vendor_guid) __efiapi;
 	efi_status_t (*set_variable)(efi_char16_t *variable_name,
 		efi_guid_t *vendor_guid, efi_uint32_t attributes,
-		efi_uintn_t data_size, void *data) __eficall;
+		efi_uintn_t data_size, void *data) __efiapi;
 
 	/** Miscellaneous services. */
 	efi_status_t (*get_next_high_monotonic_count)(efi_uint32_t *high_count)
-		__eficall;
+		__efiapi;
 	void (*reset_system)(efi_reset_type_t reset_type,
 		efi_status_t reset_status, efi_uintn_t data_size,
-		efi_char16_t *reset_data) __eficall;
+		efi_char16_t *reset_data) __efiapi;
 } efi_runtime_services_t;
 
 /** EFI runtime services table signature. */
