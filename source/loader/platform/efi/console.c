@@ -22,12 +22,21 @@
 #include <efi/efi.h>
 
 #include <console.h>
+#include <loader.h>
 
-/** Console out protocol. */
+/** Serial port parameters (match the defaults given in the EFI spec). */
+#define SERIAL_BAUD_RATE	115200
+#define SERIAL_PARITY		EFI_NO_PARITY
+#define SERIAL_DATA_BITS	8
+#define SERIAL_STOP_BITS	EFI_ONE_STOP_BIT
+
+/** Serial protocol GUID. */
+static efi_guid_t serial_io_guid = EFI_SERIAL_IO_PROTOCOL_GUID;
+
+/** Console protocols. */
 static efi_simple_text_output_protocol_t *console_out;
-
-/** Console input protocol. */
 static efi_simple_text_input_protocol_t *console_in;
+static efi_serial_io_protocol_t *serial_io;
 
 /** Saved key press. */
 static efi_input_key_t saved_key;
@@ -86,8 +95,6 @@ static uint16_t efi_scan_codes[] = {
 	CONSOLE_KEY_F9, CONSOLE_KEY_F10, '\e',
 };
 
-#include <loader.h>
-
 /** Read a character from the console.
  * @return		Character read. */
 static uint16_t efi_console_getc(void) {
@@ -125,8 +132,28 @@ static console_in_ops_t efi_console_in_ops = {
 	.getc = efi_console_getc,
 };
 
+/** Write a character to the serial console.
+ * @param ch		Character to write. */
+static void efi_serial_putc(char ch) {
+	efi_uintn_t size = 1;
+
+	if(ch == '\n')
+		efi_serial_putc('\r');
+
+	efi_call(serial_io->write, serial_io, &size, &ch);
+}
+
+/** EFI serial console output operations. */
+static console_out_ops_t efi_serial_out_ops = {
+	.putc = efi_serial_putc,
+};
+
 /** Initialize the EFI console. */
 void efi_console_init(void) {
+	efi_handle_t *handles;
+	efi_uintn_t num_handles;
+	efi_status_t ret;
+
 	console_out = efi_system_table->con_out;
 	console_in = efi_system_table->con_in;
 
@@ -134,4 +161,29 @@ void efi_console_init(void) {
 
 	main_console.out = &efi_console_out_ops;
 	main_console.in = &efi_console_in_ops;
+
+	/* Look for a serial console. */
+	ret = efi_locate_handle(EFI_BY_PROTOCOL, &serial_io_guid, NULL,
+		&num_handles, &handles);
+	if(ret != EFI_SUCCESS)
+		return;
+
+	/* Just use the first handle. */
+	ret = efi_open_protocol(handles[0], &serial_io_guid,
+		EFI_OPEN_PROTOCOL_GET_PROTOCOL, (void **)&serial_io);
+	if(ret != EFI_SUCCESS)
+		return;
+
+	/* Configure the port. */
+	ret = efi_call(serial_io->set_attributes, serial_io, SERIAL_BAUD_RATE,
+		0, 0, SERIAL_PARITY, SERIAL_DATA_BITS, SERIAL_STOP_BITS);
+	if(ret != EFI_SUCCESS)
+		return;
+
+	ret = efi_call(serial_io->set_control, serial_io,
+		EFI_SERIAL_DATA_TERMINAL_READY | EFI_SERIAL_REQUEST_TO_SEND);
+	if(ret != EFI_SUCCESS)
+		return;
+
+	debug_console.out = &efi_serial_out_ops;
 }

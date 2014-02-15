@@ -26,7 +26,14 @@
 
 #include <efi/api.h>
 
+extern efi_handle_t efi_image_handle;
 extern efi_system_table_t *efi_system_table;
+
+extern efi_status_t efi_locate_handle(efi_locate_search_type_t search_type,
+	efi_guid_t *protocol, void *search_key, efi_uintn_t *_num_handles,
+	efi_handle_t **_handles);
+extern efi_status_t efi_open_protocol(efi_handle_t handle, efi_guid_t *protocol,
+	efi_uint32_t attributes, void **_interface);
 
 extern void efi_console_init(void);
 

@@ -73,7 +73,14 @@ typedef struct efi_guid {
 	efi_uint32_t data1;
 	efi_uint16_t data2;
 	efi_uint16_t data3;
-	efi_uint8_t data4[8];
+	efi_uint8_t data4;
+	efi_uint8_t data5;
+	efi_uint8_t data6;
+	efi_uint8_t data7;
+	efi_uint8_t data8;
+	efi_uint8_t data9;
+	efi_uint8_t data10;
+	efi_uint8_t data11;
 } __aligned(8) efi_guid_t;
 
 /**
@@ -239,6 +246,60 @@ typedef struct efi_simple_text_output_protocol {
 	efi_simple_text_output_mode_t *mode;
 } efi_simple_text_output_protocol_t;
 
+/** EFI serial I/O protocol GUID. */
+#define EFI_SERIAL_IO_PROTOCOL_GUID \
+	{ 0xbb25cf6f, 0xf1d4, 0x11d2, 0x9a, 0x0c, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0xfd }
+
+/** Serial control bits. */
+#define EFI_SERIAL_DATA_TERMINAL_READY		0x1
+#define EFI_SERIAL_REQUEST_TO_SEND		0x2
+#define EFI_SERIAL_CLEAR_TO_SEND		0x10
+#define EFI_SERIAL_DATA_SET_READY		0x20
+#define EFI_SERIAL_RING_INDICATE		0x40
+#define EFI_SERIAL_CARRIER_DETECT		0x80
+#define EFI_SERIAL_INPUT_BUFFER_EMPTY		0x100
+#define EFI_SERIAL_OUTPUT_BUFFER_EMPTY		0x200
+#define EFI_SERIAL_HARDWARE_LOOPBACK_ENABLE	0x1000
+#define EFI_SERIAL_SOFTWARE_LOOPBACK_ENABLE	0x2000
+#define EFI_SERIAL_HARDWARE_FLOW_CONTROL_ENABLE	0x4000
+
+/** Serial parity type. */
+typedef enum efi_parity_type {
+	EFI_DEFAULT_PARITY,
+	EFI_NO_PARITY,
+	EFI_EVEN_PARITY,
+	EFI_ODD_PARITY,
+	EFI_MARK_PARITY,
+	EFI_SPACE_PARITY,
+} efi_parity_type_t;
+
+/** Serial stop-bits type. */
+typedef enum efi_stop_bits_type {
+	EFI_DEFAULT_STOP_BITS,
+	EFI_ONE_STOP_BIT,
+	EFI_ONE_FIVE_STOP_BITS,
+	EFI_TWO_STOP_BITS,
+} efi_stop_bits_type_t;
+
+/** Serial I/O protocol. */
+typedef struct efi_serial_io_protocol {
+	uint32_t revision;
+
+	efi_status_t (*reset)(struct efi_serial_io_protocol *this) __efiapi;
+	efi_status_t (*set_attributes)(struct efi_serial_io_protocol *this,
+		efi_uint64_t baud_rate, efi_uint32_t receive_fifo_depth,
+		efi_uint32_t timeout, efi_parity_type_t parity,
+		efi_uint8_t data_bits, efi_stop_bits_type_t stop_bits) __efiapi;
+	efi_status_t (*set_control)(struct efi_serial_io_protocol *this,
+		efi_uint32_t control) __efiapi;
+	efi_status_t (*get_control)(struct efi_serial_io_protocol *this,
+		efi_uint32_t *control) __efiapi;
+	efi_status_t (*write)(struct efi_serial_io_protocol *this,
+		efi_uintn_t *buffer_size, void *buffer) __efiapi;
+	efi_status_t (*read)(struct efi_serial_io_protocol *this,
+		efi_uintn_t *buffer_size, void *buffer) __efiapi;
+} efi_serial_io_protocol_t;
+
 /**
  * EFI boot services definitions.
  */
@@ -330,6 +391,14 @@ typedef struct efi_open_protocol_information_entry {
 	efi_uint32_t attributes;
 	efi_uint32_t open_count;
 } efi_open_protocol_information_entry_t;
+
+/** Attributes for OpenProtocol(). */
+#define EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL	0x1
+#define EFI_OPEN_PROTOCOL_GET_PROTOCOL		0x2
+#define EFI_OPEN_PROTOCOL_TEST_PROTOCOL		0x4
+#define EFI_OPEN_PROTOCOL_BY_CHILD_CONTROLLER	0x8
+#define EFI_OPEN_PROTOCOL_BY_DRIVER		0x10
+#define EFI_OPEN_PROTOCOL_EXCLUSIVE		0x20
 
 /**
  * EFI runtime services definitions.
