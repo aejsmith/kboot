@@ -30,8 +30,8 @@
 
 /** Halt the current CPU. */
 static inline __noreturn void system_halt(void) {
-        while(true) {
-                __asm__ __volatile__(
+	while(true) {
+		__asm__ __volatile__(
 			"cli\n"
 			"hlt\n");
 	}

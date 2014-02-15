@@ -79,8 +79,8 @@ static void ns16550_console_putc(char ch) {
 	while(!(ns16550_read(NS16550_REG_LSR) & NS16550_LSR_THRE));
 }
 
-/** NS16550 UART debug console. */
-static console_t ns16550_console = {
+/** NS16550 UART debug console output operations. */
+static console_out_ops_t ns16550_console_out_ops = {
 	.putc = ns16550_console_putc,
 };
 
@@ -100,8 +100,9 @@ void ns16550_init(ns16550_t base) {
 	/* Wait for the transmit buffer to empty. */
 	while(!(ns16550_read(NS16550_REG_LSR) & NS16550_LSR_THRE));
 
-	/* Set the debug console. */
-	debug_console = &ns16550_console;
+	/* Set the debug console. No input operations needed, we don't need
+	 * input on the debug console. */
+	debug_console.out = &ns16550_console_out_ops;
 }
 
 /** Reconfigure the NS16550 UART.

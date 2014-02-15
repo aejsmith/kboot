@@ -46,8 +46,8 @@ static void efi_console_putc(char ch) {
 	efi_call(console_out->output_string, console_out, str);
 }
 
-/** EFI main console implementation. */
-static console_t efi_console = {
+/** EFI main console output operations. */
+static console_out_ops_t efi_console_out_ops = {
 	.reset = efi_console_reset,
 	.putc = efi_console_putc,
 };
@@ -57,5 +57,5 @@ void efi_console_init(void) {
 	/* Set up the main console. */
 	console_out = efi_system_table->con_out;
 	efi_call(console_out->clear_screen, console_out);
-	main_console = &efi_console;
+	main_console.out = &efi_console_out_ops;
 }

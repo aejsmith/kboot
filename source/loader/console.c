@@ -30,18 +30,18 @@ size_t debug_log_start;
 size_t debug_log_length;
 
 /** Main console. */
-console_t *main_console;
+console_t main_console;
 
 /** Debug console. */
-console_t *debug_console;
+console_t debug_console;
 
 /** Helper for vprintf().
  * @param ch		Character to display.
  * @param data		Console to use.
  * @param total		Pointer to total character count. */
 static void vprintf_helper(char ch, void *data, int *total) {
-	if(main_console)
-		main_console->putc(ch);
+	if(main_console.out)
+		main_console.out->putc(ch);
 
 	*total = *total + 1;
 }
@@ -74,8 +74,8 @@ int printf(const char *fmt, ...) {
  * @param data		Console to use.
  * @param total		Pointer to total character count. */
 static void dvprintf_helper(char ch, void *data, int *total) {
-	if(debug_console)
-		debug_console->putc(ch);
+	if(debug_console.out)
+		debug_console.out->putc(ch);
 
 	/* Store in the log buffer. */
 	debug_log[(debug_log_start + debug_log_length) % DEBUG_LOG_SIZE] = ch;
