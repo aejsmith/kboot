@@ -48,7 +48,7 @@ void backtrace(int (*print)(const char *fmt, ...)) {
 /** Handle an exception.
  * @param frame		Interrupt frame. */
 void x86_exception_handler(exception_frame_t *frame) {
-	dprintf("Exception %lu (error code 0x%lx)\n"
+	internal_error("Exception %lu (error code 0x%lx)\n"
 		"cs: 0x%04lx  ss: 0x%04lx\n"
 		"rip: 0x%016lx  rsp: 0x%016lx  rflags: 0x%08lx\n"
 		"rax: 0x%016lx  rbx: 0x%016lx  rcx: 0x%016lx\n"
@@ -61,8 +61,6 @@ void x86_exception_handler(exception_frame_t *frame) {
 		frame->dx, frame->di, frame->si, frame->bp, frame->r8,
 		frame->r9, frame->r10, frame->r11, frame->r12, frame->r13,
 		frame->r14, frame->r15);
-
-	while(true);
 }
 
 #else /* CONFIG_64BIT */
@@ -70,7 +68,7 @@ void x86_exception_handler(exception_frame_t *frame) {
 /** Handle an exception.
  * @param frame		Interrupt frame. */
 void x86_exception_handler(exception_frame_t *frame) {
-	dprintf("Exception %lu (error code 0x%lx)\n"
+	internal_error("Exception %lu (error code 0x%lx)\n"
 		"cs: 0x%04lx  ds: 0x%04lx  es: 0x%04lx  fs: 0x%04lx  gs: 0x%04lx\n"
 		"eip: 0x%08lx  esp: 0x%08lx  eflags: 0x%08lx\n"
 		"eax: 0x%08lx  ebx: 0x%08lx  ecx: 0x%08lx  edx: 0x%08lx\n"
@@ -79,8 +77,6 @@ void x86_exception_handler(exception_frame_t *frame) {
 		frame->fs, frame->gs, frame->ip, frame->sp, frame->flags,
 		frame->ax, frame->bx, frame->cx, frame->dx, frame->di,
 		frame->si, frame->bp);
-
-	while(true);
 }
 
 #endif /* CONFIG_64BIT */
