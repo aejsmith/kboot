@@ -290,7 +290,8 @@ PRIVATE_FUNCTION_START(__common_entry)
 	rep stosb
 
 	/* Call the main function. */
-	jmp	platform_init
+	call	platform_init
+1:	jmp	1b
 FUNCTION_END(__common_entry)
 
 .section .init.data, "aw", @progbits

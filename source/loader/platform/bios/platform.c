@@ -32,7 +32,7 @@ void platform_init(void) {
 	arch_init();
 
 	dprintf("Hello, World\n");
-	while(true) {}
+	internal_error("TODO");
 }
 
 /** Reboot the system. */
