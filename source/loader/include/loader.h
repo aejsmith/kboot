@@ -30,12 +30,13 @@
 
 extern char __start[], __end[];
 
-extern void platform_reboot(void);
-
 extern int vprintf(const char *fmt, va_list args);
 extern int printf(const char *fmt, ...) __printf(1, 2);
 extern int dvprintf(const char *fmt, va_list args);
 extern int dprintf(const char *fmt, ...) __printf(1, 2);
+
+extern void boot_error(const char *fmt, ...) __noreturn;
+extern void internal_error(const char *fmt, ...) __noreturn;
 
 extern void backtrace(int (*print)(const char *fmt, ...));
 

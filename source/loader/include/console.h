@@ -26,6 +26,9 @@
 
 /** Structure describing a console. */
 typedef struct console {
+	/** Reset the console to a default state. */
+	void (*reset)(void);
+
 	/** Write a character to the console.
 	 * @param ch		Character to write. */
 	void (*putc)(char ch);

@@ -22,6 +22,6 @@
 #ifndef __PLATFORM_LOADER_H
 #define __PLATFORM_LOADER_H
 
-
+extern void system_reboot(void);
 
 #endif /* __PLATFORM_LOADER_H */

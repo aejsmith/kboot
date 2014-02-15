@@ -26,6 +26,11 @@
 /** Console out protocol. */
 static efi_simple_text_output_protocol_t *console_out;
 
+/** Reset the console to a default state. */
+static void efi_console_reset(void) {
+	efi_call(console_out->clear_screen, console_out);
+}
+
 /** Write a character to the console.
  * @param ch		Character to write. */
 static void efi_console_putc(char ch) {
@@ -43,6 +48,7 @@ static void efi_console_putc(char ch) {
 
 /** EFI main console implementation. */
 static console_t efi_console = {
+	.reset = efi_console_reset,
 	.putc = efi_console_putc,
 };
 

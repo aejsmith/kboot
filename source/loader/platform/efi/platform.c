@@ -38,5 +38,5 @@ efi_status_t platform_init(efi_handle_t image, efi_system_table_t *systab) {
 
 	efi_console_init();
 	printf("Hello, World!\n");
-	while(true) {}
+	internal_error("TODO");
 }

@@ -24,6 +24,7 @@ sources = FeatureSources(config, [
     'lib/string.c',
 
     'console.c',
+    'error.c',
 ])
 
 # Set the include search paths.

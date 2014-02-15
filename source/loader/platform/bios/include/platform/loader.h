@@ -37,4 +37,9 @@
 /** Load offset for Multiboot. */
 #define MULTIBOOT_LOAD_OFFSET	(MULTIBOOT_LOAD_ADDR - LOADER_LOAD_ADDR)
 
+#ifndef __ASM__
+
+extern void system_reboot(void);
+
+#endif /* __ASM__ */
 #endif /* __PLATFORM_LOADER_H */

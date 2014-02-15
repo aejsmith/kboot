@@ -26,6 +26,15 @@
 #define ARCH_HAS_MEMCPY		1
 #define ARCH_HAS_MEMSET		2
 
+/** Halt the current CPU. */
+static inline __noreturn void system_halt(void) {
+        while(true) {
+                __asm__ __volatile__(
+			"cli\n"
+			"hlt\n");
+	}
+}
+
 extern void arch_init(void);
 
 #endif /* __ARCH_LOADER_H */

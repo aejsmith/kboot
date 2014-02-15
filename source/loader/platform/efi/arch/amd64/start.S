@@ -33,6 +33,11 @@ FUNCTION_START(loader_entry)
 	/* We are entered with interrupts enabled. We don't want them. */
 	cli
 
+	/* Clear the stack frame pointer/EFLAGS. */
+	xorl	%ebp, %ebp
+	push	$0
+	popf
+
 	/* EFI uses the Microsoft x86_64 ABI. Arguments are passed in RCX/RDX. */
 	pushq	%rcx
 	pushq	%rdx

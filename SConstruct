@@ -40,7 +40,7 @@ clang_flags = {
 target_flags = {
     'CCFLAGS': [
         '-gdwarf-2', '-pipe', '-nostdlib', '-nostdinc', '-ffreestanding',
-        '-fno-stack-protector', '-Os',
+        '-fno-stack-protector', '-Os', '-fno-omit-frame-pointer',
     ],
     'ASFLAGS': ['-nostdinc'],
     'LINKFLAGS': ['-nostdlib', '-Wl,--build-id=none'],
