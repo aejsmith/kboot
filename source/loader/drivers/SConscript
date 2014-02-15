@@ -19,6 +19,7 @@ from util import FeatureSources
 
 sources = FeatureSources(config, [
     ('DRIVER_SERIAL_NS16550', 'serial/ns16550.c'),
+    ('DRIVER_VIDEO_VGA', 'video/vga.c'),
 ])
 
 Return('sources')
