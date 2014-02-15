@@ -18,6 +18,7 @@ Import('config', 'defaults', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
+    'bios.S',
     'console.c',
     'platform.c',
     'start.S',
