@@ -124,14 +124,14 @@ FUNCTION_START(__efi_call)
 	push	%r10
 
 	/* Load our GDT/IDT. */
-	leaq	loader_gdtp(%rip), %rax
-	lgdt	(%rax)
+	leaq	loader_gdtp(%rip), %rdx
+	lgdt	(%rdx)
 	push	$SEGMENT_CS
-	leaq	3f(%rip), %rax
-	push	%rax
+	leaq	3f(%rip), %rdx
+	push	%rdx
 	lretq
-3:	leaq	loader_idtp(%rip), %rax
-	lidt	(%rax)
+3:	leaq	loader_idtp(%rip), %rdx
+	lidt	(%rdx)
 
 	/* And we're done! */
 	ret
