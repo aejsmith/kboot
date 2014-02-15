@@ -25,6 +25,7 @@ sources = FeatureSources(config, [
 
     'console.c',
     'error.c',
+    'memory.c',
 ])
 
 # Set the include search paths.
