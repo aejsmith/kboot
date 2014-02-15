@@ -22,6 +22,8 @@
 #ifndef __ARCH_LOADER_H
 #define __ARCH_LOADER_H
 
+#include <types.h>
+
 /** Properties of the architecture (functions we provide etc.). */
 #define ARCH_HAS_MEMCPY		1
 #define ARCH_HAS_MEMSET		2
