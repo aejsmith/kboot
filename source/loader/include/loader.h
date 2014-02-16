@@ -31,6 +31,44 @@
 
 extern char __start[], __end[];
 
+/**
+ * Offset to apply to a physical address to get a virtual address.
+ *
+ * To handle platforms where the loader runs from the virtual address space
+ * and physical memory is not identity mapped, this value is added on to any
+ * physical address used to obtain a virtual address that maps it. If it is
+ * not specified by the architecture, it is assumed that physical addresses
+ * can be used directly without modification.
+ */
+#ifndef LOADER_VIRT_OFFSET
+# define LOADER_VIRT_OFFSET	0
+#endif
+
+/**
+ * Highest physical address accessible to the loader.
+ *
+ * Specifies the highest physical address which the loader can access. If this
+ * is not specified by the architecture, it is assumed that the loader can
+ * access the low 4GB of the physical address space.
+ */
+#ifndef LOADER_PHYS_MAX
+# define LOADER_PHYS_MAX	0xffffffff
+#endif
+
+/** Convert a virtual address to a physical address.
+ * @param addr		Address to convert.
+ * @return		Converted physical address. */
+static inline phys_ptr_t virt_to_phys(ptr_t addr) {
+	return (addr - LOADER_VIRT_OFFSET);
+}
+
+/** Convert a physical address to a virtual address.
+ * @param addr		Address to convert.
+ * @return		Converted virtual address. */
+static inline ptr_t phys_to_virt(phys_ptr_t addr) {
+	return (addr + LOADER_VIRT_OFFSET);
+}
+
 extern int vprintf(const char *fmt, va_list args);
 extern int printf(const char *fmt, ...) __printf(1, 2);
 extern int dvprintf(const char *fmt, va_list args);
