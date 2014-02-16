@@ -329,6 +329,9 @@ typedef enum efi_memory_type {
 	EFI_MEMORY_MAPPED_IO_PORT_SPACE,
 	EFI_PAL_CODE,
 	EFI_MAX_MEMORY_TYPE,
+
+	/** Start of OS-defined memory type range. */
+	EFI_OS_MEMORY_TYPE = 0x80000000,
 } efi_memory_type_t;
 
 /** Memory range descriptor. */

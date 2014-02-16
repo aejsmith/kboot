@@ -164,7 +164,7 @@ void efi_console_init(void) {
 
 	/* Look for a serial console. */
 	ret = efi_locate_handle(EFI_BY_PROTOCOL, &serial_io_guid, NULL,
-		&num_handles, &handles);
+		&handles, &num_handles);
 	if(ret != EFI_SUCCESS)
 		return;
 

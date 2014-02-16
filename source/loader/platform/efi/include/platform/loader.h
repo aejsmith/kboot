@@ -22,6 +22,9 @@
 #ifndef __PLATFORM_LOADER_H
 #define __PLATFORM_LOADER_H
 
+/** Properties of the platform (functions we provide etc.). */
+#define PLATFORM_HAS_MM		1
+
 extern void system_reboot(void);
 
 #endif /* __PLATFORM_LOADER_H */
