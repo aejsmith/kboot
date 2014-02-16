@@ -81,20 +81,18 @@ typedef struct list {
 /** Get a pointer to the next structure in a list.
  * @note		Does not check if the next entry is the head.
  * @param entry		Current entry.
- * @param type		Type of the structure.
  * @param member	Name of the list node member in the structure.
  * @return		Pointer to the next structure. */
-#define list_next(entry, type, member) \
-	((type *)((char *)((entry)->next) - offsetof(type, member)))
+#define list_next(entry, member) \
+	(list_entry((entry)->member.next, typeof(*(entry)), member))
 
 /** Get a pointer to the previous structure in a list.
  * @note		Does not check if the previous entry is the head.
  * @param entry		Current entry.
- * @param type		Type of the structure.
  * @param member	Name of the list node member in the structure.
  * @return		Pointer to the previous structure. */
-#define list_prev(entry, type, member) \
-	((type *)((char *)((entry)->prev) - offsetof(type, member)))
+#define list_prev(entry, member) \
+	(list_entry((entry)->member.prev, typeof(*(entry)), member))
 
 /** Get a pointer to the first structure in a list.
  * @note		Does not check if the list is empty.
@@ -103,7 +101,7 @@ typedef struct list {
  * @param member	Name of the list node member in the structure.
  * @return		Pointer to the first structure. */
 #define list_first(list, type, member) \
-	(list_next(list, type, member))
+	(list_entry((list)->next, type, member))
 
 /** Get a pointer to the last structure in a list.
  * @note		Does not check if the list is empty.
@@ -112,7 +110,7 @@ typedef struct list {
  * @param member	Name of the list node member in the structure.
  * @return		Pointer to the last structure. */
 #define list_last(list, type, member) \
-	(list_prev(list, type, member))
+	(list_entry((list)->prev, type, member))
 
 /** Checks whether the given list is empty.
  * @param list		List to check. */
