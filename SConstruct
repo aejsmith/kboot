@@ -19,7 +19,7 @@ build_flags = {
     'CCFLAGS': [
         '-Wall', '-Wextra', '-Wno-variadic-macros', '-Wno-unused-parameter',
         '-Wwrite-strings', '-Wmissing-declarations', '-Wredundant-decls',
-        '-Wno-format', '-Wimplicit-function-declaration', '-pipe',
+        '-Wno-format', '-Werror', '-Wno-error=unused', '-pipe',
     ],
     'CFLAGS': ['-std=gnu99'],
     'ASFLAGS': ['-D__ASM__'],
