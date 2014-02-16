@@ -21,6 +21,7 @@ from util import FeatureSources
 
 sources = FeatureSources(config, [
     'lib/printf.c',
+    'lib/qsort.c',
     'lib/string.c',
 
     'console.c',
