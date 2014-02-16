@@ -86,9 +86,6 @@ typedef int64_t mstime_t;		/**< Type used to store a time value in milliseconds.
 /** Number of bits in a char. */
 #define CHAR_BIT	8
 
-#undef __INT_64
-#undef __PRI_64
-
 #include <arch/types.h>
 
 #endif /* __TYPES_H */
