@@ -59,7 +59,7 @@ void x86_exception_handler(exception_frame_t *frame) {
 		"rdx: 0x%016lx  rdi: 0x%016lx  rsi: 0x%016lx\n"
 		"rbp: 0x%016lx  r8:  0x%016lx  r9:  0x%016lx\n"
 		"r10: 0x%016lx  r11: 0x%016lx  r12: 0x%016lx\n"
-		"r13: 0x%016lx  r14: 0x%016lx  r15: 0x%016lx\n",
+		"r13: 0x%016lx  r14: 0x%016lx  r15: 0x%016lx",
 		frame->num, frame->err_code, frame->cs, frame->ss, frame->ip,
 		frame->sp, frame->flags, frame->ax, frame->bx, frame->cx,
 		frame->dx, frame->di, frame->si, frame->bp, frame->r8,
@@ -76,7 +76,7 @@ void x86_exception_handler(exception_frame_t *frame) {
 		"cs: 0x%04lx  ds: 0x%04lx  es: 0x%04lx  fs: 0x%04lx  gs: 0x%04lx\n"
 		"eip: 0x%08lx  esp: 0x%08lx  eflags: 0x%08lx\n"
 		"eax: 0x%08lx  ebx: 0x%08lx  ecx: 0x%08lx  edx: 0x%08lx\n"
-		"edi: 0x%08lx  esi: 0x%08lx  ebp: 0x%08lx\n",
+		"edi: 0x%08lx  esi: 0x%08lx  ebp: 0x%08lx",
 		frame->num, frame->err_code, frame->cs, frame->ds, frame->es,
 		frame->fs, frame->gs, frame->ip, frame->sp, frame->flags,
 		frame->ax, frame->bx, frame->cx, frame->dx, frame->di,
