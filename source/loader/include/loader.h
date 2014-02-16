@@ -26,6 +26,7 @@
 
 #include <platform/loader.h>
 
+#include <status.h>
 #include <types.h>
 
 extern char __start[], __end[];
