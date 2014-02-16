@@ -26,6 +26,6 @@ if [ ! -e ".ovmf-x86_64.bin" ]; then
 fi
 
 qemu-system-x86_64 -pflash .ovmf-x86_64.bin -hda fat:${fsdir} -serial stdio \
-    -serial vc:1024x768 -m 512 -monitor vc:1024x768
+    -m 512 -monitor vc:1024x768
 
 rm -rf ${fsdir}
