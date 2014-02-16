@@ -20,6 +20,7 @@ from util import FeatureSources
 sources = FeatureSources(config, [
     'bios.S',
     'console.c',
+    'memory.c',
     'platform.c',
     'start.S',
 ])
