@@ -117,8 +117,8 @@ host_env = env.Clone()
 
 # Add compiler-specific flags.
 output = Popen([host_env['CC'], '--version'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
-is_clang = output.find('clang') >= 0
-if is_clang:
+host_env['IS_CLANG'] = output.find('clang') >= 0
+if host_env['IS_CLANG']:
     for (k, v) in clang_flags.items():
         host_env[k] += v
 else:
@@ -179,8 +179,8 @@ for (k, v) in target_flags.items():
 
 # Add compiler-specific flags.
 output = Popen([compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
-is_clang = output.find('clang') >= 0
-if is_clang:
+env['IS_CLANG'] = output.find('clang') >= 0
+if env['IS_CLANG']:
     for (k, v) in clang_flags.items():
         env[k] += v
 else:
