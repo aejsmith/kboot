@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		Memory management functions.
+ * @brief               Memory management functions.
  */
 
 #ifndef __MEMORY_H
@@ -28,11 +28,11 @@
 
 /** Physical memory range descriptor. */
 typedef struct memory_range {
-	list_t header;			/**< Link to memory range list. */
+    list_t header;                      /**< Link to memory range list. */
 
-	phys_ptr_t start;		/**< Start of range. */
-	phys_size_t size;		/**< Size of range. */
-	uint8_t type;			/**< Type of the range. */
+    phys_ptr_t start;                   /**< Start of range. */
+    phys_size_t size;                   /**< Size of range. */
+    uint8_t type;                       /**< Type of the range. */
 } memory_range_t;
 
 /**
@@ -41,24 +41,24 @@ typedef struct memory_range {
  * Memory types to be used with the memory allocation functions. These match
  * the types specified by the KBoot spec, with some additions.
  */
-#define MEMORY_TYPE_FREE	0	/**< Free, usable memory. */
-#define MEMORY_TYPE_ALLOCATED	1	/**< Kernel image and other non-reclaimable data. */
-#define MEMORY_TYPE_RECLAIMABLE	2	/**< Memory reclaimable when boot information is no longer needed. */
-#define MEMORY_TYPE_PAGETABLES	3	/**< Temporary page tables for the kernel. */
-#define MEMORY_TYPE_STACK	4	/**< Stack set up for the kernel. */
-#define MEMORY_TYPE_MODULES	5	/**< Module data. */
-#define MEMORY_TYPE_INTERNAL	6	/**< Freed before the OS is entered. */
+#define MEMORY_TYPE_FREE         0      /**< Free, usable memory. */
+#define MEMORY_TYPE_ALLOCATED    1      /**< Kernel image and other non-reclaimable data. */
+#define MEMORY_TYPE_RECLAIMABLE  2      /**< Memory reclaimable when boot information is no longer needed. */
+#define MEMORY_TYPE_PAGETABLES   3      /**< Temporary page tables for the kernel. */
+#define MEMORY_TYPE_STACK        4      /**< Stack set up for the kernel. */
+#define MEMORY_TYPE_MODULES      5      /**< Module data. */
+#define MEMORY_TYPE_INTERNAL     6      /**< Freed before the OS is entered. */
 
 /** Memory allocation behaviour flags. */
-#define MEMORY_ALLOC_HIGH	(1<<0)	/**< Allocate highest possible address. */
+#define MEMORY_ALLOC_HIGH        (1<<0) /**< Allocate highest possible address. */
 
 extern void *malloc(size_t size);
 extern void *realloc(void *addr, size_t size);
 extern void free(void *addr);
 
-extern void *memory_alloc(phys_size_t size, phys_size_t align,
-	phys_ptr_t min_addr, phys_ptr_t max_addr, uint8_t type, unsigned flags,
-	phys_ptr_t *_phys);
+extern void *memory_alloc(
+    phys_size_t size, phys_size_t align, phys_ptr_t min_addr, phys_ptr_t max_addr,
+    uint8_t type, unsigned flags, phys_ptr_t *_phys);
 extern void memory_finalize(list_t *memory_map);
 extern void memory_dump(list_t *memory_map);
 

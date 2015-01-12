@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		BIOS loader linker script.
+ * @brief               BIOS loader linker script.
  */
 
 #include <arch/page.h>
@@ -28,44 +28,44 @@ OUTPUT_ARCH("i386")
 ENTRY(loader_entry)
 
 SECTIONS {
-	. = LOADER_LOAD_ADDR;
-	__start = .;
+    . = LOADER_LOAD_ADDR;
+    __start = .;
 
-	/* Init code in start.S must be placed first: execution begins from the
-	 * very start of the loader image. */
-	.init.text : { *(.init.text) }
-	.init.data : { *(.init.data) }
+    /* Init code in start.S must be placed first: execution begins from the very
+     * start of the loader image. */
+    .init.text : { *(.init.text) }
+    .init.data : { *(.init.data) }
 
-	.text ALIGN(32) : {
-		*(.text)
-		*(.text.*)
-	}
+    .text ALIGN(32) : {
+        *(.text)
+        *(.text.*)
+    }
 
-	.rodata ALIGN(32) : {
-		*(.rodata)
-		*(.rodata.*)
-	}
+    .rodata ALIGN(32) : {
+        *(.rodata)
+        *(.rodata.*)
+    }
 
-	.data ALIGN(32) : {
-		*(.data)
-		*(.data.*)
-		__data_end = .;
-	}
+    .data ALIGN(32) : {
+        *(.data)
+        *(.data.*)
+        __data_end = .;
+    }
 
-	.bss ALIGN(32) : {
-		__bss_start = .;
-		*(.bss)
-		*(.bss.*)
-		*(COMMON)
-		__bss_end = .;
-	}
+    .bss ALIGN(32) : {
+        __bss_start = .;
+        *(.bss)
+        *(.bss.*)
+        *(COMMON)
+        __bss_end = .;
+    }
 
-	. = ALIGN(PAGE_SIZE);
-	__end = .;
+    . = ALIGN(PAGE_SIZE);
+    __end = .;
 
-	/DISCARD/ : {
-		*(.note.*)
-		*(.comment*)
-		*(.eh_frame*)
-	}
+    /DISCARD/ : {
+        *(.note.*)
+        *(.comment*)
+        *(.eh_frame*)
+    }
 }

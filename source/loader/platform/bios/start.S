@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		BIOS bootloader startup code.
+ * @brief               BIOS bootloader startup code.
  */
 
 #include <arch/page.h>
@@ -33,293 +33,290 @@
 /** Real-mode startup function. */
 FUNCTION_START(loader_entry)
 .code16
-	/* Don't want interrupts. */
-	cli
+    /* Don't want interrupts. */
+    cli
 
-	/* Set up data segments. */
-	movw	$(LOADER_LOAD_ADDR >> 4), %ax
-	movw	%ax, %ds
-	movw	%ax, %es
+    /* Set up data segments. */
+    movw    $(LOADER_LOAD_ADDR >> 4), %ax
+    movw    %ax, %ds
+    movw    %ax, %es
 
-	/* Save the boot device/partition offset LBA. */
-	addr32 movb	%dl, (boot_device_id - LOADER_LOAD_ADDR)
-	addr32 movl	%ebx, (boot_part_offset - LOADER_LOAD_ADDR)
-	addr32 movl	%ecx, (boot_part_offset - LOADER_LOAD_ADDR) + 4
+    /* Save the boot device/partition offset LBA. */
+    addr32 movb %dl, (boot_device_id - LOADER_LOAD_ADDR)
+    addr32 movl %ebx, (boot_part_offset - LOADER_LOAD_ADDR)
+    addr32 movl %ecx, (boot_part_offset - LOADER_LOAD_ADDR) + 4
 
-	/* Make sure we're displaying page 0, and move the cursor to (0,0) */
-	movb	$0x02, %ah
-	xorb	%bh, %bh
-	xorw	%dx, %dx
-	int	$0x10
+    /* Make sure we're displaying page 0, and move the cursor to (0,0) */
+    movb    $0x02, %ah
+    xorb    %bh, %bh
+    xorw    %dx, %dx
+    int     $0x10
 
-	/* Enable the A20 line. */
-	call	enable_a20
+    /* Enable the A20 line. */
+    call    enable_a20
 
-	/* Now we need to switch to protected mode. */
-1:	addr32 lgdt (loader_gdtp - LOADER_LOAD_ADDR)
-	movl	%cr0, %eax
-	orl	$(1<<0), %eax
-	movl	%eax, %cr0
-	data32 ljmp $SEGMENT_CS, $2f
+    /* Now we need to switch to protected mode. */
+1:  addr32 lgdt (loader_gdtp - LOADER_LOAD_ADDR)
+    movl    %cr0, %eax
+    orl     $(1<<0), %eax
+    movl    %eax, %cr0
+    data32 ljmp $SEGMENT_CS, $2f
 .code32
 2:
-	mov	$SEGMENT_DS, %ax
-	mov	%ax, %ds
-	mov	%ax, %es
-	mov	%ax, %fs
-	mov	%ax, %gs
-	mov	%ax, %ss
+    mov     $SEGMENT_DS, %ax
+    mov     %ax, %ds
+    mov     %ax, %es
+    mov     %ax, %fs
+    mov     %ax, %gs
+    mov     %ax, %ss
 
-	/* Jump to the common startup code. */
-	jmp	__common_entry
+    /* Jump to the common startup code. */
+    jmp     __common_entry
 FUNCTION_END(loader_entry)
 
 /** Test whether the A20 line is enabled.
- * @note		Partially based on code found at
- *			http://wiki.osdev.org/A20_Line
- * @return		AX = 1 if enabled, AX = 0 if not. */
+ * @note                Partially based on code found at http://wiki.osdev.org/A20_Line
+ * @return              AX = 1 if enabled, AX = 0 if not. */
 PRIVATE_FUNCTION_START(test_a20)
 .code16
-	/* Iterate checking to give time for enabling attempts we make to take
-	 * effect. */
-	push	%cx
-	mov	$0x1000, %cx
+    /* Iterate checking to give time for enabling attempts we make to take
+     * effect. */
+    push    %cx
+    mov     $0x1000, %cx
 
-	/* Set segment registers and addresses to compare. */
-1:	xor	%ax, %ax
-	mov	%ax, %fs
-	not	%ax
-	mov	%ax, %gs
-	mov	$0x1000, %di
-	mov	$0x1010, %si
+    /* Set segment registers and addresses to compare. */
+1:  xor     %ax, %ax
+    mov     %ax, %fs
+    not     %ax
+    mov     %ax, %gs
+    mov     $0x1000, %di
+    mov     $0x1010, %si
 
-	/* Write different values to the two addresses, and compare. If they
-	 * both equal the second value written, the A20 line is not enabled. */
-	movb	$0x00, %fs:(%di)
-	outb	%al, $0x80
-	movb	$0xff, %gs:(%si)
-	outb	%al, $0x80
-	cmpb	$0xff, %fs:(%di)
-	jne	2f
-	loop	1b
-	xor	%ax, %ax
-	pop	%cx
-	ret
-2:	mov	$1, %ax
-	pop	%cx
-	ret
+    /* Write different values to the two addresses, and compare. If they
+     * both equal the second value written, the A20 line is not enabled. */
+    movb    $0x00, %fs:(%di)
+    outb    %al, $0x80
+    movb    $0xff, %gs:(%si)
+    outb    %al, $0x80
+    cmpb    $0xff, %fs:(%di)
+    jne     2f
+    loop    1b
+    xor     %ax, %ax
+    pop     %cx
+    ret
+2:  mov     $1, %ax
+    pop     %cx
+    ret
 FUNCTION_END(test_a20)
 
 /** Enable the A20 line. */
 PRIVATE_FUNCTION_START(enable_a20)
-	mov	$0x100, %cx
+    mov     $0x100, %cx
 .Lbegin:
-	/* Don't do anything if already enabled. */
-	call	test_a20
-	cmp	$0, %ax
-	je	.Lenable_bios
-	ret
+    /* Don't do anything if already enabled. */
+    call    test_a20
+    cmp     $0, %ax
+    je      .Lenable_bios
+    ret
 .Lenable_bios:
-	/* First try using a BIOS interrupt. */
-	mov	$0x2401, %ax
-	int	$0x15
-	call	test_a20
-	cmp	$0, %ax
-	je	.Lenable_kbd
-	ret
+    /* First try using a BIOS interrupt. */
+    mov     $0x2401, %ax
+    int     $0x15
+    call    test_a20
+    cmp     $0, %ax
+    je      .Lenable_kbd
+    ret
 .Lenable_kbd:
-	/* Try the keyboard controller. */
-	call	.Lflush
-	mov	$0xd1, %al
-	outb	%al, $0x64
-	call	.Lflush
-	mov	$0xdf, %al
-	outb	%al, $0x60
-	call	.Lflush
-	mov	$0xff, %al
-	outb	%al, $0x64
-	call	.Lflush
-	call	test_a20
-	cmp	$0, %ax
-	je	.Lenable_fast
-	ret
+    /* Try the keyboard controller. */
+    call    .Lflush
+    mov     $0xd1, %al
+    outb    %al, $0x64
+    call    .Lflush
+    mov     $0xdf, %al
+    outb    %al, $0x60
+    call    .Lflush
+    mov     $0xff, %al
+    outb    %al, $0x64
+    call    .Lflush
+    call    test_a20
+    cmp     $0, %ax
+    je      .Lenable_fast
+    ret
 .Lenable_fast:
-	/* Try the fast A20 mechanism. */
-	inb	$0x92, %al
-	testb	$(1<<1), %al
-	jnz	.Lfail
-	orb	$(1<<1), %al
-	andb	$~(1<<0), %al
-	outb	%al, $0x92
-	call	test_a20
-	cmp	$0, %ax
-	je	.Lfail
-	ret
+    /* Try the fast A20 mechanism. */
+    inb     $0x92, %al
+    testb   $(1<<1), %al
+    jnz     .Lfail
+    orb     $(1<<1), %al
+    andb    $~(1<<0), %al
+    outb    %al, $0x92
+    call    test_a20
+    cmp     $0, %ax
+    je      .Lfail
+    ret
 .Lfail:
-	loop	.Lbegin
-	mov	$'a', %al
-	mov	$0x3f8, %dx
-	outb	%al, (%dx)
-1:	jmp	1b
+    loop    .Lbegin
+    mov     $'a', %al
+    mov     $0x3f8, %dx
+    outb    %al, (%dx)
+1:  jmp     1b
 .Lflush:
-	outb	%al, $0x80
-	in	$0x64, %al
-	test	$1, %al
-	jz	2f
-	outb	%al, $0x80
-	in	$0x60, %al
-	jmp	.Lflush
-2:	test	$2, %al
-	jnz	.Lflush
-	ret
+    outb    %al, $0x80
+    in      $0x64, %al
+    test    $1, %al
+    jz      2f
+    outb    %al, $0x80
+    in      $0x60, %al
+    jmp     .Lflush
+2:  test    $2, %al
+    jnz     .Lflush
+    ret
 FUNCTION_END(enable_a20)
 
 /** Flags for the Multiboot header. */
-#define MULTIBOOT_HEADER_FLAGS	\
-	(MULTIBOOT_HEADER_KLUDGE | MULTIBOOT_HEADER_MODALIGN)
+#define MULTIBOOT_HEADER_FLAGS      (MULTIBOOT_HEADER_KLUDGE | MULTIBOOT_HEADER_MODALIGN)
 
 /** Multiboot header structure. */
 .align 4
 multiboot_header:
-	.long MULTIBOOT_HEADER_MAGIC
-	.long MULTIBOOT_HEADER_FLAGS
-	.long -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
-	.long multiboot_header + MULTIBOOT_LOAD_OFFSET
-	.long __start + MULTIBOOT_LOAD_OFFSET
-	.long __data_end + MULTIBOOT_LOAD_OFFSET
-	.long __end + MULTIBOOT_LOAD_OFFSET
-	.long __multiboot_entry + MULTIBOOT_LOAD_OFFSET
+    .long   MULTIBOOT_HEADER_MAGIC
+    .long   MULTIBOOT_HEADER_FLAGS
+    .long   -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
+    .long   multiboot_header + MULTIBOOT_LOAD_OFFSET
+    .long   __start + MULTIBOOT_LOAD_OFFSET
+    .long   __data_end + MULTIBOOT_LOAD_OFFSET
+    .long   __end + MULTIBOOT_LOAD_OFFSET
+    .long   __multiboot_entry + MULTIBOOT_LOAD_OFFSET
 
 /** Multiboot startup function. */
 PRIVATE_FUNCTION_START(__multiboot_entry)
 .code32
-	cli
+    cli
 
-	/* Duplicate the Multiboot information that we want. It is possible
-	 * that the Multiboot loader has placed the information in the same
-	 * place that we are going to relocate to, so it must be duplicated
-	 * to ensure that it won't be overwritten. Everything gets copied
-	 * into space allocated within the loader image so we can guarantee
-	 * we're not overwriting anything. */
-	movl	%eax, (multiboot_magic + MULTIBOOT_LOAD_OFFSET)
-	cld
-	movl	$MULTIBOOT_INFO_SIZE, %ecx
-	movl	$(multiboot_info + MULTIBOOT_LOAD_OFFSET), %edi
-	movl	%ebx, %esi
-	movl	%edi, %ebx
-	rep movsb
+    /* Duplicate the Multiboot information that we want. It is possible that the
+     * Multiboot loader has placed the information in the same place that we are
+     * going to relocate to, so it must be duplicated to ensure that it won't be
+     * overwritten. Everything gets copied into space allocated within the
+     * loader image so we can guarantee we're not overwriting anything. */
+    movl    %eax, (multiboot_magic + MULTIBOOT_LOAD_OFFSET)
+    cld
+    movl    $MULTIBOOT_INFO_SIZE, %ecx
+    movl    $(multiboot_info + MULTIBOOT_LOAD_OFFSET), %edi
+    movl    %ebx, %esi
+    movl    %edi, %ebx
+    rep movsb
 
-	/* Copy everything else into the preallocated chunk of space and update
-	 * the addresses in the information structures. */
-	movl	$(multiboot_storage + MULTIBOOT_LOAD_OFFSET), %edi
+    /* Copy everything else into the preallocated chunk of space and update the
+     * addresses in the information structures. */
+    movl    $(multiboot_storage + MULTIBOOT_LOAD_OFFSET), %edi
 
-	/* Copy the command line string. */
-	movl	MULTIBOOT_INFO_OFF_CMDLINE(%ebx), %esi
-	leal	-MULTIBOOT_LOAD_OFFSET(%edi), %eax
-	movl	%eax, MULTIBOOT_INFO_OFF_CMDLINE(%ebx)
-1:	lodsb
-	stosb
-	test	%al, %al
-	jnz	1b
+    /* Copy the command line string. */
+    movl    MULTIBOOT_INFO_OFF_CMDLINE(%ebx), %esi
+    leal    -MULTIBOOT_LOAD_OFFSET(%edi), %eax
+    movl    %eax, MULTIBOOT_INFO_OFF_CMDLINE(%ebx)
+1:  lodsb
+    stosb
+    test    %al, %al
+    jnz     1b
 
-	/* Copy the module information. */
-	movl	MULTIBOOT_INFO_OFF_MODS_COUNT(%ebx), %ecx
-	test	%ecx, %ecx
-	jz	.Lrelocate
-	shll	$4, %ecx
-	movl	MULTIBOOT_INFO_OFF_MODS_ADDR(%ebx), %esi
-	leal	-MULTIBOOT_LOAD_OFFSET(%edi), %eax
-	movl	%eax, MULTIBOOT_INFO_OFF_MODS_ADDR(%ebx)
-	movl	%edi, %edx
-	rep movsb
+    /* Copy the module information. */
+    movl    MULTIBOOT_INFO_OFF_MODS_COUNT(%ebx), %ecx
+    test    %ecx, %ecx
+    jz      .Lrelocate
+    shll    $4, %ecx
+    movl    MULTIBOOT_INFO_OFF_MODS_ADDR(%ebx), %esi
+    leal    -MULTIBOOT_LOAD_OFFSET(%edi), %eax
+    movl    %eax, MULTIBOOT_INFO_OFF_MODS_ADDR(%ebx)
+    movl    %edi, %edx
+    rep movsb
 
-	/* Iterate through the modules and copy the command lines. Assuming for
-	 * now that the modules are loaded in a sane location, i.e. above
-	 * 1MB somewhere, so we won't overwrite them. */
-	movl	MULTIBOOT_INFO_OFF_MODS_COUNT(%ebx), %ecx
+    /* Iterate through the modules and copy the command lines. Assuming for now
+     * that the modules are loaded in a sane location, i.e. above 1MB somewhere,
+     * so we won't overwrite them. */
+    movl    MULTIBOOT_INFO_OFF_MODS_COUNT(%ebx), %ecx
 .Lloop:
-	movl	MULTIBOOT_MODULE_OFF_CMDLINE(%edx), %esi
-	test	%esi, %esi
-	jz	2f
-	leal	-MULTIBOOT_LOAD_OFFSET(%edi), %eax
-	movl	%eax, MULTIBOOT_MODULE_OFF_CMDLINE(%edx)
-1:	lodsb
-	stosb
-	test	%al, %al
-	jnz	1b
-2:	addl	$MULTIBOOT_MODULE_SIZE, %edx
-	loop	.Lloop
+    movl    MULTIBOOT_MODULE_OFF_CMDLINE(%edx), %esi
+    test    %esi, %esi
+    jz      2f
+    leal    -MULTIBOOT_LOAD_OFFSET(%edi), %eax
+    movl    %eax, MULTIBOOT_MODULE_OFF_CMDLINE(%edx)
+1:  lodsb
+    stosb
+    test    %al, %al
+    jnz     1b
+2:  addl    $MULTIBOOT_MODULE_SIZE, %edx
+    loop    .Lloop
 
 .Lrelocate:
-	/* Relocate the loader image. */
-	cld
-	mov	$(__end - LOADER_LOAD_ADDR), %ecx
-	mov	$LOADER_LOAD_ADDR, %edi
-	mov	$MULTIBOOT_LOAD_ADDR, %esi
-	rep movsb
+    /* Relocate the loader image. */
+    cld
+    mov     $(__end - LOADER_LOAD_ADDR), %ecx
+    mov     $LOADER_LOAD_ADDR, %edi
+    mov     $MULTIBOOT_LOAD_ADDR, %esi
+    rep movsb
 
-	/* Load the GDT. */
-	lgdt	(loader_gdtp)
-	ljmp	$SEGMENT_CS, $1f
+    /* Load the GDT. */
+    lgdt    (loader_gdtp)
+    ljmp    $SEGMENT_CS, $1f
 1:
-	mov	$SEGMENT_DS, %ax
-	mov	%ax, %ds
-	mov	%ax, %es
-	mov	%ax, %fs
-	mov	%ax, %gs
-	mov	%ax, %ss
+    mov     $SEGMENT_DS, %ax
+    mov     %ax, %ds
+    mov     %ax, %es
+    mov     %ax, %fs
+    mov     %ax, %gs
+    mov     %ax, %ss
 
-	/* Jump to the common startup code. */
-	jmp	__common_entry
+    /* Jump to the common startup code. */
+    jmp __common_entry
 FUNCTION_END(__multiboot_entry)
 
 /** Common startup function. */
 PRIVATE_FUNCTION_START(__common_entry)
-	/* Set the stack pointer to the physical location of our stack and
-	 * clear the stack frame/EFLAGS. */
-	movl	$loader_stack + PAGE_SIZE, %esp
-	xorl	%ebp, %ebp
-	push	$0
-	popf
+    /* Set the stack pointer to the physical location of our stack and clear
+     * the stack frame/EFLAGS. */
+    movl    $loader_stack + PAGE_SIZE, %esp
+    xorl    %ebp, %ebp
+    push    $0
+    popf
 
-	/* Zero the BSS section. */
-	movl	$__bss_start, %edi
-	movl	$__bss_end, %ecx
-	subl	%edi, %ecx
-	xorb	%al, %al
-	rep stosb
+    /* Zero the BSS section. */
+    movl    $__bss_start, %edi
+    movl    $__bss_end, %ecx
+    subl    %edi, %ecx
+    xorb    %al, %al
+    rep stosb
 
-	/* Call the main function. */
-	call	platform_init
-1:	jmp	1b
+    /* Call the main function. */
+    call    platform_init
+1:  jmp     1b
 FUNCTION_END(__common_entry)
 
 .section .init.data, "aw", @progbits
 
 /** Boot drive. */
 SYMBOL(boot_device_id)
-	.byte	0
+    .byte   0
 
 /** Boot partition offset LBA. */
 SYMBOL(boot_part_offset)
-	.quad	0
+    .quad   0
 
 .section .data, "aw", @progbits
 
 /** Multiboot magic number. */
 SYMBOL(multiboot_magic)
-	.long	0
+    .long   0
 
 /** Multiboot information structure. */
 SYMBOL(multiboot_info)
-	.fill	MULTIBOOT_INFO_SIZE
+    .fill   MULTIBOOT_INFO_SIZE
 
 /** Multiboot information storage. */
 multiboot_storage:
-	.fill	PAGE_SIZE
+    .fill   PAGE_SIZE
 
 .section .bss, "aw", @nobits
 
 /** Stack. */
 SYMBOL_ALIGNED(loader_stack, PAGE_SIZE)
-	.fill	PAGE_SIZE
+    .fill   PAGE_SIZE

@@ -16,27 +16,27 @@
 
 /**
  * @file
- * @brief		BIOS stage 1 loader linker script.
+ * @brief               BIOS stage 1 loader linker script.
  */
 
 OUTPUT_FORMAT("elf32-i386")
 OUTPUT_ARCH("i386")
 
 SECTIONS {
-	. = 0x7c00;
+    . = 0x7c00;
 
-	.text : {
-		*(.text)
-	}
+    .text : {
+        *(.text)
+    }
 
-	.bss : {
-		*(.bss)
-		*(.bss.*)
-		*(COMMON)
-	}
+    .bss : {
+        *(.bss)
+        *(.bss.*)
+        *(COMMON)
+    }
 
-	/DISCARD/ : {
-		*(.note.*)
-		*(.comment*)
-	}
+    /DISCARD/ : {
+        *(.note.*)
+        *(.comment*)
+    }
 }

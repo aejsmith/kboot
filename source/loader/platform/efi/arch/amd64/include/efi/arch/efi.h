@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		AMD64 EFI core definitions.
+ * @brief               AMD64 EFI core definitions.
  */
 
 #ifndef __EFI_ARCH_EFI_H

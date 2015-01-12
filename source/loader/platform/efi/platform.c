@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		EFI platform main functions.
+ * @brief               EFI platform main functions.
  */
 
 #include <efi/efi.h>
@@ -30,17 +30,17 @@ efi_handle_t efi_image_handle;
 efi_system_table_t *efi_system_table;
 
 /** Main function of the EFI loader.
- * @param image		Handle to the loader image.
- * @param systab	Pointer to EFI system table.
- * @return		EFI status code. */
+ * @param image         Handle to the loader image.
+ * @param systab        Pointer to EFI system table.
+ * @return              EFI status code. */
 efi_status_t platform_init(efi_handle_t image, efi_system_table_t *systab) {
-	efi_image_handle = image;
-	efi_system_table = systab;
+    efi_image_handle = image;
+    efi_system_table = systab;
 
-	arch_init();
+    arch_init();
 
-	efi_console_init();
-	efi_memory_init();
+    efi_console_init();
+    efi_memory_init();
 
-	internal_error("TODO");
+    internal_error("TODO");
 }

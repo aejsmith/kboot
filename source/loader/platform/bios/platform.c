@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		BIOS platform main functions.
+ * @brief               BIOS platform main functions.
  */
 
 #include <bios/bios.h>
@@ -25,16 +25,17 @@
 
 /** Main function of the BIOS loader. */
 void platform_init(void) {
-	arch_init();
+    arch_init();
 
-	bios_console_init();
-	bios_memory_init();
+    bios_console_init();
+    bios_memory_init();
 
-	dprintf("Hello, World\n");
-	internal_error("TODO");
+    dprintf("Hello, World\n");
+    internal_error("TODO");
 }
 
 /** Reboot the system. */
 void platform_reboot(void) {
-	while(true) {}
+    while (true)
+        ;
 }

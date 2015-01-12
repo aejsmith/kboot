@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		x86 optimized string handling functions.
+ * @brief               x86 optimized string handling functions.
  */
 
 #include <lib/string.h>
@@ -27,33 +27,35 @@
  * Copies bytes from a source memory area to a destination memory area,
  * where both areas may not overlap.
  *
- * @param dest		The memory area to copy to.
- * @param src		The memory area to copy from.
- * @param count		The number of bytes to copy.
+ * @param dest          The memory area to copy to.
+ * @param src           The memory area to copy from.
+ * @param count         The number of bytes to copy.
  *
- * @return		Destination location.
+ * @return              Destination location.
  */
 void *memcpy(void *__restrict dest, const void *__restrict src, size_t count) {
-	register unsigned long out;
+    register unsigned long out;
 
-	asm volatile("rep movsb"
-		: "=&D"(out), "=&S"(src), "=&c"(count)
-		: "0"(dest), "1"(src), "2"(count)
-		: "memory");
-	return dest;
+    asm volatile("rep movsb"
+        : "=&D"(out), "=&S"(src), "=&c"(count)
+        : "0"(dest), "1"(src), "2"(count)
+        : "memory");
+
+    return dest;
 }
 
 /** Fill a memory area.
- * @param dest		The memory area to fill.
- * @param val		The value to fill with (converted to an unsigned char).
- * @param count		The number of bytes to fill.
- * @return		Destination location. */
+ * @param dest          The memory area to fill.
+ * @param val           The value to fill with (converted to an unsigned char).
+ * @param count         The number of bytes to fill.
+ * @return              Destination location. */
 void *memset(void *dest, int val, size_t count) {
-	register unsigned long out;
+    register unsigned long out;
 
-	asm volatile("rep stosb"
-		: "=&D"(out), "=&c"(count)
-		: "a"(val), "0"(dest), "1"(count)
-		: "memory");
-	return dest;
+    asm volatile("rep stosb"
+        : "=&D"(out), "=&c"(count)
+        : "a"(val), "0"(dest), "1"(count)
+        : "memory");
+
+    return dest;
 }

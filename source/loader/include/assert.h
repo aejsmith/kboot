@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		Assertion macro.
+ * @brief               Assertion macro.
  */
 
 #ifndef __ASSERT_H
@@ -25,11 +25,9 @@
 #include <loader.h>
 
 /** Ensure that a condition is true, and raise an error if not.
- * @todo		Should be able to disable this in non-debug builds. */
+ * @todo                Should be able to disable this in non-debug builds. */
 #define assert(cond) \
-	if(unlikely(!(cond))) { \
-		internal_error("Assertion failure: %s\nat %s:%d", #cond, \
-			__FILE__, __LINE__); \
-	}
+    if (unlikely(!(cond))) \
+        internal_error("Assertion failure: %s\nat %s:%d", #cond, __FILE__, __LINE__);
 
 #endif /* __ASSERT_H */

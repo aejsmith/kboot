@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		AMD64 EFI API definitions.
+ * @brief               AMD64 EFI API definitions.
  */
 
 #ifndef __EFI_ARCH_API_H
@@ -29,7 +29,7 @@
  * mark all EFI APIs with the ms_abi attribute so that the right calling
  * convention is used.
  */
-#define __efiapi	__attribute__((ms_abi))
+#define __efiapi    __attribute__((ms_abi))
 
 /**
  * EFI call wrapper.
@@ -40,12 +40,12 @@
  * put all arguments in the right place.
  */
 #define efi_call(func, args...) \
-	__extension__ \
-	({ \
-		typeof(func) __wrapper = (typeof(func))__efi_call; \
-		__efi_call_func = (void *)func; \
-		__wrapper(args); \
-	})
+    __extension__ \
+    ({ \
+        typeof(func) __wrapper = (typeof(func))__efi_call; \
+        __efi_call_func = (void *)func; \
+        __wrapper(args); \
+    })
 
 extern void *__efi_call_func;
 extern unsigned long __efi_call(void) __efiapi;

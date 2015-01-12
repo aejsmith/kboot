@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		x86 architecture main functions.
+ * @brief               x86 architecture main functions.
  */
 
 #include <x86/descriptor.h>
@@ -25,5 +25,5 @@
 
 /** Perform early architecture initialization. */
 void arch_init(void) {
-	x86_descriptor_init();
+    x86_descriptor_init();
 }

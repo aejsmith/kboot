@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		Core definitions.
+ * @brief               Core definitions.
  */
 
 #ifndef __LOADER_H
@@ -41,7 +41,7 @@ extern char __start[], __end[];
  * can be used directly without modification.
  */
 #ifndef LOADER_VIRT_OFFSET
-# define LOADER_VIRT_OFFSET	0
+#   define LOADER_VIRT_OFFSET   0
 #endif
 
 /**
@@ -52,21 +52,21 @@ extern char __start[], __end[];
  * access the low 4GB of the physical address space.
  */
 #ifndef LOADER_PHYS_MAX
-# define LOADER_PHYS_MAX	0xffffffff
+#   define LOADER_PHYS_MAX      0xffffffff
 #endif
 
 /** Convert a virtual address to a physical address.
- * @param addr		Address to convert.
- * @return		Converted physical address. */
+ * @param addr          Address to convert.
+ * @return              Converted physical address. */
 static inline phys_ptr_t virt_to_phys(ptr_t addr) {
-	return (addr - LOADER_VIRT_OFFSET);
+    return (addr - LOADER_VIRT_OFFSET);
 }
 
 /** Convert a physical address to a virtual address.
- * @param addr		Address to convert.
- * @return		Converted virtual address. */
+ * @param addr          Address to convert.
+ * @return              Converted virtual address. */
 static inline ptr_t phys_to_virt(phys_ptr_t addr) {
-	return (addr + LOADER_VIRT_OFFSET);
+    return (addr + LOADER_VIRT_OFFSET);
 }
 
 extern int vprintf(const char *fmt, va_list args);

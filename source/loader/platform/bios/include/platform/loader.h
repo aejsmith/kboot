@@ -16,14 +16,14 @@
 
 /**
  * @file
- * @brief		BIOS platform core definitions.
+ * @brief               BIOS platform core definitions.
  */
 
 #ifndef __PLATFORM_LOADER_H
 #define __PLATFORM_LOADER_H
 
 /** Load address of the boot loader. */
-#define LOADER_LOAD_ADDR	0x10000
+#define LOADER_LOAD_ADDR        0x10000
 
 /**
  * Multiboot load address.
@@ -32,10 +32,10 @@
  * as the boot loader that loads us is probably there. Therefore, we load
  * higher up, and the entry code will relocate us to the correct place.
  */
-#define MULTIBOOT_LOAD_ADDR	0x100000
+#define MULTIBOOT_LOAD_ADDR     0x100000
 
 /** Load offset for Multiboot. */
-#define MULTIBOOT_LOAD_OFFSET	(MULTIBOOT_LOAD_ADDR - LOADER_LOAD_ADDR)
+#define MULTIBOOT_LOAD_OFFSET   (MULTIBOOT_LOAD_ADDR - LOADER_LOAD_ADDR)
 
 #ifndef __ASM__
 
