@@ -25,10 +25,6 @@ sources = FeatureSources(config, [
 # Set the linker script path.
 env['LDSCRIPT'] = env.LDScript('link.ld', 'link.ld.in')
 
-# GCC requires -maccumulate-outgoing-args in conjunction with ms_abi.
-if not env['IS_CLANG']:
-    env['CCFLAGS'] += ['-maccumulate-outgoing-args']
-
 # Build the final EFI binary.
 loader = env.Command(env['OUTDIR'].File('bootx64.efi'), env['LOADER'],
     Action('$OBJCOPY -j .text -j .reloc -j .data -j .dynamic -j .rela.dyn ' +

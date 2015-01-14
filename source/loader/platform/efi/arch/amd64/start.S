@@ -82,8 +82,111 @@ FUNCTION_START(loader_entry)
     ret
 FUNCTION_END(loader_entry)
 
+/*
+ * EFI call wrappers. These convert between the SysV and MS calling conventions.
+ * MS calling convention summary:
+ *  - Parameters use RCX, RDX, R8 and R9, then the stack.
+ *  - Must always reserve stack space for the 4 register arguments (32 bytes),
+ *    this space is owned by callee.
+ *  - RSP + 8 (after the return address) is 16-byte aligned. The same applies
+ *    for SysV.
+ */
+
+FUNCTION_START(__efi_call0)
+    push    %rbp
+    movq    %rsp, %rbp
+
+    subq    $32, %rsp
+    jmp     __efi_call
+FUNCTION_END(__efi_call0)
+
+FUNCTION_START(__efi_call1)
+    push    %rbp
+    movq    %rsp, %rbp
+
+    subq    $32, %rsp
+    movq    %rdi, %rcx
+    jmp     __efi_call
+FUNCTION_END(__efi_call1)
+
+FUNCTION_START(__efi_call2)
+    push    %rbp
+    movq    %rsp, %rbp
+
+    subq    $32, %rsp
+    movq    %rsi, %rdx
+    movq    %rdi, %rcx
+    jmp     __efi_call
+FUNCTION_END(__efi_call2)
+
+FUNCTION_START(__efi_call3)
+    push    %rbp
+    movq    %rsp, %rbp
+
+    subq    $32, %rsp
+    movq    %rdx, %r8
+    movq    %rsi, %rdx
+    movq    %rdi, %rcx
+    jmp     __efi_call
+FUNCTION_END(__efi_call3)
+
+FUNCTION_START(__efi_call4)
+    push    %rbp
+    movq    %rsp, %rbp
+
+    subq    $32, %rsp
+    movq    %rcx, %r9
+    movq    %rdx, %r8
+    movq    %rsi, %rdx
+    movq    %rdi, %rcx
+    jmp     __efi_call
+FUNCTION_END(__efi_call4)
+
+FUNCTION_START(__efi_call5)
+    push    %rbp
+    movq    %rsp, %rbp
+
+    subq    $48, %rsp
+    movq    %r8, 32(%rsp)
+    movq    %rcx, %r9
+    movq    %rdx, %r8
+    movq    %rsi, %rdx
+    movq    %rdi, %rcx
+    jmp     __efi_call
+FUNCTION_END(__efi_call5)
+
+FUNCTION_START(__efi_call6)
+    push    %rbp
+    movq    %rsp, %rbp
+
+    subq    $48, %rsp
+    movq    %r9, 40(%rsp)
+    movq    %r8, 32(%rsp)
+    movq    %rcx, %r9
+    movq    %rdx, %r8
+    movq    %rsi, %rdx
+    movq    %rdi, %rcx
+    jmp     __efi_call
+FUNCTION_END(__efi_call6)
+
+FUNCTION_START(__efi_call7)
+    push    %rbp
+    movq    %rsp, %rbp
+
+    subq    $64, %rsp
+    movq    80(%rsp), %rax
+    movq    %rax, 48(%rsp)
+    movq    %r9, 40(%rsp)
+    movq    %r8, 32(%rsp)
+    movq    %rcx, %r9
+    movq    %rdx, %r8
+    movq    %rsi, %rdx
+    movq    %rdi, %rcx
+    jmp     __efi_call
+FUNCTION_END(__efi_call7)
+
 /** EFI call wrapper. */
-FUNCTION_START(__efi_call)
+PRIVATE_FUNCTION_START(__efi_call)
     /* Switch to the EFI GDT/IDT. */
     leaq    efi_gdtp(%rip), %rax
     lgdt    (%rax)
@@ -97,43 +200,32 @@ FUNCTION_START(__efi_call)
     lidt    (%rax)
 
     /* Get the function address to call. */
-    leaq    __efi_call_func(%rip), %r10
-    movq    (%r10), %rax
-
-    /* We need to return back here, so swap out the return address on the stack
-     * to point to the return point below. Save the old address in
-     * __efi_call_func. */
-    movq    (%rsp), %r11
-    movq    %r11, (%r10)
-    leaq    2f(%rip), %r11
-    movq    %r11, (%rsp)
+    leaq    __efi_call_func(%rip), %rax
+    movq    (%rax), %rax
 
     /* Enable interrupts. It's possible there's some EFI implementations that
      * break if you call them with interrupts off... */
     sti
 
     /* Call the function. */
-    jmp *%rax
-2:
+    callq   *%rax
+
     /* Disable interrupts again. */
     cli
-
-    /* Put back the real return address. */
-    leaq    __efi_call_func(%rip), %r10
-    movq    (%r10), %r10
-    push    %r10
 
     /* Load our GDT/IDT. */
     leaq    loader_gdtp(%rip), %rdx
     lgdt    (%rdx)
     push    $SEGMENT_CS
-    leaq    3f(%rip), %rdx
+    leaq    2f(%rip), %rdx
     push    %rdx
     lretq
-3:  leaq    loader_idtp(%rip), %rdx
+2:  leaq    loader_idtp(%rip), %rdx
     lidt    (%rdx)
 
-    /* And we're done! */
+    /* Restore old stack pointer and return. */
+    movq    %rbp, %rsp
+    pop     %rbp
     ret
 FUNCTION_END(__efi_call)
 
