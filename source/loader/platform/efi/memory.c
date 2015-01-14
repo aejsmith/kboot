@@ -271,9 +271,10 @@ void efi_memory_init(void) {
         if (memory_map[i].type != EFI_CONVENTIONAL_MEMORY)
             continue;
 
-        dprintf(" 0x%016" PRIxPHYS "-0x%016" PRIxPHYS "\n",
+        dprintf(" 0x%016" PRIxPHYS "-0x%016" PRIxPHYS " (%" PRIu64 " KiB)\n",
             memory_map[i].physical_start,
-            memory_map[i].physical_start + (memory_map[i].num_pages * EFI_PAGE_SIZE));
+            memory_map[i].physical_start + (memory_map[i].num_pages * EFI_PAGE_SIZE),
+            (memory_map[i].num_pages * EFI_PAGE_SIZE) / 1024);
     }
 
     free(memory_map);

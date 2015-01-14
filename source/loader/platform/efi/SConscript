@@ -21,6 +21,7 @@ from util import FeatureSources
 
 sources = FeatureSources(config, [
     'console.c',
+    'disk.c',
     'efi.c',
     'memory.c',
     'platform.c',

@@ -147,19 +147,30 @@ typedef struct efi_guid {
     { 0x09576e91, 0x6d3f, 0x11d2, 0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b }
 
 /** EFI device path types. */
-#define EFI_DEVICE_PATH_TYPE_HARDWARE   0x1
-#define EFI_DEVICE_PATH_TYPE_ACPI       0x2
-#define EFI_DEVICE_PATH_TYPE_MESSAGING  0x3
-#define EFI_DEVICE_PATH_TYPE_MEDIA      0x4
-#define EFI_DEVICE_PATH_TYPE_BIOS       0x5
-#define EFI_DEVICE_PATH_TYPE_END        0x7f
+#define EFI_DEVICE_PATH_TYPE_HARDWARE       1
+#define EFI_DEVICE_PATH_TYPE_ACPI           2
+#define EFI_DEVICE_PATH_TYPE_MESSAGING      3
+#define EFI_DEVICE_PATH_TYPE_MEDIA          4
+#define EFI_DEVICE_PATH_TYPE_BIOS           5
+#define EFI_DEVICE_PATH_TYPE_END            0x7f
+
+/** EFI media device path subtypes. */
+#define EFI_DEVICE_PATH_MEDIA_SUBTYPE_HD    1
+#define EFI_DEVICE_PATH_MEDIA_SUBTYPE_CDROM 2
 
 /** Device path protocol. */
-typedef struct efi_device_path_protocol {
+typedef struct efi_device_path {
     efi_uint8_t type;
     efi_uint8_t subtype;
     efi_uint16_t length;
-} efi_device_path_protocol_t;
+} __packed efi_device_path_t;
+
+/** ACPI device path structure. */
+typedef struct efi_device_path_acpi {
+    efi_device_path_t header;
+    uint32_t hid;
+    uint32_t uid;
+} __packed efi_device_path_acpi_t;
 
 /** Device path to text protocol GUID. */
 #define EFI_DEVICE_PATH_TO_TEXT_PROTOCOL_GUID \
@@ -168,10 +179,10 @@ typedef struct efi_device_path_protocol {
 /** Device path to text protocol. */
 typedef struct efi_device_path_to_text_protocol {
     efi_char16_t *(*convert_device_node_to_text)(
-        const efi_device_path_protocol_t *device_node,
+        const efi_device_path_t *device_node,
         efi_boolean_t display_only, efi_boolean_t allow_shortcuts) __efiapi;
     efi_char16_t *(*convert_device_path_to_text)(
-        const efi_device_path_protocol_t *device_node,
+        const efi_device_path_t *device_node,
         efi_boolean_t display_only, efi_boolean_t allow_shortcuts) __efiapi;
 } efi_device_path_to_text_protocol_t;
 
@@ -320,6 +331,53 @@ typedef struct efi_serial_io_protocol {
     efi_status_t (*write)(struct efi_serial_io_protocol *this, efi_uintn_t *buffer_size, void *buffer) __efiapi;
     efi_status_t (*read)(struct efi_serial_io_protocol *this, efi_uintn_t *buffer_size, void *buffer) __efiapi;
 } efi_serial_io_protocol_t;
+
+/**
+ * EFI block I/O protocol definitions.
+ */
+
+/** Block I/O protocol GUID. */
+#define EFI_BLOCK_IO_PROTOCOL_GUID \
+    { 0x964e5b21, 0x6459, 0x11d2, 0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b }
+
+/** Block I/O protocol revisions. */
+#define EFI_BLOCK_IO_PROTOCOL_REVISION2 0x00020001
+#define EFI_BLOCK_IO_PROTOCOL_REVISION3 ((2<<16) | (31))
+
+/** Media information structure. */
+typedef struct efi_block_io_media {
+    efi_uint32_t media_id;
+    efi_boolean_t removable_media;
+    efi_boolean_t media_present;
+    efi_boolean_t logical_partition;
+    efi_boolean_t read_only;
+    efi_boolean_t write_caching;
+    efi_uint32_t block_size;
+    efi_uint32_t io_align;
+    efi_lba_t last_block;
+
+    /** Revision 2. */
+    efi_lba_t lowest_aligned_lba;
+    efi_uint32_t logical_blocks_per_physical_block;
+
+    /** Revision 3. */
+    efi_uint32_t optimal_transfer_length_granularity;
+} efi_block_io_media_t;
+
+/** Block I/O protocol. */
+typedef struct efi_block_io_protocol {
+    efi_uint64_t revision;
+    efi_block_io_media_t *media;
+
+    efi_status_t (*reset)(struct efi_block_io_protocol *this, bool extended_verification) __efiapi;
+    efi_status_t (*read_blocks)(
+        struct efi_block_io_protocol *this, efi_uint32_t media_id, efi_lba_t lba,
+        efi_uintn_t buffer_size, void *buffer) __efiapi;
+    efi_status_t (*write_blocks)(
+        struct efi_block_io_protocol *this, efi_uint32_t media_id, efi_lba_t lba,
+        efi_uintn_t buffer_size, const void *buffer) __efiapi;
+    efi_status_t (*flush_blocks)(struct efi_block_io_protocol *this) __efiapi;
+} efi_block_io_protocol_t;
 
 /**
  * EFI boot services definitions.
@@ -516,14 +574,14 @@ typedef struct efi_boot_services {
         efi_locate_search_type_t search_type, efi_guid_t *protocol, void *search_key,
         efi_uintn_t *buffer_size, efi_handle_t *buffer) __efiapi;
     efi_status_t (*locate_device_path)(
-        efi_guid_t *protocol, efi_device_path_protocol_t **device_path,
+        efi_guid_t *protocol, efi_device_path_t **device_path,
         efi_handle_t *device) __efiapi;
     efi_status_t (*install_configuration_table)(efi_guid_t *guid, void *table) __efiapi;
 
     /** Image services. */
     efi_status_t (*load_image)(
         efi_boolean_t boot_policy, efi_handle_t parent_image_handle,
-        efi_device_path_protocol_t *device_path, void *source_buffer,
+        efi_device_path_t *device_path, void *source_buffer,
         efi_uintn_t source_size, efi_handle_t *image_handle) __efiapi;
     efi_status_t (*start_image)(
         efi_handle_t image_handle, efi_uintn_t *exit_data_size,
@@ -544,7 +602,7 @@ typedef struct efi_boot_services {
     /** Driver support services. */
     efi_status_t (*connect_controller)(
         efi_handle_t controller_handle, efi_handle_t *driver_image_handle,
-        efi_device_path_protocol_t *remaining_device_path, efi_boolean_t recursive) __efiapi;
+        efi_device_path_t *remaining_device_path, efi_boolean_t recursive) __efiapi;
     efi_status_t (*disconnect_controller)(efi_handle_t controller_handle,
         efi_handle_t driver_image_handle, efi_handle_t child_handle)
         __efiapi;

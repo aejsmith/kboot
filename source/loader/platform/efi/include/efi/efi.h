@@ -39,10 +39,30 @@ extern efi_status_t efi_open_protocol(
     efi_handle_t handle, efi_guid_t *protocol, efi_uint32_t attributes,
     void **_interface);
 
-extern efi_device_path_protocol_t *efi_get_device_path(efi_handle_t handle);
-extern void efi_print_device_path(efi_device_path_protocol_t *path, void (*cb)(void *data, char ch), void *data);
+extern efi_device_path_t *efi_get_device_path(efi_handle_t handle);
+extern void efi_print_device_path(efi_device_path_t *path, void (*cb)(void *data, char ch), void *data);
+extern bool efi_is_child_device_node(efi_device_path_t *parent, efi_device_path_t *child);
+
+/** Get the next device path node in a device path.
+ * @param path          Current path node.
+ * @return              Next path node, or NULL if end of list. */
+static inline efi_device_path_t *efi_next_device_node(efi_device_path_t *path) {
+    path = (efi_device_path_t *)((char *)path + path->length);
+    return (path->type != EFI_DEVICE_PATH_TYPE_END) ? path : NULL;
+}
+
+/** Get the last device path node in a device path.
+ * @param path          Current path node.
+ * @return              Last path node. */
+static inline efi_device_path_t *efi_last_device_node(efi_device_path_t *path) {
+    for (efi_device_path_t *next = path; next; path = next, next = efi_next_device_node(path))
+        ;
+
+    return path;
+}
 
 extern void efi_console_init(void);
+extern void efi_disk_init(void);
 extern void efi_memory_init(void);
 
 efi_status_t platform_init(efi_handle_t image, efi_system_table_t *systab);

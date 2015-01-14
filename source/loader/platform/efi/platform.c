@@ -44,7 +44,10 @@ efi_status_t platform_init(efi_handle_t image, efi_system_table_t *systab) {
     efi_call(efi_system_table->boot_services->set_watchdog_timer, 0, 0, 0, NULL);
 
     efi_console_init();
+    dprintf("efi: load base %p\n", __start);
+
     efi_memory_init();
+    efi_disk_init();
 
     internal_error("TODO");
 }

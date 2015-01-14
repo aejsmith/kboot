@@ -180,7 +180,7 @@ static void print_pointer(printf_state_t *state, const char **fmt, void *ptr) {
     case 'E':
         #ifdef CONFIG_PLATFORM_EFI
             ++(*fmt);
-            efi_print_device_path((efi_device_path_protocol_t *)ptr, (void *)print_char, state);
+            efi_print_device_path((efi_device_path_t *)ptr, (void *)print_char, state);
             break;
         #endif
     default:
