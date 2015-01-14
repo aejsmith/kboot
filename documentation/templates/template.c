@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief		<Description>.
+ * @brief               <Description>.
  */
 
 
