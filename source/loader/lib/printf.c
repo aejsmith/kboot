@@ -23,6 +23,10 @@
 #include <lib/string.h>
 #include <lib/printf.h>
 
+#ifdef CONFIG_PLATFORM_EFI
+#   include <efi/efi.h>
+#endif
+
 #include <types.h>
 
 /* Flags to specify special behaviour. */
@@ -159,15 +163,31 @@ static void print_number(printf_state_t *state, uint64_t num) {
 
 /** Helper to print a pointer.
  * @param state         Internal state structure.
+ * @param fmt           Pointer to format string pointer.
  * @param ptr           Pointer to print. */
-static void print_pointer(printf_state_t *state, void *ptr) {
+static void print_pointer(printf_state_t *state, const char **fmt, void *ptr) {
     /* Print lower-case and as though # was specified. */
     state->flags |= PRINTF_LOW_CASE | PRINTF_PREFIX;
     if (state->precision == -1)
         state->precision = 1;
 
-    state->base = 16;
-    print_number(state, (ptr_t)ptr);
+    /*
+     * Extensions for certain useful things. Idea borrowed from the Linux
+     * kernel. The following formats are implemented:
+     *  - %pE = Print an EFI device path (arg is device path protocol, EFI only).
+     */
+    switch ((*fmt)[1]) {
+    case 'E':
+        #ifdef CONFIG_PLATFORM_EFI
+            ++(*fmt);
+            efi_print_device_path((efi_device_path_protocol_t *)ptr, (void *)print_char, state);
+            break;
+        #endif
+    default:
+        state->base = 16;
+        print_number(state, (ptr_t)ptr);
+        break;
+    }
 }
 
 /**
@@ -321,7 +341,7 @@ int do_vprintf(printf_helper_t helper, void *data, const char *fmt, va_list args
             state.base = 8;
             break;
         case 'p':
-            print_pointer(&state, va_arg(args, void *));
+            print_pointer(&state, &fmt, va_arg(args, void *));
             continue;
         case 's':
             /* We won't need the length modifier here, can use the len variable. */

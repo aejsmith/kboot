@@ -146,12 +146,34 @@ typedef struct efi_guid {
 #define EFI_DEVICE_PATH_PROTOCOL_GUID \
     { 0x09576e91, 0x6d3f, 0x11d2, 0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b }
 
+/** EFI device path types. */
+#define EFI_DEVICE_PATH_TYPE_HARDWARE   0x1
+#define EFI_DEVICE_PATH_TYPE_ACPI       0x2
+#define EFI_DEVICE_PATH_TYPE_MESSAGING  0x3
+#define EFI_DEVICE_PATH_TYPE_MEDIA      0x4
+#define EFI_DEVICE_PATH_TYPE_BIOS       0x5
+#define EFI_DEVICE_PATH_TYPE_END        0x7f
+
 /** Device path protocol. */
 typedef struct efi_device_path_protocol {
     efi_uint8_t type;
     efi_uint8_t subtype;
     efi_uint16_t length;
 } efi_device_path_protocol_t;
+
+/** Device path to text protocol GUID. */
+#define EFI_DEVICE_PATH_TO_TEXT_PROTOCOL_GUID \
+    { 0x8b843e20, 0x8132, 0x4852, 0x90, 0xcc, 0x55, 0x1a, 0x4e, 0x4a, 0x7f, 0x1c }
+
+/** Device path to text protocol. */
+typedef struct efi_device_path_to_text_protocol {
+    efi_char16_t *(*convert_device_node_to_text)(
+        const efi_device_path_protocol_t *device_node,
+        efi_boolean_t display_only, efi_boolean_t allow_shortcuts) __efiapi;
+    efi_char16_t *(*convert_device_path_to_text)(
+        const efi_device_path_protocol_t *device_node,
+        efi_boolean_t display_only, efi_boolean_t allow_shortcuts) __efiapi;
+} efi_device_path_to_text_protocol_t;
 
 /**
  * EFI console I/O protocol definitions.
@@ -286,7 +308,7 @@ typedef enum efi_stop_bits_type {
 
 /** Serial I/O protocol. */
 typedef struct efi_serial_io_protocol {
-    uint32_t revision;
+    efi_uint32_t revision;
 
     efi_status_t (*reset)(struct efi_serial_io_protocol *this) __efiapi;
     efi_status_t (*set_attributes)(
