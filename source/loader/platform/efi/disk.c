@@ -19,31 +19,45 @@
  * @brief               EFI disk functions.
  */
 
-#include <lib/list.h>
 #include <lib/string.h>
 
 #include <efi/efi.h>
 
+#include <disk.h>
 #include <loader.h>
 #include <memory.h>
 
-typedef enum disk_type {
-    DISK_TYPE_HD,
-    DISK_TYPE_CDROM,
-    DISK_TYPE_FLOPPY,
-} disk_type_t;
-
 /** Structure containing EFI disk information. */
 typedef struct efi_disk {
-    list_t header;                      /**< Link to devices list. */
+    disk_device_t disk;                 /**< Disk device header. */
 
     efi_device_path_t *path;            /**< Device path. */
     efi_block_io_protocol_t *block;     /**< Block I/O protocol. */
+    efi_uint32_t media_id;              /**< Media ID. */
     disk_type_t type;                   /**< Type of the disk. */
 } efi_disk_t;
 
 /** Block I/O protocol GUID. */
 static efi_guid_t block_io_guid = EFI_BLOCK_IO_PROTOCOL_GUID;
+
+/** Read blocks from an EFI disk.
+ * @param _disk         Disk device being read from.
+ * @param buf           Buffer to read into.
+ * @param count         Number of blocks to read.
+ * @param lba           Block number to start reading from.
+ * @return              Status code describing the result of the operation. */
+static status_t efi_disk_read_blocks(disk_device_t *_disk, void *buf, size_t count, uint64_t lba) {
+    efi_disk_t *disk = (efi_disk_t *)_disk;
+    efi_status_t ret;
+
+    ret = efi_call(disk->block->read_blocks, disk->block, disk->media_id, lba, count * disk->disk.block_size, buf);
+    return efi_convert_status(ret);
+}
+
+/** EFI disk operations structure. */
+static disk_ops_t efi_disk_ops = {
+    .read_blocks = efi_disk_read_blocks,
+};
 
 /** Detect and register all disk devices. */
 void efi_disk_init(void) {
@@ -91,7 +105,7 @@ void efi_disk_init(void) {
 
         disk = malloc(sizeof(*disk));
         memset(disk, 0, sizeof(*disk));
-        list_init(&disk->header);
+        list_init(&disk->disk.device.header);
 
         disk->path = efi_get_device_path(handles[i]);
         if (!disk->path) {
@@ -107,23 +121,29 @@ void efi_disk_init(void) {
         }
 
         media = disk->block->media;
+
+        disk->media_id = media->media_id;
+        disk->disk.ops = &efi_disk_ops;
+        disk->disk.block_size = media->block_size;
+        disk->disk.blocks = media->last_block + 1;
+
         if (media->logical_partition) {
-            list_append(&child_devices, &disk->header);
+            list_append(&child_devices, &disk->disk.device.header);
         } else {
             efi_device_path_t *last = efi_last_device_node(disk->path);
 
-            disk->type = DISK_TYPE_HD;
+            disk->disk.type = DISK_TYPE_HD;
             if (last->type == EFI_DEVICE_PATH_TYPE_ACPI) {
                 efi_device_path_acpi_t *acpi = (efi_device_path_acpi_t *)last;
 
                 /* Check EISA ID for a floppy. */
                 if (acpi->hid == 0x060441d0)
-                    disk->type = DISK_TYPE_FLOPPY;
+                    disk->disk.type = DISK_TYPE_FLOPPY;
             } else if (media->removable_media && media->read_only && media->block_size == 2048) {
-                disk->type = DISK_TYPE_CDROM;
+                disk->disk.type = DISK_TYPE_CDROM;
             }
 
-            list_append(&raw_devices, &disk->header);
+            list_append(&raw_devices, &disk->disk.device.header);
             num_raw_devices++;
         }
     }
@@ -132,47 +152,39 @@ void efi_disk_init(void) {
 
     /* Pass over child devices to identify their types. */
     list_foreach_safe(&child_devices, iter) {
-        efi_disk_t *child = list_entry(iter, efi_disk_t, header);
+        efi_disk_t *child = list_entry(iter, efi_disk_t, disk.device.header);
         efi_device_path_t *last = efi_last_device_node(child->path);
 
         if (last->type == EFI_DEVICE_PATH_TYPE_MEDIA) {
             /* Identify the parent device. */
             list_foreach_safe(&raw_devices, piter) {
-                efi_disk_t *parent = list_entry(piter, efi_disk_t, header);
+                efi_disk_t *parent = list_entry(piter, efi_disk_t, disk.device.header);
 
                 if (efi_is_child_device_node(parent->path, child->path)) {
                     switch (last->subtype) {
                     case EFI_DEVICE_PATH_MEDIA_SUBTYPE_HD:
-                        parent->type = DISK_TYPE_HD;
+                        parent->disk.type = DISK_TYPE_HD;
                         break;
                     case EFI_DEVICE_PATH_MEDIA_SUBTYPE_CDROM:
-                        parent->type = DISK_TYPE_CDROM;
+                        parent->disk.type = DISK_TYPE_CDROM;
                         break;
                     }
                 }
             }
         }
 
-        list_remove(&child->header);
+        list_remove(&child->disk.device.header);
         free(child);
     }
 
     dprintf("efi: found %zu raw block devices (%zu total):\n", num_raw_devices, num_handles);
 
     /* Finally add the raw devices. */
-    list_foreach(&raw_devices, iter) {
-        efi_disk_t *disk = list_entry(iter, efi_disk_t, header);
+    list_foreach_safe(&raw_devices, iter) {
+        efi_disk_t *disk = list_entry(iter, efi_disk_t, disk.device.header);
 
-        switch (disk->type) {
-        case DISK_TYPE_HD:
-            dprintf(" hd:     %pE\n", disk->path);
-            break;
-        case DISK_TYPE_CDROM:
-            dprintf(" cdrom:  %pE\n", disk->path);
-            break;
-        case DISK_TYPE_FLOPPY:
-            dprintf(" floppy: %pE\n", disk->path);
-            break;
-        }
+        list_remove(&disk->disk.device.header);
+        disk_device_register(&disk->disk);
+        dprintf(" %-7s -> %pE\n", disk->disk.device.name, disk->path);
     }
 }
