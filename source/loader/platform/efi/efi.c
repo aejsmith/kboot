@@ -33,6 +33,36 @@ static efi_guid_t device_path_to_text_guid = EFI_DEVICE_PATH_TO_TEXT_PROTOCOL_GU
 /** Device path to text protocol. */
 static efi_device_path_to_text_protocol_t *device_path_to_text;
 
+/** Convert an EFI status code to an internal status.
+ * @param status        Status to convert.
+ * @return              Internal status code. */
+status_t efi_convert_status(efi_status_t status) {
+    switch (status) {
+    case EFI_SUCCESS:
+        return STATUS_SUCCESS;
+    case EFI_UNSUPPORTED:
+        return STATUS_NOT_SUPPORTED;
+    case EFI_INVALID_PARAMETER:
+        return STATUS_INVALID_ARG;
+    case EFI_DEVICE_ERROR:
+    case EFI_NO_MEDIA:
+    case EFI_MEDIA_CHANGED:
+        return STATUS_DEVICE_ERROR;
+    case EFI_WRITE_PROTECTED:
+        return STATUS_READ_ONLY;
+    case EFI_VOLUME_CORRUPTED:
+        return STATUS_CORRUPT_FS;
+    case EFI_VOLUME_FULL:
+        return STATUS_FS_FULL;
+    case EFI_NOT_FOUND:
+        return STATUS_NOT_FOUND;
+    case EFI_TIMEOUT:
+        return STATUS_TIMED_OUT;
+    default:
+        return STATUS_SYSTEM_ERROR;
+    }
+}
+
 /** Allocate EFI pool memory.
  * @param pool_type     Pool memory type to allocate.
  * @param size          Size of memory to allocate.

@@ -26,8 +26,12 @@
 
 #include <efi/api.h>
 
+#include <status.h>
+
 extern efi_handle_t efi_image_handle;
 extern efi_system_table_t *efi_system_table;
+
+extern status_t efi_convert_status(efi_status_t status);
 
 extern efi_status_t efi_allocate_pool(efi_memory_type_t pool_type, efi_uintn_t size, void **_buffer);
 extern efi_status_t efi_free_pool(void *buffer);
