@@ -34,7 +34,6 @@ typedef struct efi_disk {
     efi_device_path_t *path;            /**< Device path. */
     efi_block_io_protocol_t *block;     /**< Block I/O protocol. */
     efi_uint32_t media_id;              /**< Media ID. */
-    disk_type_t type;                   /**< Type of the disk. */
 } efi_disk_t;
 
 /** Block I/O protocol GUID. */
