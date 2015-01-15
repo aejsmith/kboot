@@ -25,6 +25,8 @@ sources = FeatureSources(config, [
     'lib/string.c',
 
     'console.c',
+    'device.c',
+    'disk.c',
     'error.c',
     'memory.c',
 ])

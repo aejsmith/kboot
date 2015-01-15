@@ -35,10 +35,13 @@ typedef enum status {
     STATUS_NOT_FOUND,               /**< Requested object could not be found. */
     STATUS_UNKNOWN_FS,              /**< Filesystem on device is unknown. */
     STATUS_CORRUPT_FS,              /**< Corruption detected on the filesystem. */
+    STATUS_FS_FULL,                 /**< No space is available on the filesystem. */
+    STATUS_READ_ONLY,               /**< Filesystem is read only. */
     STATUS_SYMLINK_LIMIT,           /**< Exceeded nested symbolic link limit. */
     STATUS_DEVICE_ERROR,            /**< An error occurred during a hardware operation. */
     STATUS_UNKNOWN_IMAGE,           /**< Executable image has an unrecognised format. */
     STATUS_MALFORMED_IMAGE,         /**< Executable image format is incorrect. */
+    STATUS_SYSTEM_ERROR,            /**< Other error from system firmware. */
 } status_t;
 
 #endif /* __STATUS_H */
