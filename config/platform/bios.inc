@@ -18,7 +18,7 @@ include = {
     'config': {
         'PLATFORM': 'bios',
         'PLATFORM_BIOS': True,
-        'TARGET_HAVE_DISK': True,
+        'TARGET_HAS_DISK': True,
         'DRIVER_SERIAL_NS16550': True,
         'TARGET_NS16550_IO': True,
         'DRIVER_VIDEO_VGA': True,

@@ -26,7 +26,7 @@ sources = FeatureSources(config, [
 
     'console.c',
     'device.c',
-    'disk.c',
+    ('TARGET_HAS_DISK', 'disk.c'),
     'error.c',
     'memory.c',
 ])
