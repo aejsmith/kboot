@@ -132,8 +132,10 @@ static void add_disk(uint8_t id) {
             disk->disk.blocks = ~0ULL;
             disk_device_register(&disk->disk);
 
-            dprintf("bios: disk %-6s at 0x%x (block_size: %zu)\n",
-                disk->disk.device.name, disk->id, disk->disk.block_size);
+            dprintf("bios: disk %s at 0x%x (block_size: %zu)\n", disk->disk.device.name,
+                disk->id, disk->disk.block_size);
+
+            disk_device_probe(&disk->disk);
             return;
         }
     }
@@ -170,16 +172,17 @@ static void add_disk(uint8_t id) {
     disk->disk.blocks = params->sector_count;
     disk_device_register(&disk->disk);
 
-    dprintf("bios: disk %-6s at 0x%x (block_size: %zu, blocks: %" PRIu64 ")\n",
+    dprintf("bios: disk %s at 0x%x (block_size: %zu, blocks: %" PRIu64 ")\n",
         disk->disk.device.name, disk->id, disk->disk.block_size,
         disk->disk.blocks);
+
+    disk_device_probe(&disk->disk);
 }
 
 /** Detect and register all disk devices. */
 void bios_disk_init(void) {
     bios_regs_t regs;
     uint8_t count;
-    bool separate_boot;
 
     /* If booted from Multiboot, retrieve boot device ID from there. */
     if (multiboot_magic == MULTIBOOT_LOADER_MAGIC) {
@@ -200,16 +203,11 @@ void bios_disk_init(void) {
     bios_call(0x13, &regs);
     count = (regs.eflags & X86_FLAGS_CF) ? 0 : (regs.edx & 0xFF);
 
-    /* Boot device may not be included in this count if it is a CD drive. */
-    separate_boot = bios_boot_device < 0x80 || bios_boot_device >= count + 0x80;
-
-    dprintf("bios: detected %u disks:\n", (separate_boot) ? count + 1 : count);
-
     /* Probe all drives. */
     for (uint8_t id = 0x80; id < count + 0x80; id++)
         add_disk(id);
 
-    /* Add the boot device if it is separate. */
-    if (separate_boot)
+    /* Add the boot device if it was not added by the above loop (e.g. a CD). */
+    if (bios_boot_device < 0x80 || bios_boot_device >= count + 0x80)
         add_disk(bios_boot_device);
 }
