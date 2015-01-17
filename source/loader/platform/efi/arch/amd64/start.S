@@ -30,17 +30,20 @@
  * @param %rcx          Handle to the loader image.
  * @param %rdx          Pointer to EFI system table. */
 FUNCTION_START(loader_entry)
-    /* We are entered with interrupts enabled. We don't want them. */
-    cli
+    /* Preserve RBP/RDI/RSI as required by the MS calling convention to avoid
+     * clobbering them, so that we can return to the firmware. */
+    push    %rbp
+    push    %rdi
+    push    %rsi
 
-    /* Clear the stack frame pointer/EFLAGS. */
-    xorl    %ebp, %ebp
+    /* Clear the stack frame pointer/RFLAGS. */
+    xorq    %rbp, %rbp
     push    $0
     popf
 
     /* EFI uses the Microsoft x86_64 ABI. Arguments are passed in RCX/RDX. */
-    pushq   %rcx
-    pushq   %rdx
+    push    %rcx
+    push    %rdx
 
     /* Relocate the loader. */
     leaq    __start(%rip), %rdi
@@ -49,6 +52,9 @@ FUNCTION_START(loader_entry)
     testq   %rax, %rax
     jz      1f
     addq    $16, %rsp
+    pop     %rsi
+    pop     %rdi
+    pop     %rbp
     ret
 1:
     /* Zero the BSS section. */
@@ -57,6 +63,9 @@ FUNCTION_START(loader_entry)
     subq    %rdi, %rcx
     xorb    %al, %al
     rep stosb
+
+    /* We are entered with interrupts enabled. We don't want them. */
+    cli
 
     /* Save the EFI GDT and IDT pointers which we must restore before calling
      * any EFI functions. */
@@ -79,6 +88,26 @@ FUNCTION_START(loader_entry)
     popq    %rsi
     popq    %rdi
     call    platform_init
+
+    /* Switch back to the EFI GDT/IDT. */
+    leaq    efi_gdtp(%rip), %rax
+    lgdt    (%rax)
+    leaq    efi_cs(%rip), %rax
+    movzxw  (%rax), %rax
+    push    %rax
+    leaq    3f(%rip), %rax
+    push    %rax
+    lretq
+3:  leaq    efi_idtp(%rip), %rax
+    lidt    (%rax)
+
+    /* Re-enable interrupts. */
+    sti
+
+    /* Restore registers, and return. */
+    pop     %rsi
+    pop     %rdi
+    pop     %rbp
     ret
 FUNCTION_END(loader_entry)
 
