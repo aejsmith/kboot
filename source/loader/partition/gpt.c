@@ -96,6 +96,11 @@ static bool gpt_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
         lba = le64_to_cpu(entry->start_lba);
         count = (le64_to_cpu(entry->last_lba) - lba) + 1;
 
+        if (lba >= disk->blocks || lba + count > disk->blocks) {
+            dprintf("disk: warning: GPT partition %" PRIu32 " outside range of device", i);
+            continue;
+        }
+
         dprintf("disk: GPT partition %" PRIu32 " (type: %pu, lba: %" PRIu64 ", count: %" PRIu64 ")\n",
             i, &entry->type_guid, lba, count);
 
