@@ -27,7 +27,7 @@
 #   include <efi/efi.h>
 #endif
 
-#include <types.h>
+#include <endian.h>
 
 /* Flags to specify special behaviour. */
 #define PRINTF_ZERO_PAD         (1<<0)  /**< Pad with zeros. */
@@ -161,6 +161,40 @@ static void print_number(printf_state_t *state, uint64_t num) {
     }
 }
 
+/** Helper to print a UUID.
+ * @param state         Internal state structure.
+ * @param ptr           Pointer to UUID.
+ * @param big_endian    Whether to interpret UUID as big endian. */
+static void print_uuid(printf_state_t *state, const uint8_t *uuid, bool big_endian) {
+    uint32_t val32;
+
+    state->base = 16;
+    state->flags = PRINTF_ZERO_PAD | PRINTF_LOW_CASE;
+
+    state->width = 8;
+    state->precision = -1;
+    val32 = *(const uint32_t *)(&uuid[0]);
+    print_number(state, (big_endian) ? be32_to_cpu(val32) : le32_to_cpu(val32));
+    print_char(state, '-');
+
+    for (size_t i = 0; i < 2; i++) {
+        uint16_t val16 = *(const uint16_t *)(&uuid[4 + (i * 2)]);
+
+        state->width = 4;
+        state->precision = -1;
+        print_number(state, (big_endian) ? be16_to_cpu(val16) : le16_to_cpu(val16));
+        print_char(state, '-');
+    }
+
+    for (size_t i = 0; i < 8; i++) {
+        state->width = 2;
+        state->precision = -1;
+        print_number(state, uuid[8 + i]);
+        if (i == 1)
+            print_char(state, '-');
+    }
+}
+
 /** Helper to print a pointer.
  * @param state         Internal state structure.
  * @param fmt           Pointer to format string pointer.
@@ -175,6 +209,8 @@ static void print_pointer(printf_state_t *state, const char **fmt, void *ptr) {
      * Extensions for certain useful things. Idea borrowed from the Linux
      * kernel. The following formats are implemented:
      *  - %pE = Print an EFI device path (arg is device path protocol, EFI only).
+     *  - %pu = Print a little-endian (i.e. EFI) UUID (arg is pointer to 16-byte UUID).
+     *  - %pU = Print a big-endian UUID (arg is pointer to 16-byte UUID).
      */
     switch ((*fmt)[1]) {
     case 'E':
@@ -183,6 +219,14 @@ static void print_pointer(printf_state_t *state, const char **fmt, void *ptr) {
             efi_print_device_path((efi_device_path_t *)ptr, (void *)print_char, state);
             break;
         #endif
+    case 'u':
+        ++(*fmt);
+        print_uuid(state, ptr, false);
+        break;
+    case 'U':
+        ++(*fmt);
+        print_uuid(state, ptr, true);
+        break;
     default:
         state->base = 16;
         print_number(state, (ptr_t)ptr);
