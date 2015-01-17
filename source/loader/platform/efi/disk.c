@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief               EFI disk functions.
+ * @brief               EFI disk device support.
  */
 
 #include <lib/string.h>
@@ -50,7 +50,12 @@ static status_t efi_disk_read_blocks(disk_device_t *_disk, void *buf, size_t cou
     efi_status_t ret;
 
     ret = efi_call(disk->block->read_blocks, disk->block, disk->media_id, lba, count * disk->disk.block_size, buf);
-    return efi_convert_status(ret);
+    if (ret != EFI_SUCCESS) {
+        dprintf("efi: read from %s failed with status 0x%" PRIx32 "\n", disk->disk.device.name, ret);
+        return efi_convert_status(ret);
+    }
+
+    return STATUS_SUCCESS;
 }
 
 /** EFI disk operations structure. */
@@ -184,6 +189,8 @@ void efi_disk_init(void) {
 
         list_remove(&disk->disk.device.header);
         disk_device_register(&disk->disk);
-        dprintf(" %-7s -> %pE\n", disk->disk.device.name, disk->path);
+        dprintf(" %-7s -> %pE (block_size: %zu, blocks: %" PRId64 ")\n",
+            disk->disk.device.name, disk->path, disk->disk.block_size,
+            disk->disk.blocks);
     }
 }

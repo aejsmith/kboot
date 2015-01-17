@@ -51,7 +51,7 @@ status_t disk_device_read(device_t *device, void *buf, size_t count, offset_t of
     if (!count)
         return STATUS_SUCCESS;
 
-    if ((offset + count) > (disk->blocks * disk->block_size)) {
+    if ((uint64_t)(offset + count) > (disk->blocks * disk->block_size)) {
         dprintf("disk: requested read beyond end of disk (offset: %" PRId64 ", size: %zu, total: %" PRIu64 ")\n",
             offset, count, disk->blocks * disk->block_size);
         return STATUS_DEVICE_ERROR;

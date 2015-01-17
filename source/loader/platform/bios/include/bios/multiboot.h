@@ -16,27 +16,15 @@
 
 /**
  * @file
- * @brief               BIOS platform main functions.
+ * @brief               BIOS platform Multiboot support.
  */
 
-#include <bios/bios.h>
+#ifndef __BIOS_MULTIBOOT_H
+#define __BIOS_MULTIBOOT_H
 
-#include <loader.h>
+#include <x86/multiboot.h>
 
-/** Main function of the BIOS loader. */
-void platform_init(void) {
-    arch_init();
+extern uint32_t multiboot_magic;
+extern multiboot_info_t multiboot_info;
 
-    bios_console_init();
-    bios_memory_init();
-    bios_disk_init();
-
-    dprintf("Hello, World\n");
-    internal_error("TODO");
-}
-
-/** Reboot the system. */
-void platform_reboot(void) {
-    while (true)
-        ;
-}
+#endif /* __BIOS_MULTIBOOT_H */
