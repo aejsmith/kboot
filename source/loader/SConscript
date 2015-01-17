@@ -24,6 +24,8 @@ sources = FeatureSources(config, [
     'lib/qsort.c',
     'lib/string.c',
 
+    ('TARGET_HAS_DISK', 'partition/mbr.c'),
+
     'console.c',
     'device.c',
     ('TARGET_HAS_DISK', 'disk.c'),

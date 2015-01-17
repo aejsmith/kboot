@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2010-2014 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -132,7 +132,8 @@ static void add_disk(uint8_t id) {
             disk->disk.blocks = ~0ULL;
             disk_device_register(&disk->disk);
 
-            dprintf(" %-6s -> 0x%x (block_size: %zu)\n", disk->disk.device.name, disk->id, disk->disk.block_size);
+            dprintf("bios: disk %-6s at 0x%x (block_size: %zu)\n",
+                disk->disk.device.name, disk->id, disk->disk.block_size);
             return;
         }
     }
@@ -169,7 +170,7 @@ static void add_disk(uint8_t id) {
     disk->disk.blocks = params->sector_count;
     disk_device_register(&disk->disk);
 
-    dprintf(" %-6s -> 0x%x (block_size: %zu, blocks: %" PRId64 ")\n",
+    dprintf("bios: disk %-6s at 0x%x (block_size: %zu, blocks: %" PRIu64 ")\n",
         disk->disk.device.name, disk->id, disk->disk.block_size,
         disk->disk.blocks);
 }

@@ -49,6 +49,11 @@ SECTIONS {
     .data ALIGN(32) : {
         *(.data)
         *(.data.*)
+
+        __builtins_start = .;
+        *(.builtins)
+        __builtins_end = .;
+
         __data_end = .;
     }
 

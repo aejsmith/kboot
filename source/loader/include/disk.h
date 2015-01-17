@@ -28,6 +28,29 @@
 
 struct disk_device;
 
+/** Partition map iteration callback function type.
+ * @param disk          Disk containing the partition.
+ * @param id            ID of the partition.
+ * @param lba           Start LBA.
+ * @param blocks        Size in blocks. */
+typedef void (*partition_iterate_cb_t)(struct disk_device *disk, uint8_t id, uint64_t lba, uint64_t blocks);
+
+/** Partition operations. */
+typedef struct partition_ops {
+    /** Iterate over the partitions on the device.
+     * @param disk          Disk to iterate over.
+     * @param cb            Callback function.
+     * @return              Whether the device contained a partition map of
+     *                      this type. */
+    bool (*iterate)(struct disk_device *disk, partition_iterate_cb_t cb);
+} partition_ops_t;
+
+/** Define a builtin partition map type. */
+#define BUILTIN_PARTITION_OPS(name) \
+    static partition_ops_t name; \
+    DEFINE_BUILTIN(BUILTIN_TYPE_PARTITION, name); \
+    static partition_ops_t name
+
 /** Types of disk devices (primarily used for naming purposes). */
 typedef enum disk_type {
     DISK_TYPE_HD,                       /**< Hard drive/other. */
@@ -58,6 +81,7 @@ typedef struct disk_device {
 } disk_device_t;
 
 extern void disk_device_register(disk_device_t *disk);
+extern void disk_device_probe(disk_device_t *disk);
 
 #endif /* CONFIG_TARGET_HAS_DISK */
 #endif /* __DISK_H */

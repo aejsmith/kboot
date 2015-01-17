@@ -69,6 +69,34 @@ static inline ptr_t phys_to_virt(phys_ptr_t addr) {
     return (addr + LOADER_VIRT_OFFSET);
 }
 
+/** Builtin object definition structure. */
+typedef struct builtin {
+    /** Type of the builtin. */
+    enum {
+        BUILTIN_TYPE_PARTITION,
+    } type;
+
+    /** Pointer to object. */
+    void *object;
+} builtin_t;
+
+extern builtin_t __builtins_start[], __builtins_end[];
+
+/** Define a builtin object. */
+#define DEFINE_BUILTIN(type, object) \
+    static builtin_t __builtin_##name __section(".builtins") __used = { \
+        type, \
+        &object \
+    }
+
+/** Iterate over builtin objects. */
+#define builtin_foreach(builtin_type, object_type, var) \
+    int __iter_##var = 0; \
+    for (object_type *var = (object_type *)__builtins_start[0].object; \
+            __iter_##var < (__builtins_end - __builtins_start); \
+            var = (object_type *)__builtins_start[++__iter_##var].object) \
+        if(__builtins_start[__iter_##var].type == builtin_type)
+
 extern int vprintf(const char *fmt, va_list args);
 extern int printf(const char *fmt, ...) __printf(1, 2);
 extern int dvprintf(const char *fmt, va_list args);

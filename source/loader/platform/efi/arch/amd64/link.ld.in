@@ -57,6 +57,10 @@ SECTIONS {
         *(.init.data)
         *(.data)
         *(.data.*)
+
+        __builtins_start = .;
+        *(.builtins)
+        __builtins_end = .;
     }
 
     . = ALIGN(PAGE_SIZE);
@@ -67,7 +71,7 @@ SECTIONS {
         *(.rela.init.text .rela.text .rela.text.*)
         *(.rela.rodata .rela.rodata.*)
         *(.rela.got)
-        *(.rela.init.data .rela.data .rela.data.*)
+        *(.rela.init.data .rela.data .rela.data.* .rela.builtins)
         *(.rela.bss .rela.bss.*)
     }
 
