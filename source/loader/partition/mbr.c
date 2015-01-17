@@ -23,10 +23,28 @@
 #include <lib/utility.h>
 
 #include <disk.h>
+#include <endian.h>
 #include <loader.h>
 #include <memory.h>
 
 #include "mbr.h"
+
+/** Read in an MBR and convert endianness.
+ * @param disk          Disk to read from.
+ * @param mbr           MBR to read into.
+ * @param lba           LBA to read from.
+ * @return              Whether read successfully. */
+static bool read_mbr(disk_device_t *disk, mbr_t *mbr, uint32_t lba) {
+    if (device_read(&disk->device, mbr, sizeof(*mbr), (uint64_t)lba * disk->block_size) != STATUS_SUCCESS)
+        return false;
+
+    for (size_t i = 0; i < array_size(mbr->partitions); i++) {
+        mbr->partitions[i].start_lba = le32_to_cpu(mbr->partitions[i].start_lba);
+        mbr->partitions[i].num_sectors = le32_to_cpu(mbr->partitions[i].num_sectors);
+    }
+
+    return true;
+}
 
 /** Check whether a partition is valid.
  * @param disk          Disk containing partition record.
@@ -68,11 +86,9 @@ static void handle_extended(disk_device_t *disk, uint32_t lba, partition_iterate
 
     for (uint32_t curr_ebr = lba, next_ebr = 0; curr_ebr; curr_ebr = next_ebr) {
         mbr_partition_t *partition, *next;
-        status_t ret;
 
-        ret = device_read(&disk->device, ebr, sizeof(*ebr), (uint64_t)curr_ebr * disk->block_size);
-        if (ret != STATUS_SUCCESS) {
-            dprintf("disk: failed to read EBR at %u: %u\n", curr_ebr, ret);
+        if (!read_mbr(disk, ebr, curr_ebr)) {
+            dprintf("disk: failed to read EBR at %" PRIu32 "\n", curr_ebr);
             break;
         } else if (ebr->signature != MBR_SIGNATURE) {
             dprintf("disk: warning: invalid EBR, corrupt partition table\n");
@@ -113,13 +129,11 @@ static void handle_extended(disk_device_t *disk, uint32_t lba, partition_iterate
  * @return              Whether the device contained an MBR partition table. */
 static bool mbr_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb) {
     mbr_t *mbr;
-    status_t ret;
     bool seen_extended;
 
     /* Read in the MBR, which is in the first block on the device. */
     mbr = malloc(sizeof(mbr_t));
-    ret = device_read(&disk->device, mbr, sizeof(*mbr), 0);
-    if (ret != STATUS_SUCCESS || mbr->signature != MBR_SIGNATURE) {
+    if (!read_mbr(disk, mbr, 0) || mbr->signature != MBR_SIGNATURE) {
         free(mbr);
         return false;
     }
