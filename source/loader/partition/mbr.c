@@ -132,8 +132,16 @@ static bool mbr_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
     bool seen_extended;
 
     /* Read in the MBR, which is in the first block on the device. */
-    mbr = malloc(sizeof(mbr_t));
+    mbr = malloc(sizeof(*mbr));
     if (!read_mbr(disk, mbr, 0) || mbr->signature != MBR_SIGNATURE) {
+        free(mbr);
+        return false;
+    }
+
+    /* Check if this is a GPT partition table (technically we should not get
+     * here if this is a GPT disk as the GPT code should be reached first). This
+     * is just a safeguard. */
+    if (mbr->partitions[0].type == MBR_PARTITION_TYPE_GPT) {
         free(mbr);
         return false;
     }

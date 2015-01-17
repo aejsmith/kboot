@@ -25,7 +25,10 @@
 #include <types.h>
 
 /** MBR partition table signature. */
-#define MBR_SIGNATURE 0xAA55
+#define MBR_SIGNATURE               0xaa55
+
+/** MBR partition types. */
+#define MBR_PARTITION_TYPE_GPT      0xee    /**< GPT protective. */
 
 /** MBR partition description. */
 typedef struct mbr_partition {
