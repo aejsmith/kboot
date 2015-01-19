@@ -56,6 +56,14 @@ extern void *malloc(size_t size);
 extern void *realloc(void *addr, size_t size);
 extern void free(void *addr);
 
+/** Helper for __cleanup_free. */
+static inline void freep(void *p) {
+    free(*(void **)p);
+}
+
+/** Variable attribute to free the pointer when it goes out of scope. */
+#define __cleanup_free          __cleanup(freep)
+
 extern void *memory_alloc(
     phys_size_t size, phys_size_t align, phys_ptr_t min_addr, phys_ptr_t max_addr,
     uint8_t type, unsigned flags, phys_ptr_t *_phys);

@@ -37,7 +37,7 @@ static gpt_guid_t zero_guid;
  * @param cb            Callback function.
  * @return              Whether the device contained a GPT partition table. */
 static bool gpt_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb) {
-    void *buf;
+    void *buf __cleanup_free = NULL;
     mbr_t *mbr;
     gpt_header_t *header;
     uint64_t offset;
@@ -54,10 +54,8 @@ static bool gpt_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
      * since the two should be in sync. */
     mbr = buf;
     if (device_read(&disk->device, mbr, disk->block_size, 0) != STATUS_SUCCESS) {
-        free(buf);
         return false;
     } else if (mbr->signature != MBR_SIGNATURE || mbr->partitions[0].type != MBR_PARTITION_TYPE_GPT) {
-        free(buf);
         return false;
     }
 
@@ -65,10 +63,8 @@ static bool gpt_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
     mbr = NULL;
     header = buf;
     if (device_read(&disk->device, header, disk->block_size, disk->block_size) != STATUS_SUCCESS) {
-        free(buf);
         return false;
     } else if (le64_to_cpu(header->signature) != GPT_HEADER_SIGNATURE) {
-        free(buf);
         return false;
     }
 
@@ -85,7 +81,6 @@ static bool gpt_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
 
         if (device_read(&disk->device, buf, entry_size, offset) != STATUS_SUCCESS) {
             dprintf("disk: failed to read GPT partition entry at %" PRIu64 "\n", offset);
-            free(buf);
             return false;
         }
 
@@ -107,7 +102,6 @@ static bool gpt_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
         cb(disk, i, lba, count);
     }
 
-    free(buf);
     return true;
 }
 

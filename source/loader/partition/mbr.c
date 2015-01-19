@@ -79,7 +79,7 @@ static bool is_extended(mbr_partition_t *partition) {
  * @param lba       LBA of the extended partition.
  * @param cb        Callback function. */
 static void handle_extended(disk_device_t *disk, uint32_t lba, partition_iterate_cb_t cb) {
-    mbr_t *ebr;
+    mbr_t *ebr __cleanup_free;
     size_t i = 4;
 
     ebr = malloc(sizeof(*ebr));
@@ -119,8 +119,6 @@ static void handle_extended(disk_device_t *disk, uint32_t lba, partition_iterate
 
         cb(disk, i++, partition->start_lba, partition->num_sectors);
     }
-
-    free(ebr);
 }
 
 /** Iterate over the partitions on a device.
@@ -128,23 +126,19 @@ static void handle_extended(disk_device_t *disk, uint32_t lba, partition_iterate
  * @param cb            Callback function.
  * @return              Whether the device contained an MBR partition table. */
 static bool mbr_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb) {
-    mbr_t *mbr;
+    mbr_t *mbr __cleanup_free;
     bool seen_extended;
 
     /* Read in the MBR, which is in the first block on the device. */
     mbr = malloc(sizeof(*mbr));
-    if (!read_mbr(disk, mbr, 0) || mbr->signature != MBR_SIGNATURE) {
-        free(mbr);
+    if (!read_mbr(disk, mbr, 0) || mbr->signature != MBR_SIGNATURE)
         return false;
-    }
 
     /* Check if this is a GPT partition table (technically we should not get
      * here if this is a GPT disk as the GPT code should be reached first). This
      * is just a safeguard. */
-    if (mbr->partitions[0].type == MBR_PARTITION_TYPE_GPT) {
-        free(mbr);
+    if (mbr->partitions[0].type == MBR_PARTITION_TYPE_GPT)
         return false;
-    }
 
     /* Loop through all partitions in the table. */
     seen_extended = false;
@@ -170,7 +164,6 @@ static bool mbr_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
         }
     }
 
-    free(mbr);
     return true;
 }
 
