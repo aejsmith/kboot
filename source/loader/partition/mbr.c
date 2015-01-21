@@ -53,6 +53,7 @@ static bool read_mbr(disk_device_t *disk, mbr_t *mbr, uint32_t lba) {
 static bool is_valid(disk_device_t *disk, mbr_partition_t *partition) {
     return (partition->type != 0)
         && (partition->bootable == 0 || partition->bootable == 0x80)
+        && (partition->start_lba != 0)
         && (partition->start_lba < disk->blocks)
         && (partition->start_lba + partition->num_sectors <= disk->blocks);
 }
