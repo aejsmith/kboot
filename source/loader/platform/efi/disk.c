@@ -34,6 +34,8 @@ typedef struct efi_disk {
     efi_device_path_t *path;            /**< Device path. */
     efi_block_io_protocol_t *block;     /**< Block I/O protocol. */
     efi_uint32_t media_id;              /**< Media ID. */
+    bool boot;                          /**< Whether the device is the boot device. */
+    uint64_t boot_partition_lba;        /**< LBA of the boot partition. */
 } efi_disk_t;
 
 /** Block I/O protocol GUID. */
@@ -58,9 +60,34 @@ static status_t efi_disk_read_blocks(disk_device_t *_disk, void *buf, size_t cou
     return STATUS_SUCCESS;
 }
 
+/** Check if a partition is the boot partition.
+ * @param _disk         Disk the partition resides on.
+ * @param id            ID of partition.
+ * @param lba           Block that the partition starts at.
+ * @return              Whether partition is a boot partition. */
+static bool efi_disk_is_boot_partition(disk_device_t *_disk, uint8_t id, uint64_t lba) {
+    efi_disk_t *disk = (efi_disk_t *)_disk;
+
+    return disk->boot && lba == disk->boot_partition_lba;
+}
+
+/** Get a string to identify an EFI disk.
+ * @param _disk         Disk to identify.
+ * @param buf           Where to store identification string.
+ * @param size          Size of the buffer. */
+static void efi_disk_identify(disk_device_t *_disk, char *buf, size_t size) {
+    efi_disk_t *disk = (efi_disk_t *)_disk;
+
+    snprintf(buf, size,
+        "EFI disk %pE (block size: %zu, blocks: %" PRIu64 ")",
+        disk->path, disk->disk.block_size, disk->disk.blocks);
+}
+
 /** EFI disk operations structure. */
 static disk_ops_t efi_disk_ops = {
     .read_blocks = efi_disk_read_blocks,
+    .is_boot_partition = efi_disk_is_boot_partition,
+    .identify = efi_disk_identify,
 };
 
 /** Detect and register all disk devices. */
@@ -93,7 +120,7 @@ void efi_disk_init(void) {
      * get flagged with a device type.
      *
      * What we do then is make a first pass over all devices to get their block
-     * protocol. If a device is a raw device (media->logical_partition == 0,
+     * protocol. If a device is a raw device (media->logical_partition == 0),
      * then we do some guesswork:
      *
      *  1. If device path node is ACPI, check HID, mark as floppy if matches.
@@ -127,9 +154,13 @@ void efi_disk_init(void) {
         media = disk->block->media;
 
         disk->media_id = media->media_id;
+        disk->boot = handles[i] == efi_loaded_image->device_handle;
         disk->disk.ops = &efi_disk_ops;
         disk->disk.block_size = media->block_size;
         disk->disk.blocks = (media->media_present) ? media->last_block + 1 : 0;
+
+        if (disk->boot)
+            dprintf("efi: boot device is %pE\n", disk->path);
 
         if (media->logical_partition) {
             list_append(&child_devices, &disk->disk.device.header);
@@ -159,15 +190,27 @@ void efi_disk_init(void) {
         efi_disk_t *child = list_entry(iter, efi_disk_t, disk.device.header);
         efi_device_path_t *last = efi_last_device_node(child->path);
 
-        if (last->type == EFI_DEVICE_PATH_TYPE_MEDIA) {
-            /* Identify the parent device. */
-            list_foreach_safe(&raw_devices, piter) {
-                efi_disk_t *parent = list_entry(piter, efi_disk_t, disk.device.header);
+        /* Identify the parent device. */
+        list_foreach_safe(&raw_devices, piter) {
+            efi_disk_t *parent = list_entry(piter, efi_disk_t, disk.device.header);
 
-                if (efi_is_child_device_node(parent->path, child->path)) {
+            if (efi_is_child_device_node(parent->path, child->path)) {
+                /* Mark the parent as the boot device if the partition is the
+                 * boot partition. */
+                if (child->boot)
+                    parent->boot = true;
+
+                if (last->type == EFI_DEVICE_PATH_TYPE_MEDIA) {
                     switch (last->subtype) {
                     case EFI_DEVICE_PATH_MEDIA_SUBTYPE_HD:
                         parent->disk.type = DISK_TYPE_HD;
+
+                        /* If this is the boot partition, get its start LBA. */
+                        if (child->boot) {
+                            efi_device_path_hd_t *hd = (efi_device_path_hd_t *)last;
+                            parent->boot_partition_lba = hd->partition_start;
+                        }
+
                         break;
                     case EFI_DEVICE_PATH_MEDIA_SUBTYPE_CDROM:
                         parent->disk.type = DISK_TYPE_CDROM;
@@ -186,12 +229,6 @@ void efi_disk_init(void) {
         efi_disk_t *disk = list_entry(iter, efi_disk_t, disk.device.header);
 
         list_remove(&disk->disk.device.header);
-        disk_device_register(&disk->disk);
-
-        dprintf("efi: disk %s at %pE (block_size: %zu, blocks: %" PRIu64 ")\n",
-            disk->disk.device.name, disk->path, disk->disk.block_size,
-            disk->disk.blocks);
-
-        disk_device_probe(&disk->disk);
+        disk_device_register(&disk->disk, disk->boot);
     }
 }

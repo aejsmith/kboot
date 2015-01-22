@@ -37,6 +37,7 @@ typedef enum status {
     STATUS_CORRUPT_FS,              /**< Corruption detected on the filesystem. */
     STATUS_FS_FULL,                 /**< No space is available on the filesystem. */
     STATUS_READ_ONLY,               /**< Filesystem is read only. */
+    STATUS_END_OF_FILE,             /**< Attempted to read beyond end of file. */
     STATUS_SYMLINK_LIMIT,           /**< Exceeded nested symbolic link limit. */
     STATUS_DEVICE_ERROR,            /**< An error occurred during a hardware operation. */
     STATUS_UNKNOWN_IMAGE,           /**< Executable image has an unrecognised format. */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2012 Alex Smith
+ * Copyright (C) 2009-2015 Alex Smith
  * Copyright (C) 2012 Daniel Collins
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -115,9 +115,6 @@ static void handle_extended(disk_device_t *disk, uint32_t lba, partition_iterate
         if (!is_valid(disk, partition))
             continue;
 
-        dprintf("disk: logical MBR partition %zu (type: 0x%" PRIu8 ", lba: %" PRIu32 ", count: %" PRIu32 ")\n",
-            i, partition->type, partition->start_lba, partition->num_sectors);
-
         cb(disk, i++, partition->start_lba, partition->num_sectors);
     }
 }
@@ -158,9 +155,6 @@ static bool mbr_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
             handle_extended(disk, partition->start_lba, cb);
             seen_extended = true;
         } else {
-            dprintf("disk: primary MBR partition %zu (type: 0x%" PRIu8 ", lba: %" PRIu32 ", count: %" PRIu32 ")\n",
-                i, partition->type, partition->start_lba, partition->num_sectors);
-
             cb(disk, i, partition->start_lba, partition->num_sectors);
         }
     }
@@ -170,5 +164,6 @@ static bool mbr_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
 
 /** MBR partition map type. */
 BUILTIN_PARTITION_OPS(mbr_partition_ops) = {
+    .name = "MBR",
     .iterate = mbr_partition_iterate,
 };

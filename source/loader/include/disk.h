@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -37,6 +37,8 @@ typedef void (*partition_iterate_cb_t)(struct disk_device *disk, uint8_t id, uin
 
 /** Partition operations. */
 typedef struct partition_ops {
+    const char *name;                   /**< Name of the partition scheme. */
+
     /** Iterate over the partitions on the device.
      * @param disk          Disk to iterate over.
      * @param cb            Callback function.
@@ -45,7 +47,7 @@ typedef struct partition_ops {
     bool (*iterate)(struct disk_device *disk, partition_iterate_cb_t cb);
 } partition_ops_t;
 
-/** Define a builtin partition map type. */
+/** Define a builtin partition type. */
 #define BUILTIN_PARTITION_OPS(name) \
     static partition_ops_t name; \
     DEFINE_BUILTIN(BUILTIN_TYPE_PARTITION, name); \
@@ -67,6 +69,19 @@ typedef struct disk_ops {
      * @param lba           Block number to start reading from.
      * @return              Status code describing the result of the operation. */
     status_t (*read_blocks)(struct disk_device *disk, void *buf, size_t count, uint64_t lba);
+
+    /** Check if a partition is the boot partition.
+     * @param disk          Disk the partition is on.
+     * @param id            ID of partition.
+     * @param lba           Block that the partition starts at.
+     * @return              Whether partition is a boot partition. */
+    bool (*is_boot_partition)(struct disk_device *disk, uint8_t id, uint64_t lba);
+
+    /** Get a string to identify a disk, for informational purposes.
+     * @param disk          Disk to identify.
+     * @param buf           Where to store identification string.
+     * @param size          Size of the buffer. */
+    void (*identify)(struct disk_device *disk, char *buf, size_t size);
 } disk_ops_t;
 
 /** Structure representing a disk device. */
@@ -78,10 +93,10 @@ typedef struct disk_device {
     size_t block_size;                  /**< Size of a block on the disk. */
     uint64_t blocks;                    /**< Total number of blocks on the disk. */
     uint8_t id;                         /**< ID of the disk. */
+    partition_ops_t *partition_ops;     /**< If this disk is partitioned, the partition scheme used. */
 } disk_device_t;
 
-extern void disk_device_register(disk_device_t *disk);
-extern void disk_device_probe(disk_device_t *disk);
+extern void disk_device_register(disk_device_t *disk, bool boot);
 
 #endif /* CONFIG_TARGET_HAS_DISK */
 #endif /* __DISK_H */

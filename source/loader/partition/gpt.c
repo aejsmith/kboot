@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -96,9 +96,6 @@ static bool gpt_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
             continue;
         }
 
-        dprintf("disk: GPT partition %" PRIu32 " (type: %pu, lba: %" PRIu64 ", count: %" PRIu64 ")\n",
-            i, &entry->type_guid, lba, count);
-
         cb(disk, i, lba, count);
     }
 
@@ -107,5 +104,6 @@ static bool gpt_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
 
 /** GPT partition map type. */
 BUILTIN_PARTITION_OPS(gpt_partition_ops) = {
+    .name = "GPT",
     .iterate = gpt_partition_iterate,
 };

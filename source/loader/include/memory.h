@@ -72,6 +72,8 @@ extern void memory_dump(list_t *memory_map);
 
 #ifndef PLATFORM_HAS_MM
 
+extern void target_memory_probe(void);
+
 extern void memory_add(phys_ptr_t start, phys_size_t size, uint8_t type);
 extern void memory_protect(phys_ptr_t start, phys_size_t size);
 extern void memory_init(void);

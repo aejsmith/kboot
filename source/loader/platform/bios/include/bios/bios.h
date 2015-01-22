@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2014 Alex Smith
+ * Copyright (C) 2010-2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -78,7 +78,6 @@ extern void bios_call(uint8_t num, bios_regs_t *regs);
 
 extern void bios_console_init(void);
 extern void bios_disk_init(void);
-extern void bios_memory_init(void);
 
 extern void platform_init(void);
 

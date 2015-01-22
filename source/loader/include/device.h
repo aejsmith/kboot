@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -44,6 +44,12 @@ typedef struct device_ops {
      * @param offset        Offset in the device to read from.
      * @return              Status code describing the result of the read. */
     status_t (*read)(struct device *device, void *buf, size_t count, offset_t offset);
+
+    /** Get a string to identify a device, for informational purposes.
+     * @param device        Device to identify.
+     * @param buf           Where to store identification string.
+     * @param size          Size of the buffer. */
+    void (*identify)(struct device *device, char *buf, size_t size);
 } device_ops_t;
 
 /** Base device structure (embedded by device type structures). */
@@ -56,9 +62,15 @@ typedef struct device {
     char *name;                         /**< Name of the device. */
 } device_t;
 
+extern device_t *boot_device;
+
 extern status_t device_read(device_t *device, void *buf, size_t count, offset_t offset);
 
 extern device_t *device_lookup(const char *name);
 extern void device_register(device_t *device, const char *name);
+
+extern void target_device_probe(void);
+
+extern void device_init(void);
 
 #endif /* __DEVICE_H */

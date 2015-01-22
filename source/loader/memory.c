@@ -169,7 +169,8 @@ void memory_dump(list_t *memory_map) {
     list_foreach(memory_map, iter) {
         range = list_entry(iter, memory_range_t, header);
 
-        dprintf(" 0x%016" PRIxPHYS "-0x%016" PRIxPHYS ": ", range->start, range->start + range->size);
+        dprintf(" 0x%016" PRIxPHYS "-0x%016" PRIxPHYS " (%" PRIu64 " KiB) -> ",
+            range->start, range->start + range->size, range->size / 1024);
 
         switch (range->type) {
         case MEMORY_TYPE_FREE:
@@ -194,8 +195,7 @@ void memory_dump(list_t *memory_map) {
             dprintf("Internal\n");
             break;
         default:
-            dprintf("???\n");
-            break;
+            internal_error("Bad memory type %d", range->type);
         }
     }
 }
@@ -432,9 +432,6 @@ void *memory_alloc(
  * @param type          Type of the range. */
 void memory_add(phys_ptr_t start, phys_size_t size, uint8_t type) {
     memory_range_insert(start, size, type);
-
-    dprintf("memory: added range 0x%" PRIxPHYS "-0x%" PRIxPHYS " (type: %" PRIu8 ")\n",
-        start, start + size, type);
 }
 
 /**
@@ -468,14 +465,11 @@ void memory_protect(phys_ptr_t start, phys_size_t size) {
     }
 }
 
-/**
- * Initialise the memory manager.
- *
- * Initializes the physical memory manager. Platform code is expected to add
- * all memory ranges before calling this function.
- */
+/** Initialise the memory manager. */
 void memory_init(void) {
     phys_ptr_t start, end;
+
+    target_memory_probe();
 
     /* Mark the boot loader itself as internal so that it gets reclaimed before
      * entering the kernel. */

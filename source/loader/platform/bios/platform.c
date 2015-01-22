@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2014-2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -21,22 +21,24 @@
 
 #include <bios/bios.h>
 
+#include <device.h>
 #include <loader.h>
+#include <memory.h>
 
 /** Main function of the BIOS loader. */
 void platform_init(void) {
     arch_init();
 
     bios_console_init();
-    bios_memory_init();
-    bios_disk_init();
+
+    memory_init();
+    device_init();
 
     dprintf("Hello, World\n");
     internal_error("TODO");
 }
 
-/** Reboot the system. */
-void platform_reboot(void) {
-    while (true)
-        ;
+/** Detect and register all devices. */
+void target_device_probe(void) {
+    bios_disk_init();
 }

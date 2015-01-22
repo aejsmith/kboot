@@ -21,21 +21,30 @@
 
 #include <efi/efi.h>
 
+#include <device.h>
 #include <loader.h>
+
+/** Loaded image protocol GUID. */
+static efi_guid_t loaded_image_guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 
 /** Handle to the loader image. */
 efi_handle_t efi_image_handle;
+
+/** Loaded image structure for the loader image. */
+efi_loaded_image_t *efi_loaded_image;
 
 /** Pointer to the EFI system table. */
 efi_system_table_t *efi_system_table;
 
 /** Main function of the EFI loader.
- * @param image         Handle to the loader image.
- * @param systab        Pointer to EFI system table.
+ * @param image_handle  Handle to the loader image.
+ * @param system_table  Pointer to EFI system table.
  * @return              EFI status code. */
-efi_status_t platform_init(efi_handle_t image, efi_system_table_t *systab) {
-    efi_image_handle = image;
-    efi_system_table = systab;
+efi_status_t platform_init(efi_handle_t image_handle, efi_system_table_t *system_table) {
+    efi_status_t ret;
+
+    efi_image_handle = image_handle;
+    efi_system_table = system_table;
 
     arch_init();
 
@@ -44,10 +53,22 @@ efi_status_t platform_init(efi_handle_t image, efi_system_table_t *systab) {
     efi_call(efi_system_table->boot_services->set_watchdog_timer, 0, 0, 0, NULL);
 
     efi_console_init();
-    dprintf("efi: load base %p\n", __start);
+
+    /* Get the loaded image protocol. */
+    ret = efi_open_protocol(
+        image_handle, &loaded_image_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL,
+        (void **)&efi_loaded_image);
+    if (ret != EFI_SUCCESS)
+        internal_error("Failed to get loaded image protocol (0x%x)", ret);
 
     efi_memory_init();
-    efi_disk_init();
+
+    device_init();
 
     internal_error("TODO");
+}
+
+/** Detect and register all devices. */
+void target_device_probe(void) {
+    efi_disk_init();
 }
