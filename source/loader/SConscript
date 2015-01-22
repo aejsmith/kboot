@@ -20,6 +20,8 @@ Import(*vars)
 from util import FeatureSources
 
 sources = FeatureSources(config, [
+    ('TARGET_HAS_DISK', 'fs/ext2.c'),
+
     'lib/printf.c',
     'lib/qsort.c',
     'lib/string.c',
