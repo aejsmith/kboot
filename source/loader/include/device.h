@@ -60,6 +60,7 @@ typedef struct device {
     const device_ops_t *ops;            /**< Operations for the device (can be NULL). */
 
     char *name;                         /**< Name of the device. */
+    struct fs_mount *mount;             /**< Filesystem on the device. */
 } device_t;
 
 extern device_t *boot_device;

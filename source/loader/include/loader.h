@@ -74,6 +74,7 @@ typedef struct builtin {
     /** Type of the builtin. */
     enum {
         BUILTIN_TYPE_PARTITION,
+        BUILTIN_TYPE_FS,
     } type;
 
     /** Pointer to object. */

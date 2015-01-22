@@ -195,7 +195,7 @@ static void add_partition(disk_device_t *parent, uint8_t id, uint64_t lba, uint6
 /** Probe a disk device for partitions.
  * @param disk          Disk device to probe. */
 static void probe_partitions(disk_device_t *disk) {
-    if (!disk->blocks)
+    if (!disk->blocks || disk->device.mount)
         return;
 
     /* Check for a partition table on the device. */

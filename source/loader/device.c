@@ -22,6 +22,7 @@
 #include <lib/string.h>
 
 #include <device.h>
+#include <fs.h>
 #include <loader.h>
 #include <memory.h>
 
@@ -60,12 +61,32 @@ status_t device_read(device_t *device, void *buf, size_t count, offset_t offset)
  * @return              Matching device, or NULL if no matches found.
  */
 device_t *device_lookup(const char *name) {
+    bool uuid = false, label = false;
+
+    if (strncmp(name, "uuid:", 5) == 0) {
+        uuid = true;
+        name += 5;
+    } else if (strncmp(name, "label:", 6) == 0) {
+        label = true;
+        name += 6;
+    }
+
+    if (!name[0])
+        return NULL;
+
     list_foreach(&device_list, iter) {
         device_t *device = list_entry(iter, device_t, header);
 
-        // TODO: UUID/labels
-        if (strcmp(device->name, name) == 0)
-            return device;
+        if (uuid || label) {
+            if (!device->mount)
+                continue;
+
+            if (strcmp((uuid) ? device->mount->uuid : device->mount->label, name) == 0)
+                return device;
+        } else {
+            if (strcmp(device->name, name) == 0)
+                return device;
+        }
     }
 
     return NULL;
@@ -82,6 +103,9 @@ void device_register(device_t *device, const char *name) {
 
     list_init(&device->header);
     list_append(&device_list, &device->header);
+
+    /* Probe for filesystems. */
+    device->mount = fs_probe(device);
 }
 
 /** Initialize the device manager. */
