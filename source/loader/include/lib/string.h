@@ -28,6 +28,7 @@ extern void *memcpy(void *__restrict dest, const void *__restrict src, size_t co
 extern void *memset(void *dest, int val, size_t count);
 extern void *memmove(void *dest, const void *src, size_t count);
 extern int memcmp(const void *p1, const void *p2, size_t count);
+extern void *memdup(const void *src, size_t count);
 extern size_t strlen(const char *str);
 extern size_t strnlen(const char *str, size_t count);
 extern int strcmp(const char *s1, const char *s2);

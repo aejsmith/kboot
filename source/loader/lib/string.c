@@ -125,6 +125,30 @@ int memcmp(const void *p1, const void *p2, size_t count) {
     return 0;
 }
 
+/**
+ * Duplicate memory.
+ *
+ * Allocates a block of memory big enough and copies the source to it. The
+ * memory returned should be freed with free().
+ *
+ * @param src           Memory to duplicate.
+ * @param count         Number of bytes to duplicate.
+ *
+ * @return              Pointer to duplicated memory.
+ */
+void *memdup(const void *src, size_t count) {
+    char *dest;
+
+    if (!count)
+        return NULL;
+
+    dest = malloc(count);
+    if (dest)
+        memcpy(dest, src, count);
+
+    return dest;
+}
+
 /** Get the length of a string.
  * @param str           Pointer to the string.
  * @return              Length of the string. */
