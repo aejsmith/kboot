@@ -55,7 +55,8 @@ static void probe_partitions(disk_device_t *disk);
 status_t disk_device_read(device_t *device, void *buf, size_t count, offset_t offset) {
     disk_device_t *disk = (disk_device_t *)device;
     void *block __cleanup_free = NULL;
-    uint64_t start, end, size;
+    uint64_t start, end;
+    size_t size;
     status_t ret;
 
     if ((uint64_t)(offset + count) > (disk->blocks * disk->block_size))

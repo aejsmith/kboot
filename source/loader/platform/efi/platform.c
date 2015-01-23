@@ -53,6 +53,7 @@ efi_status_t platform_init(efi_handle_t image_handle, efi_system_table_t *system
     efi_call(efi_system_table->boot_services->set_watchdog_timer, 0, 0, 0, NULL);
 
     efi_console_init();
+    efi_memory_init();
 
     /* Get the loaded image protocol. */
     ret = efi_open_protocol(
@@ -60,8 +61,6 @@ efi_status_t platform_init(efi_handle_t image_handle, efi_system_table_t *system
         (void **)&efi_loaded_image);
     if (ret != EFI_SUCCESS)
         internal_error("Failed to get loaded image protocol (0x%x)", ret);
-
-    efi_memory_init();
 
     device_init();
 
