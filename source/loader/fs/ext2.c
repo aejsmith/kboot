@@ -446,7 +446,7 @@ static status_t ext2_iterate(fs_handle_t *_handle, dir_iterate_cb_t cb, void *ar
                     return ret;
             }
 
-            done = cb(name, child, arg);
+            done = !cb(name, child, arg);
             fs_handle_release(child);
         } else if (!le16_to_cpu(dirent->rec_len)) {
             done = true;
