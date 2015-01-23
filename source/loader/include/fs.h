@@ -90,8 +90,8 @@ typedef struct fs_ops {
     status_t (*iterate)(struct fs_handle *handle, dir_iterate_cb_t cb, void *arg);
 } fs_ops_t;
 
-/** Define a builtin filesystem type. */
-#define BUILTIN_FS_TYPE(name)   \
+/** Define a builtin filesystem operations structure. */
+#define BUILTIN_FS_OPS(name)   \
     static fs_ops_t name; \
     DEFINE_BUILTIN(BUILTIN_TYPE_FS, name); \
     static fs_ops_t name

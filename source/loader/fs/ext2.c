@@ -56,6 +56,7 @@ typedef struct ext2_mount {
 typedef struct ext2_handle {
     fs_handle_t handle;                 /**< Handle header. */
 
+    uint32_t num;                       /**< Inode number. */
     ext2_inode_t inode;                 /**< Inode the handle refers to. */
 } ext2_handle_t;
 
@@ -343,15 +344,16 @@ static status_t ext2_inode_open(ext2_mount_t *mount, uint32_t id, ext2_handle_t 
     }
 
     handle = fs_handle_alloc(sizeof(*handle), &mount->mount);
-    inode = &handle->inode;
+    handle->num = id;
 
-    /* Get the offset of the inode in the group's inode table. */
+    /* Get the size of the inode and its offset in the group's inode table. */
+    size = min(mount->inode_size, sizeof(ext2_inode_t));
     offset =
         ((offset_t)le32_to_cpu(mount->group_tbl[group].bg_inode_table) * mount->block_size) +
         ((offset_t)((id - 1) % mount->inodes_per_group) * mount->inode_size);
 
     /* Read the inode into memory. */
-    size = min(mount->inode_size, sizeof(ext2_inode_t));
+    inode = &handle->inode;
     ret = device_read(mount->mount.device, inode, size, offset);
     if (ret != STATUS_SUCCESS) {
         dprintf("ext2: failed to read inode %" PRIu32 ": %d\n", id, ret);
@@ -434,10 +436,15 @@ static status_t ext2_iterate(fs_handle_t *_handle, dir_iterate_cb_t cb, void *ar
             strncpy(name, dirent->name, dirent->name_len);
             name[dirent->name_len] = 0;
 
-            /* Create a handle to the child. */
-            ret = ext2_inode_open(mount, le32_to_cpu(dirent->inode), handle, &child);
-            if (ret != STATUS_SUCCESS)
-                return ret;
+            if (le32_to_cpu(dirent->inode) == handle->num) {
+                child = _handle;
+                fs_handle_retain(child);
+            } else {
+                /* Create a handle to the child. */
+                ret = ext2_inode_open(mount, le32_to_cpu(dirent->inode), handle, &child);
+                if (ret != STATUS_SUCCESS)
+                    return ret;
+            }
 
             done = cb(name, child, arg);
             fs_handle_release(child);
@@ -518,7 +525,7 @@ err:
 }
 
 /** Ext2 filesystem operations structure. */
-BUILTIN_FS_TYPE(ext2_fs_type) = {
+BUILTIN_FS_OPS(ext2_fs_ops) = {
     .mount = ext2_mount,
     .read = ext2_read,
     .size = ext2_size,
