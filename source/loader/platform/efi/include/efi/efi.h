@@ -70,6 +70,6 @@ extern void efi_console_init(void);
 extern void efi_disk_init(void);
 extern void efi_memory_init(void);
 
-extern efi_status_t platform_init(efi_handle_t image_handle, efi_system_table_t *system_table);
+extern efi_status_t efi_init(efi_handle_t image_handle, efi_system_table_t *system_table);
 
 #endif /* __EFI_EFI_H */

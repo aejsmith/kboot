@@ -87,7 +87,7 @@ FUNCTION_START(loader_entry)
     /* Call the main function. */
     popq    %rsi
     popq    %rdi
-    call    platform_init
+    call    efi_init
 
     /* Switch back to the EFI GDT/IDT. */
     leaq    efi_gdtp(%rip), %rax

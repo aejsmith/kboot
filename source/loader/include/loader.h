@@ -108,4 +108,6 @@ extern void internal_error(const char *fmt, ...) __noreturn;
 
 extern void backtrace(int (*print)(const char *fmt, ...));
 
+extern void loader_main(void);
+
 #endif /* __LOADER_H */

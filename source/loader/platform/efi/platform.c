@@ -40,7 +40,7 @@ efi_system_table_t *efi_system_table;
  * @param image_handle  Handle to the loader image.
  * @param system_table  Pointer to EFI system table.
  * @return              EFI status code. */
-efi_status_t platform_init(efi_handle_t image_handle, efi_system_table_t *system_table) {
+efi_status_t efi_init(efi_handle_t image_handle, efi_system_table_t *system_table) {
     efi_status_t ret;
 
     efi_image_handle = image_handle;
@@ -62,9 +62,8 @@ efi_status_t platform_init(efi_handle_t image_handle, efi_system_table_t *system
     if (ret != EFI_SUCCESS)
         internal_error("Failed to get loaded image protocol (0x%x)", ret);
 
-    device_init();
-
-    internal_error("TODO");
+    loader_main();
+    return EFI_SUCCESS;
 }
 
 /** Detect and register all devices. */

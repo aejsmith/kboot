@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 Alex Smith
+ * Copyright (C) 2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,23 +16,17 @@
 
 /**
  * @file
- * @brief               BIOS platform main functions.
+ * @brief               Loader main function.
  */
-
-#include <bios/bios.h>
 
 #include <device.h>
 #include <loader.h>
 #include <memory.h>
 
-/** Main function of the BIOS loader. */
-void bios_init(void) {
-    arch_init();
-    bios_console_init();
-    loader_main();
-}
+/** Main function of the loader. */
+void loader_main(void) {
+    memory_init();
+    device_init();
 
-/** Detect and register all devices. */
-void target_device_probe(void) {
-    bios_disk_init();
+    internal_error("TODO");
 }

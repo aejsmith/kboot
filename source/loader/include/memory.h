@@ -78,6 +78,10 @@ extern void memory_add(phys_ptr_t start, phys_size_t size, uint8_t type);
 extern void memory_protect(phys_ptr_t start, phys_size_t size);
 extern void memory_init(void);
 
+#else
+
+static inline void memory_init(void) {}
+
 #endif /* !PLATFORM_HAS_MM */
 
 #endif /* __MEMORY_H */
