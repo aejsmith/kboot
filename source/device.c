@@ -135,5 +135,8 @@ void device_init(void) {
         dprintf(" %-*s%-*s -> %s\n", indent, "", 7 - indent, device->name, buf);
     }
 
+    if (!boot_device || !boot_device->mount)
+        boot_error("Unable to find boot filesystem");
+
     dprintf("device: boot device is %s\n", (boot_device) ? boot_device->name : "unknown");
 }
