@@ -25,6 +25,7 @@
 #include <lib/ctype.h>
 #include <lib/printf.h>
 #include <lib/string.h>
+#include <lib/utility.h>
 
 #include <loader.h>
 #include <memory.h>
@@ -603,13 +604,7 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
     data.off = 0;
 
     ret = do_vprintf(vsnprintf_helper, &data, fmt, args);
-
-    if (data.off < data.size) {
-        data.buf[data.off] = 0;
-    } else {
-        data.buf[data.size - 1] = 0;
-    }
-
+    data.buf[min(data.off, data.size)] = 0;
     return ret;
 }
 
