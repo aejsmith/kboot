@@ -85,7 +85,7 @@ extern builtin_t __builtins_start[], __builtins_end[];
 
 /** Define a builtin object. */
 #define DEFINE_BUILTIN(type, object) \
-    static builtin_t __builtin_##name __section(".builtins") __used = { \
+    static builtin_t __builtin_##object __section(".builtins") __used = { \
         type, \
         &object \
     }
