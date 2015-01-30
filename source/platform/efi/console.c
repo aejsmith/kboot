@@ -90,7 +90,7 @@ static bool efi_console_poll(void) {
 static uint16_t efi_scan_codes[] = {
     0,
     CONSOLE_KEY_UP, CONSOLE_KEY_DOWN, CONSOLE_KEY_RIGHT, CONSOLE_KEY_LEFT,
-    CONSOLE_KEY_HOME, CONSOLE_KEY_END, 0, CONSOLE_KEY_DELETE, 0, 0,
+    CONSOLE_KEY_HOME, CONSOLE_KEY_END, 0, 0x7f, 0, 0,
     CONSOLE_KEY_F1, CONSOLE_KEY_F2, CONSOLE_KEY_F3, CONSOLE_KEY_F4,
     CONSOLE_KEY_F5, CONSOLE_KEY_F6, CONSOLE_KEY_F7, CONSOLE_KEY_F8,
     CONSOLE_KEY_F9, CONSOLE_KEY_F10, '\e',
@@ -120,9 +120,9 @@ static uint16_t efi_console_getc(void) {
             }
 
             return efi_scan_codes[key.scan_code];
-        } else if (key.unicode_char & 0x7f) {
+        } else if (key.unicode_char <= 0x7f) {
             /* Whee, Unicode! */
-            return key.unicode_char & 0x7f;
+            return (key.unicode_char == '\r') ? '\n' : key.unicode_char;
         }
     }
 }

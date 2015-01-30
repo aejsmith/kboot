@@ -22,6 +22,7 @@
 #include <lib/string.h>
 
 #include <assert.h>
+#include <config.h>
 #include <device.h>
 #include <fs.h>
 #include <memory.h>
@@ -81,6 +82,8 @@ fs_mount_t *fs_probe(device_t *device) {
         ret = ops->mount(device, &mount);
         switch (ret) {
         case STATUS_SUCCESS:
+            dprintf("fs: mounted %s on %s ('%s') (uuid: %s)\n", ops->name, device->name, mount->label, mount->uuid);
+
             mount->ops = ops;
             mount->device = device;
             return mount;
@@ -139,6 +142,7 @@ static bool fs_open_cb(const char *name, fs_handle_t *handle, void *_data) {
 status_t fs_open(const char *path, fs_handle_t *from, fs_handle_t **_handle) {
     char *orig __cleanup_free;
     char *dup, *tok;
+    device_t *device;
     fs_mount_t *mount;
     fs_handle_t *handle;
     status_t ret;
@@ -147,8 +151,6 @@ status_t fs_open(const char *path, fs_handle_t *from, fs_handle_t **_handle) {
     dup = orig = strdup(path);
 
     if (dup[0] == '(') {
-        device_t *device;
-
         dup++;
         tok = strsep(&dup, ")");
         if (!tok || !tok[0] || dup[0] != '/')
@@ -162,11 +164,11 @@ status_t fs_open(const char *path, fs_handle_t *from, fs_handle_t **_handle) {
     } else if (from) {
         mount = from->mount;
     } else {
-        // FIXME: current device from environment
-        if (!boot_device || !boot_device->mount)
+        device = (current_environ) ? current_environ->device : boot_device;
+        if (!device || !device->mount)
             return STATUS_NOT_FOUND;
 
-        mount = boot_device->mount;
+        mount = device->mount;
     }
 
     if (dup[0] == '/') {

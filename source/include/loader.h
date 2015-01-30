@@ -26,6 +26,7 @@
 
 #include <platform/loader.h>
 
+#include <console.h>
 #include <status.h>
 #include <types.h>
 
@@ -75,6 +76,7 @@ typedef struct builtin {
     enum {
         BUILTIN_TYPE_PARTITION,
         BUILTIN_TYPE_FS,
+        BUILTIN_TYPE_COMMAND,
     } type;
 
     /** Pointer to object. */
@@ -98,13 +100,13 @@ extern builtin_t __builtins_start[], __builtins_end[];
             var = (object_type *)__builtins_start[++__iter_##var].object) \
         if(__builtins_start[__iter_##var].type == builtin_type)
 
-extern int vprintf(const char *fmt, va_list args);
-extern int printf(const char *fmt, ...) __printf(1, 2);
-extern int dvprintf(const char *fmt, va_list args);
-extern int dprintf(const char *fmt, ...) __printf(1, 2);
+#define vprintf(fmt, args) console_vprintf(&main_console, fmt, args)
+#define printf(fmt...) console_printf(&main_console, fmt)
+#define dvprintf(fmt, args) console_vprintf(&debug_console, fmt, args)
+#define dprintf(fmt...) console_printf(&debug_console, fmt)
 
-extern void boot_error(const char *fmt, ...) __noreturn;
-extern void internal_error(const char *fmt, ...) __noreturn;
+extern void boot_error(const char *fmt, ...) __printf(1, 2) __noreturn;
+extern void internal_error(const char *fmt, ...) __printf(1, 2) __noreturn;
 
 extern void backtrace(int (*print)(const char *fmt, ...));
 

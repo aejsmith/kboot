@@ -30,6 +30,7 @@ sources = FeatureSources(config, [
     ('TARGET_HAS_DISK', 'partition/gpt.c'),
     ('TARGET_HAS_DISK', 'partition/mbr.c'),
 
+    'config.c',
     'console.c',
     'device.c',
     ('TARGET_HAS_DISK', 'disk.c'),
@@ -37,6 +38,7 @@ sources = FeatureSources(config, [
     'fs.c',
     'main.c',
     'memory.c',
+    'shell.c',
 ])
 
 # Set the include search paths.

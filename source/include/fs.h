@@ -40,6 +40,8 @@ typedef bool (*dir_iterate_cb_t)(const char *name, struct fs_handle *handle, voi
 
 /** Structure containing operations for a filesystem. */
 typedef struct fs_ops {
+    const char *name;                   /**< Name of the filesystem type. */
+
     /** Mount an instance of this filesystem.
      * @param device        Device to mount.
      * @param _mount        Where to store pointer to mount structure. Should be
@@ -115,6 +117,17 @@ typedef struct fs_handle {
 extern void *fs_handle_alloc(size_t size, fs_mount_t *mount);
 extern void fs_handle_retain(fs_handle_t *handle);
 extern void fs_handle_release(fs_handle_t *handle);
+
+/** Helper for __cleanup_fs_handle. */
+static inline void fs_handle_releasep(void *p) {
+    fs_handle_t *handle = *(fs_handle_t **)p;
+
+    if (handle)
+        fs_handle_releasep(handle);
+}
+
+/** Variable attribute to release a handle when it goes out of scope. */
+#define __cleanup_fs_handle __cleanup(fs_handle_releasep)
 
 extern fs_mount_t *fs_probe(struct device *device);
 

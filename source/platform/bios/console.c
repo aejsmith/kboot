@@ -84,7 +84,7 @@ static uint16_t bios_console_getc(void) {
     case 0x4f:
         return CONSOLE_KEY_END;
     case 0x53:
-        return CONSOLE_KEY_DELETE;
+        return 0x7f;
     case 0x3b ... 0x44:
         return CONSOLE_KEY_F1 + (scan - 0x3b);
     default:

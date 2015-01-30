@@ -279,7 +279,6 @@ static status_t iso9660_mount(device_t *device, fs_mount_t **_mount) {
         ? (iso9660_directory_record_t *)&supp->root_dir_record
         : (iso9660_directory_record_t *)&primary->root_dir_record);
 
-    dprintf("iso9660: mounted %s ('%s') (uuid: %s)\n", device->name, mount->mount.label, mount->mount.uuid);
     *_mount = &mount->mount;
     return STATUS_SUCCESS;
 }
@@ -379,6 +378,7 @@ static status_t iso9660_iterate(fs_handle_t *_handle, dir_iterate_cb_t cb, void 
 
 /** ISO9660 filesystem operations structure. */
 BUILTIN_FS_OPS(iso9660_fs_ops) = {
+    .name = "iso9660",
     .mount = iso9660_mount,
     .read = iso9660_read,
     .size = iso9660_size,

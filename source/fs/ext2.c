@@ -515,7 +515,6 @@ static status_t ext2_mount(device_t *device, fs_mount_t **_mount) {
     mount->mount.uuid = malloc(UUID_STR_LEN);
     snprintf(mount->mount.uuid, UUID_STR_LEN, "%pU", mount->sb.s_uuid);
 
-    dprintf("ext2: mounted %s ('%s') (uuid: %s)\n", device->name, mount->mount.label, mount->mount.uuid);
     *_mount = &mount->mount;
     return STATUS_SUCCESS;
 
@@ -527,6 +526,7 @@ err:
 
 /** Ext2 filesystem operations structure. */
 BUILTIN_FS_OPS(ext2_fs_ops) = {
+    .name = "ext2",
     .mount = ext2_mount,
     .read = ext2_read,
     .size = ext2_size,

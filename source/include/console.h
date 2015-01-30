@@ -52,17 +52,16 @@ typedef struct console_in_ops {
 #define CONSOLE_KEY_RIGHT   0x103
 #define CONSOLE_KEY_HOME    0x104
 #define CONSOLE_KEY_END     0x105
-#define CONSOLE_KEY_DELETE  0x106
-#define CONSOLE_KEY_F1      0x107
-#define CONSOLE_KEY_F2      0x108
-#define CONSOLE_KEY_F3      0x109
-#define CONSOLE_KEY_F4      0x10a
-#define CONSOLE_KEY_F5      0x10b
-#define CONSOLE_KEY_F6      0x10c
-#define CONSOLE_KEY_F7      0x10d
-#define CONSOLE_KEY_F8      0x10e
-#define CONSOLE_KEY_F9      0x10f
-#define CONSOLE_KEY_F10     0x110
+#define CONSOLE_KEY_F1      0x106
+#define CONSOLE_KEY_F2      0x107
+#define CONSOLE_KEY_F3      0x108
+#define CONSOLE_KEY_F4      0x109
+#define CONSOLE_KEY_F5      0x10a
+#define CONSOLE_KEY_F6      0x10b
+#define CONSOLE_KEY_F7      0x10c
+#define CONSOLE_KEY_F8      0x10d
+#define CONSOLE_KEY_F9      0x10e
+#define CONSOLE_KEY_F10     0x10f
 
 /** Structure describing a console. */
 typedef struct console {
@@ -79,5 +78,9 @@ extern size_t debug_log_length;
 
 extern console_t main_console;
 extern console_t debug_console;
+
+extern void console_vprintf_helper(char ch, void *data, int *total);
+extern int console_vprintf(console_t *console, const char *fmt, va_list args);
+extern int console_printf(console_t *console, const char *fmt, ...) __printf(2, 3);
 
 #endif /* __CONSOLE_H */

@@ -16,22 +16,16 @@
 
 /**
  * @file
- * @brief               Loader main function.
+ * @brief               Shell interface.
  */
 
-#include <config.h>
-#include <device.h>
-#include <loader.h>
-#include <memory.h>
-#include <shell.h>
+#ifndef __SHELL_H
+#define __SHELL_H
 
-/** Main function of the loader. */
-void loader_main(void) {
-    memory_init();
-    device_init();
+#include <types.h>
 
-    /* Load the configuration file. */
-    config_init();
+extern bool shell_running;
 
-    shell_main();
-}
+extern void shell_main(void);
+
+#endif /* __SHELL_H */
