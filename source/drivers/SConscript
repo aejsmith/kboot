@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2014 Alex Smith
+# Copyright (C) 2014-2015 Alex Smith
 #
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -19,6 +19,9 @@ from util import FeatureSources
 
 sources = FeatureSources(config, [
     ('DRIVER_SERIAL_NS16550', 'serial/ns16550.c'),
+
+    ('DRIVER_VIDEO_FB',  'video/fb.c'),
+    ('DRIVER_VIDEO_FB',  'video/font.c'),
     ('DRIVER_VIDEO_VGA', 'video/vga.c'),
 ])
 
