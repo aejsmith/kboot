@@ -45,15 +45,17 @@ static video_mode_t *current_video_mode;
 /** Set a mode as the current mode.
  * @param mode          Mode that is now current. */
 static void set_current_mode(video_mode_t *mode) {
-    bool was_console = current_video_mode->ops->console && main_console.out == current_video_mode->ops->console;
+    video_mode_t *prev = current_video_mode;
+    bool was_console = prev && prev->ops->console && main_console.out == prev->ops->console;
 
-    if (was_console && current_video_mode->ops->console->deinit)
-        current_video_mode->ops->console->deinit();
+    if (was_console && prev->ops->console->deinit)
+        prev->ops->console->deinit();
 
     current_video_mode = mode;
 
-    if (was_console || !main_console.out) {
+    if (!main_console.out || was_console) {
         main_console.out = mode->ops->console;
+
         if (mode->ops->console && mode->ops->console->init)
             mode->ops->console->init(mode);
     }
