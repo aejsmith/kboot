@@ -198,7 +198,7 @@ typedef struct efi_device_path_to_text_protocol {
 } efi_device_path_to_text_protocol_t;
 
 /**
- * EFI console I/O protocol definitions.
+ * EFI console protocol definitions.
  */
 
 /** Simple text input protocol GUID. */
@@ -342,6 +342,80 @@ typedef struct efi_serial_io_protocol {
     efi_status_t (*write)(struct efi_serial_io_protocol *this, efi_uintn_t *buffer_size, void *buffer) __efiapi;
     efi_status_t (*read)(struct efi_serial_io_protocol *this, efi_uintn_t *buffer_size, void *buffer) __efiapi;
 } efi_serial_io_protocol_t;
+
+/** EFI graphics output protocol GUID. */
+#define EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID \
+    { 0x9042a9de, 0x23dc, 0x4a38, 0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a }
+
+/** Pixel bitmask information. */
+typedef struct efi_pixel_bitmask {
+    efi_uint32_t red_mask;
+    efi_uint32_t green_mask;
+    efi_uint32_t blue_mask;
+    efi_uint32_t reserved_mask;
+} efi_pixel_bitmask_t;
+
+/** Pixel format types. */
+typedef enum efi_pixel_format {
+    EFI_PIXEL_FORMAT_RGBR8,
+    EFI_PIXEL_FORMAT_BGRR8,
+    EFI_PIXEL_FORMAT_BITMASK,
+    EFI_PIXEL_FORMAT_BLT_ONLY,
+    EFI_PIXEL_FORMAT_MAX,
+} efi_pixel_format_t;
+
+/** Graphics mode information. */
+typedef struct efi_graphics_output_mode_information {
+    efi_uint32_t version;
+    efi_uint32_t horizontal_resolution;
+    efi_uint32_t vertical_resolution;
+    efi_pixel_format_t pixel_format;
+    efi_pixel_bitmask_t pixel_bitmask;
+    efi_uint32_t pixels_per_scanline;
+} efi_graphics_output_mode_information_t;
+
+/** Graphics output protocol current mode status (read-only). */
+typedef struct efi_graphics_output_mode {
+    efi_uint32_t max_mode;
+    efi_uint32_t mode;
+    efi_graphics_output_mode_information_t *info;
+    efi_uintn_t info_size;
+    efi_physical_address_t frame_buffer_base;
+    efi_uintn_t frame_buffer_size;
+} efi_graphics_output_mode_t;
+
+/** Pixel data for blt operations. */
+typedef struct efi_graphics_output_blt_pixel {
+    efi_uint8_t blue;
+    efi_uint8_t green;
+    efi_uint8_t red;
+    efi_uint8_t reserved;
+} efi_graphics_output_blt_pixel_t;
+
+/** Blt operations. */
+typedef enum efi_graphics_output_blt_operation {
+    EFI_BLT_VIDEO_FILL,
+    EFI_BLT_VIDEO_TO_BUFFER,
+    EFI_BLT_BUFFER_TO_VIDEO,
+    EFI_BLT_VIDEO_TO_VIDEO,
+    EFI_BLT_OPERATION_MAX,
+} efi_graphics_output_blt_operation_t;
+
+/** Graphics output protocol. */
+typedef struct efi_graphics_output_protocol {
+    efi_status_t (*query_mode)(
+        struct efi_graphics_output_protocol *this, uint32_t mode_number,
+        efi_uintn_t *info_size, efi_graphics_output_mode_information_t **info) __efiapi;
+    efi_status_t (*set_mode)(struct efi_graphics_output_protocol *this, uint32_t mode_number) __efiapi;
+    efi_status_t (*blt)(
+        struct efi_graphics_output_protocol *this, efi_graphics_output_blt_pixel_t *blt_buffer,
+        efi_graphics_output_blt_operation_t blt_operation,
+        efi_uintn_t source_x, efi_uintn_t source_y,
+        efi_uintn_t destination_x, efi_uintn_t destination_y,
+        efi_uintn_t width, efi_uintn_t height, efi_uintn_t delta) __efiapi;
+
+    efi_graphics_output_mode_t *mode;
+} efi_graphics_output_protocol_t;
 
 /**
  * EFI block I/O protocol definitions.
