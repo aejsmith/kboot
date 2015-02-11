@@ -25,6 +25,7 @@
 #include <lib/string.h>
 
 #include <assert.h>
+#include <config.h>
 #include <loader.h>
 #include <memory.h>
 #include <video.h>
@@ -189,3 +190,32 @@ void video_mode_register(video_mode_t *mode, bool current) {
     if (current)
         set_current_mode(mode);
 }
+
+/** Print a list of video modes.
+ * @param args          Argument list.
+ * @return              Whether successful. */
+static bool config_cmd_lsvideo(value_list_t *args) {
+    if (args->count != 0) {
+        config_printf("lsvideo: Invalid arguments");
+        return false;
+    }
+
+    list_foreach(&video_modes, iter) {
+        video_mode_t *mode = list_entry(iter, video_mode_t, header);
+
+        switch (mode->type) {
+        case VIDEO_MODE_VGA:
+            config_printf("vga:%" PRIu32 "x%" PRIu32, mode->width, mode->height);
+            break;
+        case VIDEO_MODE_LFB:
+            config_printf("lfb:%" PRIu32 "x%" PRIu32 "x%" PRIu8, mode->width, mode->height, mode->bpp);
+            break;
+        }
+
+        config_printf("%s\n", (mode == current_video_mode) ? " (current)" : "");
+    }
+
+    return true;
+}
+
+BUILTIN_COMMAND("lsvideo", config_cmd_lsvideo);
