@@ -24,8 +24,17 @@
 
 #include <types.h>
 
+struct video_mode;
+
 /** Console output operations structure. */
 typedef struct console_out_ops {
+    /** Initialize the console.
+     * @param mode          Video mode being used. */
+    void (*init)(struct video_mode *mode);
+
+    /** Deinitialize the console before changing video modes. */
+    void (*deinit)(void);
+
     /** Reset the console to a default state. */
     void (*reset)(void);
 
@@ -65,8 +74,8 @@ typedef struct console_in_ops {
 
 /** Structure describing a console. */
 typedef struct console {
-    console_out_ops_t *out;         /**< Output operations. */
-    console_in_ops_t *in;           /**< Input operations. */
+    const console_out_ops_t *out;           /**< Output operations. */
+    const console_in_ops_t *in;             /**< Input operations. */
 } console_t;
 
 /** Debug log size. */

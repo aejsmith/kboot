@@ -141,7 +141,7 @@ static bool config_cmd_device(value_list_t *args) {
     value_t value;
 
     if (args->count != 1 || args->values[0].type != VALUE_TYPE_STRING) {
-        config_printf("device: Invalid arguments");
+        config_printf("device: Invalid arguments\n");
         return false;
     }
 
