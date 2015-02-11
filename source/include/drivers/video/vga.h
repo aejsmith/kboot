@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2014-2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -22,15 +22,12 @@
 #ifndef __DRIVERS_VIDEO_VGA_H
 #define __DRIVERS_VIDEO_VGA_H
 
-#include <types.h>
+#include <console.h>
 
 /** VGA register definitions. */
 #define VGA_CRTC_INDEX      0x3d4
 #define VGA_CRTC_DATA       0x3d5
 
-/** VGA memory address. */
-#define VGA_MEM_BASE        0xb8000
-
-extern void vga_init(uint16_t cols, uint16_t lines);
+extern console_out_ops_t vga_console_out_ops;
 
 #endif /* __DRIVERS_VIDEO_VGA_H */

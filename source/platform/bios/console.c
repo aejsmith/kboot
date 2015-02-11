@@ -21,12 +21,16 @@
 
 #include <arch/io.h>
 
+#include <lib/utility.h>
+
 #include <drivers/serial/ns16550.h>
 #include <drivers/video/vga.h>
 
 #include <bios/bios.h>
 
 #include <console.h>
+#include <memory.h>
+#include <video.h>
 
 /** Serial port definitions. */
 #define SERIAL_PORT         0x3f8
@@ -34,6 +38,7 @@
 #define SERIAL_BAUD_RATE    115200
 
 /** VGA console definitions. */
+#define VGA_MEM_BASE        0xb8000
 #define VGA_COLS            80
 #define VGA_ROWS            25
 
@@ -99,9 +104,15 @@ static console_in_ops_t bios_console_in_ops = {
     .getc = bios_console_getc,
 };
 
+/** BIOS VGA video operations. */
+static video_ops_t bios_vga_video_ops = {
+    .console = &vga_console_out_ops,
+};
+
 /** Initialize the console. */
 void bios_console_init(void) {
     uint8_t status;
+    video_mode_t *mode;
 
     /* Initialize the serial port as the debug console. TODO: Disable for
      * non-debug builds? */
@@ -111,8 +122,17 @@ void bios_console_init(void) {
         ns16550_config(SERIAL_CLOCK, SERIAL_BAUD_RATE);
     }
 
-    /* We use the VGA console as the main console. */
-    vga_init(VGA_COLS, VGA_ROWS);
+    /* Register the VGA video mode, which will set the main console. TODO:
+     * integrate with VBE code so we get a set_mode function which restores to
+     * VGA mode. */
+    mode = malloc(sizeof(*mode));
+    mode->type = VIDEO_MODE_VGA;
+    mode->ops = &bios_vga_video_ops;
+    mode->width = VGA_COLS;
+    mode->height = VGA_ROWS;
+    mode->mem_phys = mode->mem_virt = VGA_MEM_BASE;
+    mode->mem_size = round_up(VGA_COLS * VGA_ROWS * sizeof(uint16_t), PAGE_SIZE);
+    video_mode_register(mode, true);
 
     /* Use BIOS calls for input. */
     main_console.in = &bios_console_in_ops;
