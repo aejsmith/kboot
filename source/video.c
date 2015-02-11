@@ -65,13 +65,15 @@ static void set_current_mode(video_mode_t *mode) {
  * @param mode          Mode to set.
  * @return              Status code describing the result of the operation. */
 status_t video_set_mode(video_mode_t *mode) {
-    status_t ret;
+    if (mode != current_video_mode) {
+        status_t ret = mode->ops->set_mode(mode);
+        if (ret != STATUS_SUCCESS)
+            return ret;
 
-    ret = mode->ops->set_mode(mode);
-    if (ret == STATUS_SUCCESS)
         set_current_mode(mode);
+    }
 
-    return ret;
+    return STATUS_SUCCESS;
 }
 
 /**
