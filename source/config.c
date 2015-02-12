@@ -757,7 +757,7 @@ static value_list_t *parse_value_list(bool command) {
 
         /* Start of a new value. */
         list->values = realloc(list->values, sizeof(*list->values) * (list->count + 1));
-        value = &list->values[list->count++];
+        value = &list->values[list->count];
 
         if (isdigit(ch)) {
             value->type = VALUE_TYPE_INTEGER;
@@ -811,6 +811,10 @@ static value_list_t *parse_value_list(bool command) {
             unexpected_char(ch);
             break;
         }
+
+        /* Increment count only upon success, so value_list_destroy() does not
+         * attempt to clean up the failed entry. */
+        list->count++;
 
         /* At least one space is required after each value. */
         need_space = true;
