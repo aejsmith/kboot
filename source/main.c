@@ -27,11 +27,12 @@
 
 /** Main function of the loader. */
 void loader_main(void) {
+    config_init();
     memory_init();
     device_init();
 
     /* Load the configuration file. */
-    config_init();
+    config_load();
 
     shell_main();
 }

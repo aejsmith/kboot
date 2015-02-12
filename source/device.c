@@ -109,30 +109,6 @@ void device_register(device_t *device, const char *name) {
     device->mount = fs_probe(device);
 }
 
-/** Print a list of devices.
- * @param console       Console to write to.
- * @param indent        Indentation level. */
-static void print_device_list(console_t *console, size_t indent) {
-    list_foreach(&device_list, iter) {
-        device_t *device = list_entry(iter, device_t, header);
-        size_t child = 0;
-        char buf[128];
-
-        /* Figure out how much to indent the string (so we get a tree-like view
-         * with child devices indented). */
-        for (size_t i = 0; device->name[i]; i++) {
-            if (device->name[i] == ',')
-                child++;
-        }
-
-        snprintf(buf, sizeof(buf), "Unknown");
-        if (device->ops->identify)
-            device->ops->identify(device, buf, sizeof(buf));
-
-        console_printf(console, "%-*s%-*s -> %s\n", indent + child, "", 7 - child, device->name, buf);
-    }
-}
-
 /** Set the current device.
  * @param args          Argument list.
  * @return              Whether successful. */
@@ -171,6 +147,30 @@ static bool config_cmd_device(value_list_t *args) {
 }
 
 BUILTIN_COMMAND("device", config_cmd_device);
+
+/** Print a list of devices.
+ * @param console       Console to write to.
+ * @param indent        Indentation level. */
+static void print_device_list(console_t *console, size_t indent) {
+    list_foreach(&device_list, iter) {
+        device_t *device = list_entry(iter, device_t, header);
+        size_t child = 0;
+        char buf[128];
+
+        /* Figure out how much to indent the string (so we get a tree-like view
+         * with child devices indented). */
+        for (size_t i = 0; device->name[i]; i++) {
+            if (device->name[i] == ',')
+                child++;
+        }
+
+        snprintf(buf, sizeof(buf), "Unknown");
+        if (device->ops->identify)
+            device->ops->identify(device, buf, sizeof(buf));
+
+        console_printf(console, "%-*s%-*s -> %s\n", indent + child, "", 7 - child, device->name, buf);
+    }
+}
 
 /** Print a list of devices.
  * @param args          Argument list.
@@ -218,8 +218,24 @@ void device_init(void) {
     dprintf("device: detected devices:\n");
     print_device_list(&debug_console, 1);
 
+    /* Set the device in the environment. */
+    if (boot_device) {
+        value_t value;
+
+        dprintf("device: boot device is %s\n", (boot_device) ? boot_device->name : "unknown");
+
+        value.type = VALUE_TYPE_STRING;
+        value.string = boot_device->name;
+        environ_insert(root_environ, "device", &value);
+
+        if (boot_device->mount) {
+            value.string = boot_device->mount->label;
+            environ_insert(root_environ, "device_label", &value);
+            value.string = boot_device->mount->uuid;
+            environ_insert(root_environ, "device_uuid", &value);
+        }
+    }
+
     if (!boot_device || !boot_device->mount)
         boot_error("Unable to find boot filesystem");
-
-    dprintf("device: boot device is %s\n", (boot_device) ? boot_device->name : "unknown");
 }

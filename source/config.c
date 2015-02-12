@@ -1029,10 +1029,10 @@ BUILTIN_COMMAND("unset", config_cmd_unset);
  * Initialization functions.
  */
 
-/** File input helper for config_load().
+/** File input helper for load_config_file().
  * @param nest          Nesting count (unused).
  * @return              Character read, or EOF on end of file. */
-static int config_load_read_helper(unsigned nest) {
+static int load_read_helper(unsigned nest) {
     while (true) {
         if (current_file_offset < current_file_size) {
             char ch = current_file[current_file_offset++];
@@ -1051,7 +1051,7 @@ static int config_load_read_helper(unsigned nest) {
 /** Attempt to load a configuration file.
  * @param path          Path of the file.
  * @return              Whether the specified path existed. */
-static bool config_load(const char *path) {
+static bool load_config_file(const char *path) {
     fs_handle_t *handle __cleanup_fs_handle = NULL;
     size_t size;
     command_list_t *list;
@@ -1076,7 +1076,7 @@ static bool config_load(const char *path) {
     current_file_offset = 0;
 
     /* Should always succeed here, as config_error() will not return on error. */
-    list = config_parse(path, config_load_read_helper);
+    list = config_parse(path, load_read_helper);
     assert(list);
 
     if (!command_list_exec(list, root_environ)) {
@@ -1090,34 +1090,23 @@ static bool config_load(const char *path) {
     return true;
 }
 
-/** Set up the configuration system and load the configuration file. */
+/** Set up the configuration system. */
 void config_init(void) {
     config_console = &debug_console;
 
     /* Create the root environment. */
     root_environ = environ_create(NULL);
-    if (boot_device) {
-        value_t value;
+}
 
-        value.type = VALUE_TYPE_STRING;
-        value.string = boot_device->name;
-        environ_insert(root_environ, "device", &value);
-
-        if (boot_device->mount) {
-            value.string = boot_device->mount->label;
-            environ_insert(root_environ, "device_label", &value);
-            value.string = boot_device->mount->uuid;
-            environ_insert(root_environ, "device_uuid", &value);
-        }
-    }
-
+/** Load the configuration. */
+void config_load(void) {
     if (config_file_override) {
-        if (!config_load(config_file_override))
+        if (!load_config_file(config_file_override))
             boot_error("Specified configuration file does not exist");
     } else {
         /* Try the various paths. */
         for (size_t i = 0; i < array_size(config_file_paths); i++) {
-            if (config_load(config_file_paths[i]))
+            if (load_config_file(config_file_paths[i]))
                 return;
         }
 

@@ -135,5 +135,6 @@ extern bool command_list_exec(command_list_t *list, environ_t *env);
 extern command_list_t *config_parse(const char *path, config_read_helper_t helper);
 
 extern void config_init(void);
+extern void config_load(void);
 
 #endif /* __CONFIG_H */
