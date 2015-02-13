@@ -19,6 +19,10 @@
  * @brief               EFI console functions.
  */
 
+#include <arch/io.h>
+
+#include <drivers/serial/ns16550.h>
+
 #include <efi/efi.h>
 
 #include <console.h>
@@ -30,6 +34,12 @@
 #define SERIAL_PARITY       EFI_NO_PARITY
 #define SERIAL_DATA_BITS    8
 #define SERIAL_STOP_BITS    EFI_ONE_STOP_BIT
+
+/** Serial port definitions. */
+#ifdef CONFIG_ARCH_X86
+#   define SERIAL_PORT      0x3f8
+#   define SERIAL_CLOCK     1843200
+#endif
 
 /** Serial protocol GUID. */
 static efi_guid_t serial_io_guid = EFI_SERIAL_IO_PROTOCOL_GUID;
@@ -130,8 +140,22 @@ static void efi_serial_init(void) {
 
     /* Look for a serial console. */
     ret = efi_locate_handle(EFI_BY_PROTOCOL, &serial_io_guid, NULL, &handles, &num_handles);
-    if (ret != EFI_SUCCESS)
+    if (ret != EFI_SUCCESS) {
+        #ifdef CONFIG_ARCH_X86
+            uint8_t status;
+
+            /* Some EFI implementations don't bother exposing the serial port
+             * as an EFI device (my Gigabyte board, for example). If we can't
+             * find an EFI handle for it try using it directly. */
+            status = in8(SERIAL_PORT + 6);
+            if ((status & ((1<<4) | (1<<5))) && status != 0xff) {
+                ns16550_init(SERIAL_PORT);
+                ns16550_config(SERIAL_CLOCK, SERIAL_BAUD_RATE);
+            }
+        #endif
+
         return;
+    }
 
     /* Just use the first handle. */
     ret = efi_open_protocol(handles[0], &serial_io_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL, (void **)&serial_io);
