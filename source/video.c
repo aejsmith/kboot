@@ -54,10 +54,10 @@ static void set_current_mode(video_mode_t *mode) {
     current_video_mode = mode;
 
     if (!main_console.out || was_console) {
-        main_console.out = mode->ops->console;
-
         if (mode->ops->console && mode->ops->console->init)
             mode->ops->console->init(mode);
+
+        main_console.out = mode->ops->console;
     }
 }
 
