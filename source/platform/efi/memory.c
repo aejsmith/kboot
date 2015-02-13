@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2014-2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -174,8 +174,7 @@ static int reverse_sort_compare(const void *a, const void *b) {
  * @param type          Type to give the allocated range.
  * @param flags         Behaviour flags.
  * @param _phys         Where to store physical address of allocation.
- * @return              Pointer to virtual mapping of the allocation on success,
- *                      NULL on failure. */
+ * @return              Virtual address of the allocation on success, NULL on failure. */
 void *memory_alloc(
     phys_size_t size, phys_size_t align, phys_ptr_t min_addr, phys_ptr_t max_addr,
     uint8_t type, unsigned flags, phys_ptr_t *_phys)
@@ -193,8 +192,8 @@ void *memory_alloc(
      * with low memory. */
     if (min_addr < 0x100000)
         min_addr = 0x100000;
-    if (!max_addr || max_addr > LOADER_PHYS_MAX)
-        max_addr = LOADER_PHYS_MAX;
+    if (!max_addr || max_addr > TARGET_PHYS_MAX)
+        max_addr = TARGET_PHYS_MAX;
 
     assert(!(size % PAGE_SIZE));
     assert((max_addr - min_addr) >= (size - 1));
@@ -223,7 +222,7 @@ void *memory_alloc(
             EFI_ALLOCATE_ADDRESS, type | EFI_OS_MEMORY_TYPE,
             size / EFI_PAGE_SIZE, &start);
         if (ret != STATUS_SUCCESS) {
-            dprintf("efi: failed to allocate memory: 0x%zx\n", ret);
+            dprintf("efi: failed to allocate memory with status 0x%zx\n", ret);
             return NULL;
         }
 
@@ -231,12 +230,30 @@ void *memory_alloc(
             start, start + size, align, type, flags);
 
         free(memory_map);
-        *_phys = start;
+
+        if (_phys)
+            *_phys = start;
+
         return (void *)phys_to_virt(start);
     }
 
     free(memory_map);
     return NULL;
+}
+
+/** Free a range of physical memory.
+ * @param addr          Virtual address of allocation.
+ * @param size          Size of range to free. */
+void memory_free(void *addr, phys_size_t size) {
+    phys_ptr_t phys = virt_to_phys((ptr_t)addr);
+    efi_status_t ret;
+
+    assert(!(phys % PAGE_SIZE));
+    assert(!(size % PAGE_SIZE));
+
+    ret = efi_call(efi_system_table->boot_services->free_pages, phys, size / EFI_PAGE_SIZE);
+    if (ret != STATUS_SUCCESS)
+        internal_error("Failed to free EFI memory (0x%zx)", ret);
 }
 
 /**

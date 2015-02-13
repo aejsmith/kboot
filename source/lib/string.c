@@ -30,7 +30,7 @@
 #include <loader.h>
 #include <memory.h>
 
-#ifndef ARCH_HAS_MEMCPY
+#ifndef TARGET_HAS_MEMCPY
 
 /**
  * Copy data in memory.
@@ -54,9 +54,9 @@ void *memcpy(void *__restrict dest, const void *__restrict src, size_t count) {
     return dest;
 }
 
-#endif /* ARCH_HAS_MEMCPY */
+#endif /* TARGET_HAS_MEMCPY */
 
-#ifndef ARCH_HAS_MEMSET
+#ifndef TARGET_HAS_MEMSET
 
 /** Fill a memory area.
  * @param dest          The memory area to fill.
@@ -72,7 +72,7 @@ void *memset(void *dest, int val, size_t count) {
     return dest;
 }
 
-#endif /* ARCH_HAS_MEMSET */
+#endif /* TARGET_HAS_MEMSET */
 
 /**
  * Copy overlapping data in memory.

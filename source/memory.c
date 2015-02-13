@@ -41,12 +41,12 @@ typedef struct heap_chunk {
 static uint8_t heap[HEAP_SIZE] __aligned(PAGE_SIZE);
 static LIST_DECLARE(heap_chunks);
 
-#ifndef PLATFORM_HAS_MM
+#ifndef TARGET_HAS_MM
 
 /** List of physical memory ranges. */
 static LIST_DECLARE(memory_ranges);
 
-#endif /* PLATFORM_HAS_MM */
+#endif /* TARGET_HAS_MM */
 
 /**
  * Allocate memory from the heap.
@@ -200,7 +200,7 @@ void memory_dump(list_t *memory_map) {
     }
 }
 
-#ifndef PLATFORM_HAS_MM
+#ifndef TARGET_HAS_MM
 
 /** Merge adjacent ranges.
  * @param range         Range to merge. */
@@ -387,8 +387,8 @@ void *memory_alloc(
      * allocating 0 as we use 0 to indicate error. */
     if (min_addr < PAGE_SIZE)
         min_addr = PAGE_SIZE;
-    if (!max_addr || max_addr > LOADER_PHYS_MAX)
-        max_addr = LOADER_PHYS_MAX;
+    if (!max_addr || max_addr > TARGET_PHYS_MAX)
+        max_addr = TARGET_PHYS_MAX;
 
     assert(!(size % PAGE_SIZE));
     assert((max_addr - min_addr) >= (size - 1));
@@ -422,8 +422,22 @@ void *memory_alloc(
     dprintf("memory: allocated 0x%" PRIxPHYS "-0x%" PRIxPHYS " (align: 0x%" PRIxPHYS ", type: %u, flags: 0x%x)\n",
         start, start + size, align, type, flags);
 
-    *_phys = start;
+    if (_phys)
+        *_phys = start;
+
     return (void *)phys_to_virt(start);
+}
+
+/** Free a range of physical memory.
+ * @param addr          Virtual address of allocation.
+ * @param size          Size of range to free. */
+void memory_free(void *addr, phys_size_t size) {
+    phys_ptr_t phys = virt_to_phys((ptr_t)addr);
+
+    assert(!(phys % PAGE_SIZE));
+    assert(!(size % PAGE_SIZE));
+
+    memory_range_insert(phys, size, MEMORY_TYPE_FREE);
 }
 
 /** Add a range of physical memory.
@@ -510,4 +524,4 @@ void memory_finalize(list_t *memory_map) {
     *memory_map = memory_ranges;
 }
 
-#endif /* PLATFORM_HAS_MM */
+#endif /* TARGET_HAS_MM */

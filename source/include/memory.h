@@ -67,10 +67,11 @@ static inline void freep(void *p) {
 extern void *memory_alloc(
     phys_size_t size, phys_size_t align, phys_ptr_t min_addr, phys_ptr_t max_addr,
     uint8_t type, unsigned flags, phys_ptr_t *_phys);
+extern void memory_free(void *addr, phys_size_t size);
 extern void memory_finalize(list_t *memory_map);
 extern void memory_dump(list_t *memory_map);
 
-#ifndef PLATFORM_HAS_MM
+#ifndef TARGET_HAS_MM
 
 extern void target_memory_probe(void);
 
@@ -82,6 +83,6 @@ extern void memory_init(void);
 
 static inline void memory_init(void) {}
 
-#endif /* !PLATFORM_HAS_MM */
+#endif /* !TARGET_HAS_MM */
 
 #endif /* __MEMORY_H */

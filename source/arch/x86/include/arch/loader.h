@@ -25,8 +25,8 @@
 #include <types.h>
 
 /** Properties of the architecture (functions we provide etc.). */
-#define ARCH_HAS_MEMCPY     1
-#define ARCH_HAS_MEMSET     2
+#define TARGET_HAS_MEMCPY   1
+#define TARGET_HAS_MEMSET   2
 
 /** Halt the current CPU. */
 static inline __noreturn void system_halt(void) {
