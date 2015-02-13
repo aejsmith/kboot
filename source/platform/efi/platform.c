@@ -54,6 +54,7 @@ efi_status_t efi_init(efi_handle_t image_handle, efi_system_table_t *system_tabl
 
     efi_console_init();
     efi_memory_init();
+    efi_video_init();
 
     /* Get the loaded image protocol. */
     ret = efi_open_protocol(

@@ -25,6 +25,7 @@ sources = FeatureSources(config, [
     'efi.c',
     'memory.c',
     'platform.c',
+    'video.c',
 ])
 
 # Add architecture-specific headers.

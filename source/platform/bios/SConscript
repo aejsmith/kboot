@@ -24,6 +24,7 @@ sources = FeatureSources(config, [
     'memory.c',
     'platform.c',
     'start.S',
+    'video.c',
 ])
 
 # Set the linker script path.
