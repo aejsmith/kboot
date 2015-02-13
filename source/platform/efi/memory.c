@@ -47,6 +47,25 @@
 #define EFI_PAGE_SIZE       0x1000
 
 /**
+ * Structure describing an allocated memory range.
+ *
+ * There is a widespread bug which prevents the use of user-defined memory type
+ * values, which causes the firmware to crash if a value outside of the pre-
+ * defined value range is used. To avoid this we keep track of range types
+ * ourself rather than storing it as a user-defined memory type.
+ */
+typedef struct efi_memory_range {
+    list_t header;                      /**< Link to memory range list. */
+
+    phys_ptr_t start;                   /**< Start address of range. */
+    phys_size_t size;                   /**< Size of range. */
+    uint8_t type;                       /**< Type of the range. */
+} efi_memory_range_t;
+
+/** List of allocated memory ranges. */
+static LIST_DECLARE(efi_memory_ranges);
+
+/**
  * Get the current memory map.
  *
  * Gets a copy of the current memory map. This function is a wrapper for the
@@ -180,8 +199,7 @@ void *memory_alloc(
     uint8_t type, unsigned flags, phys_ptr_t *_phys)
 {
     efi_memory_descriptor_t *memory_map;
-    efi_uintn_t num_entries, map_key, i;
-    efi_physical_address_t start;
+    efi_uintn_t num_entries, map_key;
     efi_status_t ret;
 
     if (!align)
@@ -211,25 +229,33 @@ void *memory_alloc(
         (flags & MEMORY_ALLOC_HIGH) ? reverse_sort_compare : forward_sort_compare);
 
     /* Find a free range that is large enough to hold the new range. */
-    for (i = 0; i < num_entries; i++) {
+    for (efi_uintn_t i = 0; i < num_entries; i++) {
+        efi_physical_address_t start;
+        efi_memory_range_t *range;
+
         if (!is_suitable_range(&memory_map[i], size, align, min_addr, max_addr, flags, &start))
             continue;
 
-        /* Ask the firmware to allocate this exact address. The memory type is
-         * stored by using the range reserved for OS vendor-defined memory
-         * types. */
+        /* Ask the firmware to allocate this exact address. */
         ret = efi_call(efi_system_table->boot_services->allocate_pages,
-            EFI_ALLOCATE_ADDRESS, type | EFI_OS_MEMORY_TYPE,
-            size / EFI_PAGE_SIZE, &start);
+            EFI_ALLOCATE_ADDRESS, EFI_LOADER_DATA, size / EFI_PAGE_SIZE,
+            &start);
         if (ret != STATUS_SUCCESS) {
             dprintf("efi: failed to allocate memory with status 0x%zx\n", ret);
             return NULL;
         }
 
-        dprintf("memory: allocated 0x%" PRIxPHYS "-0x%" PRIxPHYS " (align: 0x%" PRIxPHYS ", type: %u, flags: 0x%x)\n",
-            start, start + size, align, type, flags);
+        /* Add a structure to track the allocation type (see comment at top). */
+        range = malloc(sizeof(*range));
+        range->start = start;
+        range->size = size;
+        range->type = type;
+        list_init(&range->header);
+        list_append(&efi_memory_ranges, &range->header);
 
-        free(memory_map);
+        dprintf(
+            "memory: allocated 0x%" PRIxPHYS "-0x%" PRIxPHYS " (align: 0x%" PRIxPHYS ", type: %u, flags: 0x%x)\n",
+            start, start + size, align, type, flags);
 
         if (_phys)
             *_phys = start;
@@ -246,14 +272,30 @@ void *memory_alloc(
  * @param size          Size of range to free. */
 void memory_free(void *addr, phys_size_t size) {
     phys_ptr_t phys = virt_to_phys((ptr_t)addr);
-    efi_status_t ret;
 
     assert(!(phys % PAGE_SIZE));
     assert(!(size % PAGE_SIZE));
 
-    ret = efi_call(efi_system_table->boot_services->free_pages, phys, size / EFI_PAGE_SIZE);
-    if (ret != STATUS_SUCCESS)
-        internal_error("Failed to free EFI memory (0x%zx)", ret);
+    list_foreach(&efi_memory_ranges, iter) {
+        efi_memory_range_t *range = list_entry(iter, efi_memory_range_t, header);
+
+        if (range->start == phys) {
+            efi_status_t ret;
+
+            if (range->size != size) {
+                internal_error("Bad memory_free size 0x%" PRIxPHYS " (expected 0x%" PRIxPHYS ")",
+                    size, range->size);
+            }
+
+            ret = efi_call(efi_system_table->boot_services->free_pages, phys, size / EFI_PAGE_SIZE);
+            if (ret != STATUS_SUCCESS)
+                internal_error("Failed to free EFI memory (0x%zx)", ret);
+
+            return;
+        }
+    }
+
+    internal_error("Bad memory_free address 0x%" PRIxPHYS, phys);
 }
 
 /**
