@@ -419,7 +419,8 @@ void *memory_alloc(
     /* Insert a new range over the top of the allocation. */
     memory_range_insert(start, size, type);
 
-    dprintf("memory: allocated 0x%" PRIxPHYS "-0x%" PRIxPHYS " (align: 0x%" PRIxPHYS ", type: %u, flags: 0x%x)\n",
+    dprintf(
+        "memory: allocated 0x%" PRIxPHYS "-0x%" PRIxPHYS " (align: 0x%" PRIxPHYS ", type: %u, flags: 0x%x)\n",
         start, start + size, align, type, flags);
 
     if (_phys)
@@ -437,7 +438,18 @@ void memory_free(void *addr, phys_size_t size) {
     assert(!(phys % PAGE_SIZE));
     assert(!(size % PAGE_SIZE));
 
-    memory_range_insert(phys, size, MEMORY_TYPE_FREE);
+    list_foreach(&memory_ranges, iter) {
+        memory_range_t *range = list_entry(iter, memory_range_t, header);
+
+        if (range->type != MEMORY_TYPE_FREE) {
+            if (phys >= range->start && (phys + size - 1) <= (range->start + range->size - 1)) {
+                memory_range_insert(phys, size, MEMORY_TYPE_FREE);
+                return;
+            }
+        }
+    }
+
+    internal_error("Bad memory_free address 0x%" PRIxPHYS, phys);
 }
 
 /** Add a range of physical memory.
