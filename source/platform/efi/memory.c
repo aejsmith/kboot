@@ -291,6 +291,8 @@ void memory_free(void *addr, phys_size_t size) {
             if (ret != STATUS_SUCCESS)
                 internal_error("Failed to free EFI memory (0x%zx)", ret);
 
+            list_remove(&range->header);
+            free(range);
             return;
         }
     }
