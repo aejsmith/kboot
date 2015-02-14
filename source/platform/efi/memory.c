@@ -29,8 +29,7 @@
  * memory_alloc() (no alignment or minimum address constraints). Therefore,
  * we implement memory_alloc() by getting the current memory map each time it
  * is called and scanning it for a suitable range, and then allocating an exact
- * range with AllocatePages. EFI allows OS-defined memory type values, we use
- * this to store our memory type.
+ * range with AllocatePages.
  */
 
 #include <lib/list.h>
