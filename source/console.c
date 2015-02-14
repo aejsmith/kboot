@@ -42,8 +42,7 @@ console_t debug_console;
 void console_vprintf_helper(char ch, void *data, int *total) {
     console_t *console = data;
 
-    if (console->out)
-        console->out->putc(ch);
+    console_putc(console, ch);
 
     if (console == &debug_console) {
         /* Store in the log buffer. */

@@ -24,45 +24,51 @@
 #include <drivers/video/vga.h>
 
 #include <lib/string.h>
+#include <lib/utility.h>
 
 #include <assert.h>
 #include <console.h>
 #include <loader.h>
+#include <memory.h>
 #include <video.h>
+
+/** VGA console state. */
+typedef struct vga_console {
+    video_mode_t *mode;                 /**< Video mode in use. */
+    uint16_t *mapping;                  /**< Mapping of the VGA console. */
+    bool cursor_visible;                /**< Whether the cursor is currently visible. */
+} vga_console_t;
 
 /** Default attributes to use. */
 #define VGA_ATTRIB      0x0700
 
-/** VGA console state. */
-static video_mode_t *vga_mode;
-static uint16_t *vga_mapping;
-static bool vga_cursor_visible;
-
 /** Write a cell in VGA memory (character + attributes).
+ * @param vga           VGA console.
  * @param x             X position.
  * @param y             Y position.
- * @param ch            Character to write.
- * @param attrib        Attributes to set. */
-static inline void write_cell(uint16_t x, uint16_t y, uint16_t val) {
-    write16(&vga_mapping[(y * vga_mode->width) + x], val);
+ * @param val           Cell value. */
+static inline void write_cell(vga_console_t *vga, uint16_t x, uint16_t y, uint16_t val) {
+    write16(&vga->mapping[(y * vga->mode->width) + x], val);
 }
 
 /** Write a character at a position, preserving attributes.
+ * @param vga           VGA console.
  * @param x             X position.
  * @param y             Y position.
  * @param ch            Character to write. */
-static inline void write_char(uint16_t x, uint16_t y, char ch) {
+static inline void write_char(vga_console_t *vga, uint16_t x, uint16_t y, char ch) {
     uint16_t attrib;
 
-    attrib = read16(&vga_mapping[(y * vga_mode->width) + x]) & 0xff00;
-    write_cell(x, y, attrib | ch);
+    attrib = read16(&vga->mapping[(y * vga->mode->width) + x]) & 0xff00;
+    write_cell(vga, x, y, attrib | ch);
 }
 
-/** Update the hardware cursor. */
-static void update_hw_cursor(void) {
-    uint16_t x = (vga_cursor_visible) ? vga_mode->x : 0;
-    uint16_t y = (vga_cursor_visible) ? vga_mode->y : (vga_mode->height + 1);
-    uint16_t pos = (y * vga_mode->width) + x;
+/** Update the hardware cursor.
+ * @param vga           VGA console. */
+static void update_hw_cursor(vga_console_t *vga) {
+    uint16_t x = (vga->cursor_visible) ? vga->mode->x : 0;
+    uint16_t y = (vga->cursor_visible) ? vga->mode->y : (vga->mode->height + 1);
+    uint16_t pos = (y * vga->mode->width) + x;
 
     out8(VGA_CRTC_INDEX, 14);
     out8(VGA_CRTC_DATA, pos >> 8);
@@ -71,87 +77,106 @@ static void update_hw_cursor(void) {
 }
 
 /** Write a character to the console.
+ * @param _vga          Pointer to VGA console.
  * @param ch            Character to write. */
-static void vga_console_putc(char ch) {
+static void vga_console_putc(void *_vga, char ch) {
+    vga_console_t *vga = _vga;
     uint16_t i;
 
     switch (ch) {
     case '\b':
         /* Backspace, move back one character if we can. */
-        if (vga_mode->x) {
-            vga_mode->x--;
-        } else if (vga_mode->y) {
-            vga_mode->x = vga_mode->width - 1;
-            vga_mode->y--;
+        if (vga->mode->x) {
+            vga->mode->x--;
+        } else if (vga->mode->y) {
+            vga->mode->x = vga->mode->width - 1;
+            vga->mode->y--;
         }
 
         break;
     case '\r':
         /* Carriage return, move to the start of the line. */
-        vga_mode->x = 0;
+        vga->mode->x = 0;
         break;
     case '\n':
         /* Newline, treat it as if a carriage return was also there. */
-        vga_mode->x = 0;
-        vga_mode->y++;
+        vga->mode->x = 0;
+        vga->mode->y++;
         break;
     case '\t':
-        vga_mode->x += 8 - (vga_mode->x % 8);
+        vga->mode->x += 8 - (vga->mode->x % 8);
         break;
     default:
         /* If it is a non-printing character, ignore it. */
         if (ch < ' ')
             break;
 
-        write_char(vga_mode->x, vga_mode->y, ch);
-        vga_mode->x++;
+        write_char(vga, vga->mode->x, vga->mode->y, ch);
+        vga->mode->x++;
         break;
     }
 
     /* If we have reached the edge of the screen insert a new line. */
-    if (vga_mode->x >= vga_mode->width) {
-        vga_mode->x = 0;
-        vga_mode->y++;
+    if (vga->mode->x >= vga->mode->width) {
+        vga->mode->x = 0;
+        vga->mode->y++;
     }
 
     /* Scroll if we've reached the end of the draw region. */
-    if (vga_mode->y >= vga_mode->height) {
+    if (vga->mode->y >= vga->mode->height) {
         /* Shift up the content of the VGA memory. */
-        memmove(vga_mapping, vga_mapping + vga_mode->width, (vga_mode->height - 1) * vga_mode->width * 2);
+        memmove(vga->mapping, vga->mapping + vga->mode->width, (vga->mode->height - 1) * vga->mode->width * 2);
 
         /* Fill the last line with blanks. */
-        for (i = 0; i < vga_mode->width; i++)
-            write_cell(i, vga_mode->height - 1, ' ' | VGA_ATTRIB);
+        for (i = 0; i < vga->mode->width; i++)
+            write_cell(vga, i, vga->mode->height - 1, ' ' | VGA_ATTRIB);
 
-        vga_mode->y = vga_mode->height - 1;
+        vga->mode->y = vga->mode->height - 1;
     }
 
-    update_hw_cursor();
+    update_hw_cursor(vga);
 }
 
-/** Reset the console to a default state. */
-static void vga_console_reset(void) {
+/** Reset the console to a default state.
+ * @param _vga          Pointer to VGA console. */
+static void vga_console_reset(void *_vga) {
+    vga_console_t *vga = _vga;
     uint16_t i, j;
 
-    vga_mode->x = vga_mode->y = 0;
-    vga_cursor_visible = true;
+    vga->mode->x = vga->mode->y = 0;
+    vga->cursor_visible = true;
 
-    update_hw_cursor();
+    update_hw_cursor(vga);
 
-    for (i = 0; i < vga_mode->height; i++) {
-        for (j = 0; j < vga_mode->width; j++)
-            write_cell(j, i, ' ' | VGA_ATTRIB);
+    for (i = 0; i < vga->mode->height; i++) {
+        for (j = 0; j < vga->mode->width; j++)
+            write_cell(vga, j, i, ' ' | VGA_ATTRIB);
     }
+
+    update_hw_cursor(vga);
 }
 
 /** Initialize the VGA console.
- * @param mode          Video mode being used. */
-static void vga_console_init(video_mode_t *mode) {
+ * @param mode          Video mode being used.
+ * @return              Private data for the console. */
+static void *vga_console_init(video_mode_t *mode) {
+    vga_console_t *vga;
+
     assert(mode->type == VIDEO_MODE_VGA);
 
-    vga_mode = mode;
-    vga_mapping = (uint16_t *)mode->mem_virt;
-    vga_console_reset();
+    vga = malloc(sizeof(*vga));
+    vga->mode = mode;
+    vga->mapping = (uint16_t *)mode->mem_virt;
+
+    vga_console_reset(vga);
+
+    return vga;
+}
+
+/** Deinitialize the console.
+ * @param vga           Pointer to VGA console. */
+static void vga_console_deinit(void *vga) {
+    free(vga);
 }
 
 /** VGA main console output operations. */
@@ -159,4 +184,5 @@ console_out_ops_t vga_console_out_ops = {
     .putc = vga_console_putc,
     .reset = vga_console_reset,
     .init = vga_console_init,
+    .deinit = vga_console_deinit,
 };

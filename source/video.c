@@ -49,13 +49,13 @@ static void set_current_mode(video_mode_t *mode) {
     bool was_console = prev && prev->ops->console && main_console.out == prev->ops->console;
 
     if (was_console && prev->ops->console->deinit)
-        prev->ops->console->deinit();
+        prev->ops->console->deinit(main_console.out_private);
 
     current_video_mode = mode;
 
     if (!main_console.out || was_console) {
         if (mode->ops->console && mode->ops->console->init)
-            mode->ops->console->init(mode);
+            main_console.out_private = mode->ops->console->init(mode);
 
         main_console.out = mode->ops->console;
     }

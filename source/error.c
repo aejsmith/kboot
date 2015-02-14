@@ -30,10 +30,8 @@
  * @param data          Ignored.
  * @param total         Pointer to total character count. */
 static void error_printf_helper(char ch, void *data, int *total) {
-    if (debug_console.out)
-        debug_console.out->putc(ch);
-    if (main_console.out)
-        main_console.out->putc(ch);
+    console_putc(&debug_console, ch);
+    console_putc(&main_console, ch);
 
     *total = *total + 1;
 }
@@ -57,7 +55,7 @@ void __noreturn internal_error(const char *fmt, ...) {
     va_list args;
 
     if (main_console.out)
-        main_console.out->reset();
+        main_console.out->reset(main_console.out_private);
 
     error_printf("\nAn internal error has occurred:\n\n");
 
@@ -87,7 +85,7 @@ void __noreturn boot_error(const char *fmt, ...) {
      * reboot the machine. */
 
     if (main_console.out)
-        main_console.out->reset();
+        main_console.out->reset(main_console.out_private);
 
     error_printf("\nAn error has occurred during boot:\n\n");
 

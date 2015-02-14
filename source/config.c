@@ -159,7 +159,7 @@ void config_error(const char *fmt, ...) {
 
     if (shell_running) {
         console_vprintf(config_console, fmt, args);
-        config_console->out->putc('\n');
+        console_putc(config_console, '\n');
     } else {
         vsnprintf(temp_buf, TEMP_BUF_LEN, fmt, args);
         boot_error("Error in configuration file %s:\n%s", current_path, temp_buf);

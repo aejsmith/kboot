@@ -42,7 +42,7 @@ bool shell_running;
  * @param ch        Character to insert. */
 static void insert_char(char ch) {
     if (line_length < LINE_BUF_LEN - 1) {
-        config_console->out->putc(ch);
+        console_putc(config_console, ch);
 
         if (line_write_pos == line_length) {
             line_buf[line_length++] = ch;
@@ -57,9 +57,9 @@ static void insert_char(char ch) {
             /* Reprint the character plus everything after, maintaining the
              * current cursor position. */
             for (i = 0; i < line_length - line_write_pos; i++)
-                config_console->out->putc(line_buf[line_write_pos + i]);
+                console_putc(config_console, line_buf[line_write_pos + i]);
             while (i--)
-                config_console->out->putc('\b');
+                console_putc(config_console, '\b');
         }
     }
 }
@@ -79,7 +79,7 @@ static void erase_char(bool forward) {
         } else {
             /* Decrement position and fall through. */
             line_write_pos--;
-            config_console->out->putc('\b');
+            console_putc(config_console, '\b');
         }
     }
 
@@ -88,11 +88,11 @@ static void erase_char(bool forward) {
 
     /* Reprint everything, maintaining cursor position. */
     for (i = 0; i < line_length - line_write_pos; i++)
-        config_console->out->putc(line_buf[line_write_pos + i]);
-    config_console->out->putc(' ');
+        console_putc(config_console, line_buf[line_write_pos + i]);
+    console_putc(config_console, ' ');
     i++;
     while (i--)
-        config_console->out->putc('\b');
+        console_putc(config_console, '\b');
 }
 
 /** Input helper for the shell.
@@ -116,7 +116,7 @@ static int shell_input_helper(unsigned nest) {
 
     /* Accumulate another line. */
     while (true) {
-        uint16_t ch = main_console.in->getc();
+        uint16_t ch = main_console.in->getc(main_console.in_private);
 
         switch (ch) {
         case '\b':
@@ -127,28 +127,28 @@ static int shell_input_helper(unsigned nest) {
             break;
         case CONSOLE_KEY_LEFT:
             if (line_write_pos) {
-                config_console->out->putc('\b');
+                console_putc(config_console, '\b');
                 line_write_pos--;
             }
 
             break;
         case CONSOLE_KEY_RIGHT:
             if (line_write_pos != line_length) {
-                config_console->out->putc(line_buf[line_write_pos]);
+                console_putc(config_console, line_buf[line_write_pos]);
                 line_write_pos++;
             }
 
             break;
         case CONSOLE_KEY_HOME:
             while (line_write_pos) {
-                config_console->out->putc('\b');
+                console_putc(config_console, '\b');
                 line_write_pos--;
             }
 
             break;
         case CONSOLE_KEY_END:
             while (line_write_pos < line_length) {
-                config_console->out->putc(line_buf[line_write_pos]);
+                console_putc(config_console, line_buf[line_write_pos]);
                 line_write_pos++;
             }
 
@@ -157,7 +157,7 @@ static int shell_input_helper(unsigned nest) {
             /* Parser requires the newline at the end of the buffer to work
              * properly, so add it on. Buffer is guaranteed to have space for
              * the newline by insert_char(). */
-            config_console->out->putc('\n');
+            console_putc(config_console, '\n');
             line_buf[line_length++] = '\n';
 
             /* Start returning the line. */
@@ -175,9 +175,9 @@ static int shell_input_helper(unsigned nest) {
 void shell_main(void) {
     shell_running = true;
 
-    if (main_console.out) {
+    if (main_console.out && main_console.in) {
         config_console = &main_console;
-    } else if (debug_console.out) {
+    } else if (debug_console.out && debug_console.in) {
         config_console = &debug_console;
     } else {
         return;

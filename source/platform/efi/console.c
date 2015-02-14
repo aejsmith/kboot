@@ -41,25 +41,26 @@
 #   define SERIAL_CLOCK     1843200
 #endif
 
+/** EFI input console state. */
+typedef struct efi_console {
+    efi_simple_text_input_protocol_t *in;   /**< Text input protocol. */
+    efi_input_key_t saved_key;              /**< Key saved in efi_console_poll(). */
+} efi_console_t;
+
 /** Serial protocol GUID. */
 static efi_guid_t serial_io_guid = EFI_SERIAL_IO_PROTOCOL_GUID;
 
-/** Console protocols. */
-static efi_simple_text_input_protocol_t *console_in;
-static efi_serial_io_protocol_t *serial_io;
-
-/** Saved key press. */
-static efi_input_key_t saved_key;
-
 /** Write a character to the serial console.
+ * @param _serial       Pointer to serial I/O protocol.
  * @param ch            Character to write. */
-static void efi_serial_putc(char ch) {
+static void efi_serial_putc(void *_serial, char ch) {
+    efi_serial_io_protocol_t *serial = _serial;
     efi_uintn_t size = 1;
 
     if (ch == '\n')
-        efi_serial_putc('\r');
+        efi_serial_putc(serial, '\r');
 
-    efi_call(serial_io->write, serial_io, &size, &ch);
+    efi_call(serial->write, serial, &size, &ch);
 }
 
 /** EFI serial console output operations. */
@@ -68,20 +69,22 @@ static console_out_ops_t efi_serial_out_ops = {
 };
 
 /** Check for a character from the console.
+ * @param _console      Pointer to EFI console.
  * @return          Whether a character is available. */
-static bool efi_console_poll(void) {
+static bool efi_console_poll(void *_console) {
+    efi_console_t *console = _console;
     efi_input_key_t key;
     efi_status_t ret;
 
-    if (saved_key.scan_code || saved_key.unicode_char)
+    if (console->saved_key.scan_code || console->saved_key.unicode_char)
         return true;
 
-    ret = efi_call(console_in->read_key_stroke, console_in, &key);
+    ret = efi_call(console->in->read_key_stroke, console->in, &key);
     if (ret != EFI_SUCCESS)
         return false;
 
     /* Save the key press to be returned by getc(). */
-    saved_key = key;
+    console->saved_key = key;
     return true;
 }
 
@@ -96,17 +99,19 @@ static uint16_t efi_scan_codes[] = {
 };
 
 /** Read a character from the console.
+ * @param _console      Pointer to EFI console.
  * @return              Character read. */
-static uint16_t efi_console_getc(void) {
+static uint16_t efi_console_getc(void *_console) {
+    efi_console_t *console = _console;
     efi_input_key_t key;
     efi_status_t ret;
 
     while (true) {
-        if (saved_key.scan_code || saved_key.unicode_char) {
-            key = saved_key;
-            saved_key.scan_code = saved_key.unicode_char = 0;
+        if (console->saved_key.scan_code || console->saved_key.unicode_char) {
+            key = console->saved_key;
+            console->saved_key.scan_code = console->saved_key.unicode_char = 0;
         } else {
-            ret = efi_call(console_in->read_key_stroke, console_in, &key);
+            ret = efi_call(console->in->read_key_stroke, console->in, &key);
             if (ret != EFI_SUCCESS)
                 continue;
         }
@@ -136,6 +141,7 @@ static console_in_ops_t efi_console_in_ops = {
 static void efi_serial_init(void) {
     efi_handle_t *handles;
     efi_uintn_t num_handles;
+    efi_serial_io_protocol_t *serial;
     efi_status_t ret;
 
     /* Look for a serial console. */
@@ -148,9 +154,9 @@ static void efi_serial_init(void) {
              * as an EFI device (my Gigabyte board, for example). If we can't
              * find an EFI handle for it try using it directly. */
             status = in8(SERIAL_PORT + 6);
-            if ((status & ((1<<4) | (1<<5))) && status != 0xff) {
+            if ((status & ((1 << 4) | (1 << 5))) && status != 0xff) {
                 ns16550_init(SERIAL_PORT);
-                ns16550_config(SERIAL_CLOCK, SERIAL_BAUD_RATE);
+                ns16550_config(SERIAL_PORT, SERIAL_CLOCK, SERIAL_BAUD_RATE);
             }
         #endif
 
@@ -158,31 +164,37 @@ static void efi_serial_init(void) {
     }
 
     /* Just use the first handle. */
-    ret = efi_open_protocol(handles[0], &serial_io_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL, (void **)&serial_io);
+    ret = efi_open_protocol(handles[0], &serial_io_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL, (void **)&serial);
     free(handles);
     if (ret != EFI_SUCCESS)
         return;
 
     /* Configure the port. */
-    ret = efi_call(serial_io->set_attributes,
-        serial_io, SERIAL_BAUD_RATE, 0, 0, SERIAL_PARITY, SERIAL_DATA_BITS,
+    ret = efi_call(serial->set_attributes,
+        serial, SERIAL_BAUD_RATE, 0, 0, SERIAL_PARITY, SERIAL_DATA_BITS,
         SERIAL_STOP_BITS);
     if (ret != EFI_SUCCESS)
         return;
 
-    ret = efi_call(serial_io->set_control, serial_io, EFI_SERIAL_DATA_TERMINAL_READY | EFI_SERIAL_REQUEST_TO_SEND);
+    ret = efi_call(serial->set_control, serial, EFI_SERIAL_DATA_TERMINAL_READY | EFI_SERIAL_REQUEST_TO_SEND);
     if (ret != EFI_SUCCESS)
         return;
 
     debug_console.out = &efi_serial_out_ops;
+    debug_console.out_private = serial;
 }
 
 /** Initialize the EFI console. */
 void efi_console_init(void) {
+    efi_console_t *console;
+
     /* Initialize a serial console as the debug console if available. */
     efi_serial_init();
 
     /* Set the main console input. */
-    console_in = efi_system_table->con_in;
+    console = malloc(sizeof(*console));
+    console->in = efi_system_table->con_in;
+    console->saved_key.scan_code = console->saved_key.unicode_char = 0;
     main_console.in = &efi_console_in_ops;
+    main_console.in_private = console;
 }
