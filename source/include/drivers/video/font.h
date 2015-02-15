@@ -16,17 +16,16 @@
 
 /**
  * @file
- * @brief               Framebuffer console implementation.
- *
- * Note: the framebuffer console must be initialized after memory detection is
- * done as it uses the physical memory manager to allocate a backbuffer.
+ * @brief               Console font.
  */
 
-#ifndef __DRIVERS_VIDEO_FB_H
-#define __DRIVERS_VIDEO_FB_H
+#ifndef __DRIVERS_VIDEO_FONT_H
+#define __DRIVERS_VIDEO_FONT_H
 
-#include <console.h>
+/** Dimensions of the console font. */
+#define CONSOLE_FONT_WIDTH      8
+#define CONSOLE_FONT_HEIGHT     16
 
-extern console_out_ops_t fb_console_out_ops;
+extern unsigned char console_font[];
 
-#endif /* __DRIVERS_VIDEO_FB_H */
+#endif /* __DRIVERS_VIDEO_FONT_H */
