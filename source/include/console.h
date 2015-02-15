@@ -26,6 +26,39 @@
 
 struct video_mode;
 
+/** Console draw region structure. */
+typedef struct draw_region {
+    uint16_t x;                         /**< X position. */
+    uint16_t y;                         /**< Y position. */
+    uint16_t width;                     /**< Width of region. */
+    uint16_t height;                    /**< Height of region. */
+    bool scrollable;                    /**< Whether to scroll when cursor reaches the end. */
+} draw_region_t;
+
+/** Console colour definitions (match VGA colours). */
+typedef enum colour {
+    COLOUR_BLACK,                       /**< Black. */
+    COLOUR_BLUE,                        /**< Dark Blue. */
+    COLOUR_GREEN,                       /**< Dark Green. */
+    COLOUR_CYAN,                        /**< Dark Cyan. */
+    COLOUR_RED,                         /**< Dark Red. */
+    COLOUR_MAGENTA,                     /**< Dark Magenta. */
+    COLOUR_BROWN,                       /**< Brown. */
+    COLOUR_LIGHT_GREY,                  /**< Light Grey. */
+    COLOUR_GREY,                        /**< Dark Grey. */
+    COLOUR_LIGHT_BLUE,                  /**< Light Blue. */
+    COLOUR_LIGHT_GREEN,                 /**< Light Green. */
+    COLOUR_LIGHT_CYAN,                  /**< Light Cyan. */
+    COLOUR_LIGHT_RED,                   /**< Light Red. */
+    COLOUR_LIGHT_MAGENTA,               /**< Light Magenta. */
+    COLOUR_YELLOW,                      /**< Yellow. */
+    COLOUR_WHITE,                       /**< White. */
+} colour_t;
+
+/** Default console colours. */
+#define CONSOLE_COLOUR_FG       COLOUR_LIGHT_GREY
+#define CONSOLE_COLOUR_BG       COLOUR_BLACK
+
 /** Console output operations structure. */
 typedef struct console_out_ops {
     /** Initialize the console.
@@ -40,6 +73,60 @@ typedef struct console_out_ops {
     /** Reset the console to a default state.
      * @param private       Private data for the console. */
     void (*reset)(void *private);
+
+    /**
+     * Set the draw region of the console.
+     *
+     * Sets the draw region of the console. All operations on the console (i.e.
+     * writing, scrolling) will be constrained to this region. The cursor will
+     * be moved to 0, 0 within this region.
+     *
+     * @param private       Private data for the console.
+     * @param region        New draw region, or NULL to restore to whole console.
+     */
+    void (*set_region)(void *private, const draw_region_t *region);
+
+    /** Get the current draw region.
+     * @param private       Private data for the console.
+     * @param region        Where to store details of the current draw region. */
+    void (*get_region)(void *private, draw_region_t *region);
+
+    /** Set the current colours.
+     * @param private       Private data for the console.
+     * @param fg            Foreground colour.
+     * @param bg            Background colour. */
+    void (*set_colour)(void *private, colour_t fg, colour_t bg);
+
+    /** Set whether the cursor is enabled.
+     * @param private       Private data for the console.
+     * @param enable        Whether the cursor is enabled. */
+    void (*enable_cursor)(void *private, bool enable);
+
+    /** Move the cursor.
+     * @param private       Private data for the console.
+     * @param x             New X position (relative to draw region). Negative
+     *                      values will move the cursor back from the right edge
+     *                      of the draw region.
+     * @param y             New Y position (relative to draw region). Negative
+     *                      values will move the cursor up from the bottom edge
+     *                      of the draw region. */
+    void (*move_cursor)(void *private, int16_t x, int16_t y);
+
+    /** Clear an area to the current background colour.
+     * @param private       Private data for the console.
+     * @param x             Start X position (relative to draw region).
+     * @param y             Start Y position (relative to draw region).
+     * @param width         Width of the area (if 0, whole width is cleared).
+     * @param height        Height of the area (if 0, whole height is cleared). */
+    void (*clear)(void *private, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+
+    /** Scroll the draw region up (move contents down).
+     * @param private       Private data for the console. */
+    void (*scroll_up)(void *private);
+
+    /** Scroll the draw region down (move contents up).
+     * @param private       Private data for the console. */
+    void (*scroll_down)(void *private);
 
     /** Write a character to the console.
      * @param private       Private data for the console.
