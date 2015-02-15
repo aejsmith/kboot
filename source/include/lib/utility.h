@@ -74,6 +74,18 @@
 #define max(a, b) \
     ((a) < (b) ? (b) : (a))
 
+/** Swap two values. */
+#define swap(a, b) \
+    { \
+        typeof(a) __tmp = a; \
+        a = b; \
+        b = __tmp; \
+    }
+
+/** Calculate the absolute value of the given value. */
+#define abs(val) \
+    ((val) < 0 ? -(val) : (val))
+
 /** Checksum a memory range.
  * @param start         Start of range to check.
  * @param size          Size of range to check.
