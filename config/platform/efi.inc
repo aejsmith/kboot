@@ -19,6 +19,7 @@ include = {
         'PLATFORM': 'efi',
         'PLATFORM_EFI': True,
         'TARGET_HAS_DISK': True,
+        'TARGET_HAS_UI': True,
         'TARGET_HAS_VIDEO': True,
         'DRIVER_VIDEO_FB': True,
     },
