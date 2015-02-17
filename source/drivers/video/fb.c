@@ -53,7 +53,7 @@ typedef struct fb_console {
     colour_t bg_colour;                 /**< Current background colour. */
     uint16_t cursor_x;                  /**< X position of the cursor. */
     uint16_t cursor_y;                  /**< Y position of the cursor. */
-    bool cursor_enabled;                /**< Whether the cursor is enabled. */
+    bool cursor_visible;                /**< Whether the cursor is enabled. */
 } fb_console_t;
 
 /** Framebuffer console colour table. */
@@ -220,7 +220,7 @@ static void draw_glyph(fb_console_t *fb, uint16_t x, uint16_t y) {
 /** Toggle the cursor if enabled.
  * @param fb            Framebuffer console. */
 static void toggle_cursor(fb_console_t *fb) {
-    if (fb->cursor_enabled) {
+    if (fb->cursor_visible) {
         size_t idx = (fb->cursor_y * fb->cols) + fb->cursor_x;
 
         if (fb->chars[idx].ch) {
@@ -285,26 +285,16 @@ static void fb_console_set_colour(void *_fb, colour_t fg, colour_t bg) {
     fb->bg_colour = bg;
 }
 
-/** Set whether the cursor is enabled.
- * @param _fb           Pointer to framebuffer console.
- * @param enable        Whether the cursor is enabled. */
-static void fb_console_enable_cursor(void *_fb, bool enable) {
-    fb_console_t *fb = _fb;
-
-    toggle_cursor(fb);
-    fb->cursor_enabled = enable;
-    toggle_cursor(fb);
-}
-
-/** Move the cursor.
+/** Set the cursor properties.
  * @param _fb           Pointer to framebuffer console.
  * @param x             New X position (relative to draw region). Negative
  *                      values will move the cursor back from the right edge of
  *                      the draw region.
  * @param y             New Y position (relative to draw region). Negative
  *                      values will move the cursor up from the bottom edge of
- *                      the draw region. */
-static void fb_console_move_cursor(void *_fb, int16_t x, int16_t y) {
+ *                      the draw region.
+ * @param visible       Whether the cursor should be visible. */
+static void fb_console_set_cursor(void *_fb, int16_t x, int16_t y, bool visible) {
     fb_console_t *fb = _fb;
 
     assert(abs(x) < fb->region.width);
@@ -313,7 +303,24 @@ static void fb_console_move_cursor(void *_fb, int16_t x, int16_t y) {
     toggle_cursor(fb);
     fb->cursor_x = (x < 0) ? fb->region.x + fb->region.width + x : fb->region.x + x;
     fb->cursor_y = (y < 0) ? fb->region.y + fb->region.height + y : fb->region.y + y;
+    fb->cursor_visible = visible;
     toggle_cursor(fb);
+}
+
+/** Get the cursor properties.
+ * @param _fb           Pointer to framebuffer console.
+ * @param _x            Where to store X position (relative to draw region).
+ * @param _y            Where to store Y position (relative to draw region).
+ * @param _visible      Where to store whether the cursor is visible */
+static void fb_console_get_cursor(void *_fb, uint16_t *_x, uint16_t *_y, bool *_visible) {
+    fb_console_t *fb = _fb;
+
+    if (_x)
+        *_x = fb->cursor_x - fb->region.x;
+    if (_y)
+        *_y = fb->cursor_y - fb->region.y;
+    if (_visible)
+        *_visible = fb->cursor_visible;
 }
 
 /** Clear an area to the current background colour.
@@ -343,7 +350,7 @@ static void fb_console_clear(void *_fb, uint16_t x, uint16_t y, uint16_t width, 
             fb->chars[idx].fg = fb->fg_colour;
             fb->chars[idx].bg = fb->bg_colour;
 
-            if (fb->cursor_enabled && abs_x == fb->cursor_x && abs_y == fb->cursor_y) {
+            if (fb->cursor_visible && abs_x == fb->cursor_x && abs_y == fb->cursor_y) {
                 /* Avoid redrawing the glyph twice. */
                 toggle_cursor(fb);
             } else {
@@ -492,7 +499,7 @@ static void fb_console_reset(void *_fb) {
     /* Reset state to defaults. */
     fb->fg_colour = CONSOLE_COLOUR_FG;
     fb->bg_colour = CONSOLE_COLOUR_BG;
-    fb->cursor_enabled = true;
+    fb->cursor_visible = true;
     fb_console_set_region(fb, NULL);
 
     /* Clear the console. */
@@ -552,8 +559,8 @@ console_out_ops_t fb_console_out_ops = {
     .set_region = fb_console_set_region,
     .get_region = fb_console_get_region,
     .set_colour = fb_console_set_colour,
-    .enable_cursor = fb_console_enable_cursor,
-    .move_cursor = fb_console_move_cursor,
+    .set_cursor = fb_console_set_cursor,
+    .get_cursor = fb_console_get_cursor,
     .clear = fb_console_clear,
     .scroll_up = fb_console_scroll_up,
     .scroll_down = fb_console_scroll_down,

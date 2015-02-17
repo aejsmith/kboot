@@ -40,7 +40,7 @@ typedef struct vga_console {
 
     draw_region_t region;               /**< Current draw region. */
     uint16_t attrib;                    /**< Current attributes. */
-    bool cursor_enabled;                /**< Whether the cursor is currently enabled. */
+    bool cursor_visible;                /**< Whether the cursor is currently enabled. */
 } vga_console_t;
 
 /** Default attributes to use. */
@@ -58,8 +58,8 @@ static inline void write_cell(vga_console_t *vga, uint16_t x, uint16_t y, uint16
 /** Update the hardware cursor.
  * @param vga           VGA console. */
 static void update_hw_cursor(vga_console_t *vga) {
-    uint16_t x = (vga->cursor_enabled) ? vga->mode->x : 0;
-    uint16_t y = (vga->cursor_enabled) ? vga->mode->y : (vga->mode->height + 1);
+    uint16_t x = (vga->cursor_visible) ? vga->mode->x : 0;
+    uint16_t y = (vga->cursor_visible) ? vga->mode->y : (vga->mode->height + 1);
     uint16_t pos = (y * vga->mode->width) + x;
 
     out8(VGA_CRTC_INDEX, 14);
@@ -113,25 +113,16 @@ static void vga_console_set_colour(void *_vga, colour_t fg, colour_t bg) {
     vga->attrib = (fg << 8) | (bg << 12);
 }
 
-/** Set whether the cursor is enabled.
- * @param _vga          Pointer to VGA console.
- * @param enable        Whether the cursor is enabled. */
-static void vga_console_enable_cursor(void *_vga, bool enable) {
-    vga_console_t *vga = _vga;
-
-    vga->cursor_enabled = enable;
-    update_hw_cursor(vga);
-}
-
-/** Move the cursor.
+/** Set the cursor properties.
  * @param _vga          Pointer to VGA console.
  * @param x             New X position (relative to draw region). Negative
  *                      values will move the cursor back from the right edge of
  *                      the draw region.
  * @param y             New Y position (relative to draw region). Negative
  *                      values will move the cursor up from the bottom edge of
- *                      the draw region. */
-static void vga_console_move_cursor(void *_vga, int16_t x, int16_t y) {
+ *                      the draw region.
+ * @param visible       Whether the cursor should be visible. */
+static void vga_console_set_cursor(void *_vga, int16_t x, int16_t y, bool visible) {
     vga_console_t *vga = _vga;
 
     assert(abs(x) < vga->region.width);
@@ -139,7 +130,24 @@ static void vga_console_move_cursor(void *_vga, int16_t x, int16_t y) {
 
     vga->mode->x = (x < 0) ? vga->region.x + vga->region.width + x : vga->region.x + x;
     vga->mode->y = (y < 0) ? vga->region.y + vga->region.height + y : vga->region.y + y;
+    vga->cursor_visible = visible;
     update_hw_cursor(vga);
+}
+
+/** Get the cursor properties.
+ * @param _vga          Pointer to VGA console.
+ * @param _x            Where to store X position (relative to draw region).
+ * @param _y            Where to store Y position (relative to draw region).
+ * @param _visible      Where to store whether the cursor is visible */
+static void vga_console_get_cursor(void *_vga, uint16_t *_x, uint16_t *_y, bool *_visible) {
+    vga_console_t *vga = _vga;
+
+    if (_x)
+        *_x = vga->mode->x - vga->region.x;
+    if (_y)
+        *_y = vga->mode->y - vga->region.y;
+    if (_visible)
+        *_visible = vga->cursor_visible;
 }
 
 /** Clear an area to the current background colour.
@@ -262,7 +270,7 @@ static void vga_console_putc(void *_vga, char ch) {
 static void vga_console_reset(void *_vga) {
     vga_console_t *vga = _vga;
 
-    vga->cursor_enabled = true;
+    vga->cursor_visible = true;
     vga->attrib = (CONSOLE_COLOUR_FG << 8) | (CONSOLE_COLOUR_BG << 12);
     vga_console_set_region(vga, NULL);
 
@@ -300,8 +308,8 @@ console_out_ops_t vga_console_out_ops = {
     .set_region = vga_console_set_region,
     .get_region = vga_console_get_region,
     .set_colour = vga_console_set_colour,
-    .enable_cursor = vga_console_enable_cursor,
-    .move_cursor = vga_console_move_cursor,
+    .set_cursor = vga_console_set_cursor,
+    .get_cursor = vga_console_get_cursor,
     .clear = vga_console_clear,
     .scroll_up = vga_console_scroll_up,
     .scroll_down = vga_console_scroll_down,

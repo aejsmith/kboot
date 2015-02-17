@@ -97,20 +97,23 @@ typedef struct console_out_ops {
      * @param bg            Background colour. */
     void (*set_colour)(void *private, colour_t fg, colour_t bg);
 
-    /** Set whether the cursor is enabled.
-     * @param private       Private data for the console.
-     * @param enable        Whether the cursor is enabled. */
-    void (*enable_cursor)(void *private, bool enable);
-
-    /** Move the cursor.
+    /** Set the cursor properties.
      * @param private       Private data for the console.
      * @param x             New X position (relative to draw region). Negative
      *                      values will move the cursor back from the right edge
      *                      of the draw region.
      * @param y             New Y position (relative to draw region). Negative
      *                      values will move the cursor up from the bottom edge
-     *                      of the draw region. */
-    void (*move_cursor)(void *private, int16_t x, int16_t y);
+     *                      of the draw region.
+     * @param visible       Whether the cursor should be visible. */
+    void (*set_cursor)(void *private, int16_t x, int16_t y, bool visible);
+
+    /** Get the cursor properties.
+     * @param private       Private data for the console.
+     * @param _x            Where to store X position (relative to draw region).
+     * @param _y            Where to store Y position (relative to draw region).
+     * @param _visible      Where to store whether the cursor is visible */
+    void (*get_cursor)(void *private, uint16_t *_x, uint16_t *_y, bool *_visible);
 
     /** Clear an area to the current background colour.
      * @param private       Private data for the console.
@@ -190,22 +193,116 @@ extern size_t debug_log_length;
 extern console_t main_console;
 extern console_t debug_console;
 
+extern void console_vprintf_helper(char ch, void *data, int *total);
+extern int console_vprintf(console_t *console, const char *fmt, va_list args);
+extern int console_printf(console_t *console, const char *fmt, ...) __printf(2, 3);
+
 /**
  * Write a character to a console.
  *
  * Writes a character to a console. If the console has no output operations
  * defined, this function will do nothing.
  *
- * @param console           Console to write to.
- * @param ch                Character to write.
+ * @param console       Console to write to.
+ * @param ch            Character to write.
  */
 static inline void console_putc(console_t *console, char ch) {
     if (console->out)
         console->out->putc(console->out_private, ch);
 }
 
-extern void console_vprintf_helper(char ch, void *data, int *total);
-extern int console_vprintf(console_t *console, const char *fmt, va_list args);
-extern int console_printf(console_t *console, const char *fmt, ...) __printf(2, 3);
+/** Reset the console to a default state.
+ * @param console       Console to operate on. */
+static inline void console_reset(console_t *console) {
+    if (console->out)
+        console->out->reset(console->out_private);
+}
+
+/**
+ * Set the draw region of the console.
+ *
+ * Sets the draw region of the console. All operations on the console (i.e.
+ * writing, scrolling) will be constrained to this region. The cursor will
+ * be moved to 0, 0 within this region.
+ *
+ * @param console       Console to operate on (must have out ops).
+ * @param region        New draw region, or NULL to restore to whole console.
+ */
+static inline void console_set_region(console_t *console, const draw_region_t *region) {
+    console->out->set_region(console->out_private, region);
+}
+
+/** Get the current draw region.
+ * @param console       Console to operate on (must have out ops).
+ * @param region        Where to store details of the current draw region. */
+static inline void console_get_region(console_t *console, draw_region_t *region) {
+    console->out->get_region(console->out_private, region);
+}
+
+/** Set the current colours.
+ * @param console       Console to operate on (must have out ops).
+ * @param fg            Foreground colour.
+ * @param bg            Background colour. */
+static inline void console_set_colour(console_t *console, colour_t fg, colour_t bg) {
+    console->out->set_colour(console->out_private, fg, bg);
+}
+
+/** Set the cursor properties.
+ * @param console       Console to operate on (must have out ops).
+ * @param x             New X position (relative to draw region). Negative
+ *                      values will move the cursor back from the right edge
+ *                      of the draw region.
+ * @param y             New Y position (relative to draw region). Negative
+ *                      values will move the cursor up from the bottom edge
+ *                      of the draw region.
+ * @param visible       Whether the cursor should be visible. */
+static inline void console_set_cursor(console_t *console, int16_t x, int16_t y, bool visible) {
+    console->out->set_cursor(console->out_private, x, y, visible);
+}
+
+/** Get the cursor properties.
+ * @param console       Console to operate on (must have out ops).
+ * @param _x            Where to store X position (relative to draw region).
+ * @param _y            Where to store Y position (relative to draw region).
+ * @param _visible      Where to store whether the cursor is visible */
+static inline void console_get_cursor(console_t *console, uint16_t *_x, uint16_t *_y, bool *_visible) {
+    console->out->get_cursor(console->out_private, _x, _y, _visible);
+}
+
+/** Clear an area to the current background colour.
+ * @param console       Console to operate on (must have out ops).
+ * @param x             Start X position (relative to draw region).
+ * @param y             Start Y position (relative to draw region).
+ * @param width         Width of the area (if 0, whole width is cleared).
+ * @param height        Height of the area (if 0, whole height is cleared). */
+static inline void console_clear(console_t *console, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+    console->out->clear(console->out_private, x, y, width, height);
+}
+
+/** Scroll the draw region up (move contents down).
+ * @param console       Console to operate on (must have out ops). */
+static inline void console_scroll_up(console_t *console) {
+    console->out->scroll_up(console->out_private);
+}
+
+/** Scroll the draw region down (move contents up).
+ * @param console       Console to operate on (must have out ops). */
+static inline void console_scroll_down(console_t *console) {
+    console->out->scroll_down(console->out_private);
+}
+
+/** Check for a character from a console.
+ * @param console       Console to operate on (must have in ops).
+ * @return              Whether a character is available. */
+static inline bool console_poll(console_t *console) {
+    return console->in->poll(console->in_private);
+}
+
+/** Read a character from a console.
+ * @param console       Console to operate on (must have in ops).
+ * @return              Character read. */
+static inline uint16_t console_getc(console_t *console) {
+    return console->in->getc(console->in_private);
+}
 
 #endif /* __CONSOLE_H */
