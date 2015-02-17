@@ -95,7 +95,7 @@ static uint16_t efi_scan_codes[] = {
     CONSOLE_KEY_HOME, CONSOLE_KEY_END, 0, 0x7f, 0, 0,
     CONSOLE_KEY_F1, CONSOLE_KEY_F2, CONSOLE_KEY_F3, CONSOLE_KEY_F4,
     CONSOLE_KEY_F5, CONSOLE_KEY_F6, CONSOLE_KEY_F7, CONSOLE_KEY_F8,
-    CONSOLE_KEY_F9, CONSOLE_KEY_F10, '\e',
+    CONSOLE_KEY_F9, CONSOLE_KEY_F10, 0, 0, '\e',
 };
 
 /** Read a character from the console.
