@@ -340,8 +340,8 @@ static void fb_console_clear(void *_fb, uint16_t x, uint16_t y, uint16_t width, 
             size_t idx = (abs_y * fb->cols) + abs_x;
 
             fb->chars[idx].ch = ' ';
-            fb->chars[idx].fg = CONSOLE_COLOUR_FG;
-            fb->chars[idx].bg = CONSOLE_COLOUR_BG;
+            fb->chars[idx].fg = fb->fg_colour;
+            fb->chars[idx].bg = fb->bg_colour;
 
             if (fb->cursor_enabled && abs_x == fb->cursor_x && abs_y == fb->cursor_y) {
                 /* Avoid redrawing the glyph twice. */
