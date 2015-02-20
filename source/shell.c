@@ -110,7 +110,9 @@ static int shell_input_helper(unsigned nest) {
             line_read_pos = 0;
             line_write_pos = 0;
             line_length = 0;
+            console_set_colour(config_console, COLOUR_WHITE, CONSOLE_COLOUR_BG);
             config_printf("> ");
+            console_set_colour(config_console, CONSOLE_COLOUR_FG, CONSOLE_COLOUR_BG);
         }
     }
 
@@ -188,7 +190,9 @@ void shell_main(void) {
     while (true) {
         command_list_t *list;
 
+        console_set_colour(config_console, COLOUR_WHITE, CONSOLE_COLOUR_BG);
         config_printf("KBoot> ");
+        console_set_colour(config_console, CONSOLE_COLOUR_FG, CONSOLE_COLOUR_BG);
 
         line_read_pos = 0;
         line_write_pos = 0;
