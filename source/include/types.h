@@ -66,7 +66,7 @@ typedef signed int int32_t;             /**< Signed 32-bit. */
 typedef signed __INT_64 int64_t;        /**< Signed 64-bit. */
 
 /** Extra integer types. */
-typedef int64_t offset_t;               /**< Type used to store an offset into a object. */
+typedef uint64_t offset_t;              /**< Type used to store an offset into a file/device. */
 typedef int64_t mstime_t;               /**< Type used to store a time value in milliseconds. */
 
 /** Type limit macros. */
