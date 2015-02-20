@@ -117,8 +117,11 @@ static size_t current_file_size;        /**< Size of the current file. */
 
 /** Configuration file paths to try. */
 static const char *config_file_paths[] = {
-    "/boot/loader.cfg",
-    "/loader.cfg",
+    #ifdef CONFIG_PLATFORM_EFI
+        "/efi/boot/kboot.cfg",
+    #endif
+    "/boot/kboot.cfg",
+    "/kboot.cfg",
 };
 
 /** Reserved environment variable names. */

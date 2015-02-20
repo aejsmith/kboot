@@ -8,7 +8,7 @@ mkdir -p ${fsdir}/efi/boot
 cp ${builddir}/bin/bootx64.efi ${fsdir}/efi/boot/
 #cp ${builddir}/test/test32.elf ${builddir}/test/test64.elf ${fsdir}/
 
-cat > ${fsdir}/loader.cfg << EOF
+cat > ${fsdir}/kboot.cfg << EOF
 set "timeout" 5
 
 entry "Test (32-bit)" {

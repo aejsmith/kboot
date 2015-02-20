@@ -9,7 +9,7 @@ mkdir ${isodir}/boot
 cp ${builddir}/bin/cdboot.img ${isodir}/boot/
 #cp ${builddir}/test/test32.elf ${builddir}/test/test64.elf ${isodir}/
 
-cat > ${isodir}/boot/loader.cfg << EOF
+cat > ${isodir}/boot/kboot.cfg << EOF
 set "timeout" 5
 
 entry "Test (32-bit)" {
