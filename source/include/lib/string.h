@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014 Alex Smith
+ * Copyright (C) 2011-2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -33,6 +33,8 @@ extern size_t strlen(const char *str);
 extern size_t strnlen(const char *str, size_t count);
 extern int strcmp(const char *s1, const char *s2);
 extern int strncmp(const char *s1, const char *s2, size_t count);
+extern int strcasecmp(const char *s1, const char *s2);
+extern int strncasecmp(const char *s1, const char *s2, size_t count);
 extern char *strsep(char **stringp, const char *delim);
 extern char *strchr(const char *s, int c);
 extern char *strrchr(const char *s, int c);
