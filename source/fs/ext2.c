@@ -64,9 +64,15 @@ typedef struct ext2_handle {
  * @param mount         Mount to read from.
  * @param buf           Buffer to read into.
  * @param num           Block number.
+ * @param offset        Offset within the block to read from.
+ * @param count         Number of bytes to read (0 means whole block).
  * @return              Status code describing the result of the operation. */
-static status_t ext2_read_block(ext2_mount_t *mount, void *buf, uint32_t num) {
-    return device_read(mount->mount.device, buf, mount->block_size, (uint64_t)num * mount->block_size);
+static status_t ext2_read_block(ext2_mount_t *mount, void *buf, uint32_t num, size_t offset, size_t count) {
+    if (!count)
+        count = mount->block_size;
+
+    assert(offset + count <= mount->block_size);
+    return device_read(mount->mount.device, buf, count, ((uint64_t)num * mount->block_size) + offset);
 }
 
 /** Recurse through the extent index tree to find a leaf.
@@ -100,7 +106,7 @@ static status_t ext4_find_leaf(
         if (!i)
             return STATUS_CORRUPT_FS;
 
-        ret = ext2_read_block(mount, buf, le32_to_cpu(index[i - 1].ei_leaf));
+        ret = ext2_read_block(mount, buf, le32_to_cpu(index[i - 1].ei_leaf), 0, 0);
         if (ret != STATUS_SUCCESS)
             return ret;
 
@@ -171,7 +177,7 @@ static status_t ext2_inode_block_to_raw(ext2_handle_t *handle, uint32_t block, u
                 return STATUS_SUCCESS;
             }
 
-            ret = ext2_read_block(mount, buf, num);
+            ret = ext2_read_block(mount, buf, num, 0, 0);
             if (ret != STATUS_SUCCESS)
                 return ret;
 
@@ -192,7 +198,7 @@ static status_t ext2_inode_block_to_raw(ext2_handle_t *handle, uint32_t block, u
                 return STATUS_SUCCESS;
             }
 
-            ret = ext2_read_block(mount, buf, num);
+            ret = ext2_read_block(mount, buf, num, 0, 0);
             if (ret != STATUS_SUCCESS)
                 return ret;
 
@@ -203,7 +209,7 @@ static status_t ext2_inode_block_to_raw(ext2_handle_t *handle, uint32_t block, u
                 return STATUS_SUCCESS;
             }
 
-            ret = ext2_read_block(mount, buf, num);
+            ret = ext2_read_block(mount, buf, num, 0, 0);
             if (ret != STATUS_SUCCESS)
                 return ret;
 
@@ -218,21 +224,24 @@ static status_t ext2_inode_block_to_raw(ext2_handle_t *handle, uint32_t block, u
     }
 }
 
-/** Read blocks from an Ext2 inode.
+/** Read a block from an ext2 inode.
  * @param handle        Handle to inode to read from.
  * @param buf           Buffer to read into.
- * @param block         Starting block number.
+ * @param num           Block number to read.
+ * @param offset        Offset within the block to read from.
+ * @param count         Number of bytes to read (0 means whole block).
  * @return              Status code describing the result of the operation. */
-static status_t ext2_inode_read_block(ext2_handle_t *handle, void *buf, uint32_t block) {
+static status_t ext2_inode_read_block(ext2_handle_t *handle, void *buf, uint32_t num, size_t offset, size_t count) {
     ext2_mount_t *mount = (ext2_mount_t *)handle->handle.mount;
     ext2_inode_t *inode = &handle->inode;
-    uint32_t raw;
+    uint32_t total, raw;
     status_t ret;
 
-    if (block >= (round_up(le32_to_cpu(inode->i_size), mount->block_size) / mount->block_size))
+    total = round_up(le32_to_cpu(inode->i_size), mount->block_size) / mount->block_size;
+    if (num >= total)
         return STATUS_END_OF_FILE;
 
-    ret = ext2_inode_block_to_raw(handle, block, &raw);
+    ret = ext2_inode_block_to_raw(handle, num, &raw);
     if (ret != STATUS_SUCCESS)
         return ret;
 
@@ -241,7 +250,7 @@ static status_t ext2_inode_read_block(ext2_handle_t *handle, void *buf, uint32_t
         memset(buf, 0, mount->block_size);
         return STATUS_SUCCESS;
     } else {
-        return ext2_read_block(mount, buf, raw);
+        return ext2_read_block(mount, buf, raw, offset, count);
     }
 }
 
@@ -254,60 +263,23 @@ static status_t ext2_inode_read_block(ext2_handle_t *handle, void *buf, uint32_t
 static status_t ext2_read(fs_handle_t *_handle, void *buf, size_t count, offset_t offset) {
     ext2_handle_t *handle = (ext2_handle_t *)_handle;
     ext2_mount_t *mount = (ext2_mount_t *)_handle->mount;
-    void *block __cleanup_free = NULL;
-    uint32_t start, end;
-    status_t ret;
 
     if (offset + count > le32_to_cpu(handle->inode.i_size))
         return STATUS_END_OF_FILE;
 
-    /* Allocate a temporary buffer for partial transfers if required. */
-    if (offset % mount->block_size || count % mount->block_size)
-        block = malloc(mount->block_size);
+    while (count) {
+        uint32_t block = offset / mount->block_size;
+        size_t block_offset = offset % mount->block_size;
+        size_t block_count = min(count, mount->block_size - block_offset);
+        status_t ret;
 
-    /* Now work out the start block and the end block. Subtract one from
-     * count to prevent end from going onto the next block when the offset
-     * plus the count is an exact multiple of the block size. */
-    start = offset / mount->block_size;
-    end = (offset + (count - 1)) / mount->block_size;
-
-    /* If we're not starting on a block boundary, we need to do a partial
-     * transfer on the initial block to get up to a block boundary. If the
-     * transfer only goes across one block, this will handle it. */
-    if (offset % mount->block_size) {
-        size_t size;
-
-        /* Read the block into the temporary buffer. */
-        ret = ext2_inode_read_block(handle, block, start);
+        ret = ext2_inode_read_block(handle, buf, block, block_offset, block_count);
         if (ret != STATUS_SUCCESS)
             return ret;
 
-        size = (start == end) ? count : mount->block_size - (size_t)(offset % mount->block_size);
-        memcpy(buf, block + (offset % mount->block_size), size);
-        buf += size;
-        count -= size;
-        start++;
-    }
-
-    /* Handle any full blocks. */
-    while (count >= mount->block_size) {
-        /* Read directly into the destination buffer. */
-        ret = ext2_inode_read_block(handle, buf, start);
-        if (ret != STATUS_SUCCESS)
-            return ret;
-
-        buf += mount->block_size;
-        count -= mount->block_size;
-        start++;
-    }
-
-    /* Handle anything that's left. */
-    if (count > 0) {
-        ret = ext2_inode_read_block(handle, block, start);
-        if (ret != STATUS_SUCCESS)
-            return ret;
-
-        memcpy(buf, block, count);
+        buf += block_count;
+        offset += block_count;
+        count -= block_count;
     }
 
     return STATUS_SUCCESS;
@@ -471,6 +443,7 @@ static status_t ext2_mount(device_t *device, fs_mount_t **_mount) {
 
     mount = malloc(sizeof(*mount));
     mount->mount.device = device;
+    mount->mount.case_insensitive = false;
     mount->group_tbl = NULL;
     mount->symlink_count = 0;
 
