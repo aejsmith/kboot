@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -113,8 +113,13 @@ typedef struct fs_open_data {
  * @return              Whether to continue iteration. */
 static bool fs_open_cb(const char *name, fs_handle_t *handle, void *_data) {
     fs_open_data_t *data = _data;
+    int result;
 
-    if (strcmp(name, data->name) == 0) {
+    result = (handle->mount->case_insensitive)
+        ? strcasecmp(name, data->name)
+        : strcmp(name, data->name);
+
+    if (!result) {
         fs_handle_retain(handle);
         data->handle = handle;
         return false;

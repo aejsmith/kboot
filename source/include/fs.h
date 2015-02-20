@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -103,6 +103,7 @@ typedef struct fs_mount {
     fs_ops_t *ops;                      /**< Operations structure for the filesystem. */
     struct device *device;              /**< Device that the filesystem is on. */
     struct fs_handle *root;             /**< Handle to root of FS (not needed if open() implemented). */
+    bool case_insensitive;              /**< Whether the filesystem is case insensitive. */
     char *label;                        /**< Label of the filesystem. */
     char *uuid;                         /**< UUID of the filesystem. */
 } fs_mount_t;
