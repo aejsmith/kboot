@@ -19,6 +19,7 @@
  * @brief               ISO9660 filesystem support.
  */
 
+#include <lib/charset.h>
 #include <lib/ctype.h>
 #include <lib/string.h>
 #include <lib/utility.h>
@@ -35,7 +36,6 @@
 /** Structure containing details of an ISO9660 filesystem. */
 typedef struct iso9660_mount {
     fs_mount_t mount;                   /**< Mount header. */
-
     int joliet_level;                   /**< Joliet level. */
 } iso9660_mount_t;
 
@@ -51,125 +51,158 @@ typedef struct iso9660_entry {
     iso9660_directory_record_t *record; /**< Directory record for the entry. */
 } iso9660_entry_t;
 
-/** Convert a wide character to a multibyte sequence. */
-static int utf8_wctomb(uint8_t *s, uint32_t wc, size_t max) {
-    unsigned int bits = 0, j = 0, k;
+/** Read from an ISO9660 handle.
+ * @param _handle       Handle to read from.
+ * @param buf           Buffer to read into.
+ * @param count         Number of bytes to read.
+ * @param offset        Offset to read from.
+ * @return              Status code describing the result of the operation. */
+static status_t iso9660_read(fs_handle_t *_handle, void *buf, size_t count, offset_t offset) {
+    iso9660_handle_t *handle = (iso9660_handle_t *)_handle;
 
-    if (!s) {
-        return wc >= 0x80;
-    } else if (wc < 0x00000080) {
-        *s = wc;
-        return 1;
-    }
-
-    if (wc >= 0x04000000) {
-        bits = 30;
-        *s = 0xFC;
-        j = 6;
-    } else if (wc >= 0x00200000) {
-        bits = 24;
-        *s = 0xF8;
-        j = 5;
-    } else if (wc >= 0x00010000) {
-        bits = 18;
-        *s = 0xF0;
-        j = 4;
-    } else if (wc >= 0x00000800) {
-        bits = 12;
-        *s = 0xE0;
-        j = 3;
-    } else if (wc >= 0x00000080) {
-        bits = 6;
-        *s = 0xC0;
-        j = 2;
-    }
-
-    if (j > max)
-        return -1;
-
-    *s |= (unsigned char)(wc >> bits);
-    for (k = 1; k < j; k++) {
-        bits -= 6;
-        s[k] = 0x80 + ((wc >> bits) & 0x3f);
-    }
-
-    return k;
+    offset += (offset_t)handle->extent * ISO9660_BLOCK_SIZE;
+    return device_read(handle->handle.mount->device, buf, count, offset);
 }
 
-/** Convert big endian wide character string to UTF8. */
-static int wcsntombs_be(uint8_t *s, uint8_t *pwcs, int inlen, int maxlen) {
-    const uint8_t *ip;
-    uint8_t *op;
-    uint16_t c;
-    int size;
+/** Create a handle from a directory record.
+ * @param mount         Mount the node is from.
+ * @param record        Record to create from.
+ * @return              Pointer to handle. */
+static fs_handle_t *open_record(iso9660_mount_t *mount, iso9660_directory_record_t *record) {
+    iso9660_handle_t *handle;
 
-    op = s;
-    ip = pwcs;
-    while ((*ip || ip[1]) && (maxlen > 0) && (inlen > 0)) {
-        c = (*ip << 8) | ip[1];
-        if (c > 0x7f) {
-            size = utf8_wctomb(op, c, maxlen);
-            if (size == -1) {
-                maxlen--;
-            } else {
-                op += size;
-                maxlen -= size;
-            }
-        } else {
-            *op++ = (uint8_t)c;
-        }
+    handle = malloc(sizeof(*handle));
+    handle->handle.mount = &mount->mount;
+    handle->handle.directory = record->file_flags & (1<<1);
+    handle->handle.size = le32_to_cpu(record->data_len_le);
+    handle->extent = le32_to_cpu(record->extent_loc_le);
+    return &handle->handle;
+}
 
-        ip += 2;
-        inlen--;
-    }
+/** Open an entry on a ISO9660 filesystem.
+ * @param _entry        Entry to open (obtained via iterate()).
+ * @param _handle       Where to store pointer to opened handle.
+ * @return              Status code describing the result of the operation. */
+static status_t iso9660_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle) {
+    iso9660_entry_t *entry = (iso9660_entry_t *)_entry;
+    iso9660_mount_t *mount = (iso9660_mount_t *)_entry->owner->mount;
 
-    return op - s;
+    *_handle = open_record(mount, entry->record);
+    return STATUS_SUCCESS;
 }
 
 /** Parse a name from a directory record.
  * @param record        Record to parse.
- * @param buf           Buffer to write into. */
-static void iso9660_parse_name(iso9660_directory_record_t *record, char *buf) {
-    uint32_t i, len;
+ * @param buf           Buffer to write into (maximum possible size).
+ * @param joliet        Joliet level. */
+static void parse_name(iso9660_directory_record_t *record, char *buf, int joliet) {
+    size_t len;
 
-    len = (record->file_ident_len < ISO9660_MAX_NAME_LEN)
-        ? record->file_ident_len
-        : ISO9660_MAX_NAME_LEN;
+    if (joliet) {
+        uint16_t *name = (uint16_t *)record->file_ident;
 
-    for (i = 0; i < len; i++) {
-        if (record->file_ident[i] == ISO9660_SEPARATOR2) {
-            break;
-        } else {
+        len = min(record->file_ident_len >> 1, ISO9660_JOLIET_MAX_NAME_LEN);
+
+        /* Name is in big-endian UCS-2, convert to native-endian. */
+        for (size_t i = 0; i < len; i++)
+            name[i] = be16_to_cpu(name[i]);
+
+        /* Convert to UTF-8. */
+        len = utf16_to_utf8((uint8_t *)buf, name, len);
+    } else {
+        len = min(record->file_ident_len, ISO9660_MAX_NAME_LEN);
+
+        for (size_t i = 0; i < len; i++)
             buf[i] = tolower(record->file_ident[i]);
-        }
     }
 
-    if (i && buf[i - 1] == ISO9660_SEPARATOR1)
-        i--;
-
-    buf[i] = 0;
-}
-
-/** Parse a Joliet name from a directory record.
- * @param record        Record to parse.
- * @param buf           Buffer to write into. */
-static void iso9660_parse_joliet_name(iso9660_directory_record_t *record, char *buf) {
-    unsigned char len;
-
-    len = wcsntombs_be((uint8_t *)buf, record->file_ident, record->file_ident_len >> 1, ISO9660_NAME_SIZE);
-    if (len > 2 && buf[len - 2] == ';' && buf[len - 1] == '1')
+    /* If file version number is 1, strip it off. Don't want to strip all
+     * version numbers off, as that could leave us with duplicate file names. */
+    if (len >= 2 && buf[len - 2] == ISO9660_SEPARATOR2 && buf[len - 1] == '1')
         len -= 2;
 
-    while (len >= 2 && buf[len - 1] == '.')
+    /* Remove the '.' if there is no extension. */
+    if (len && buf[len - 1] == ISO9660_SEPARATOR1)
         len--;
 
     buf[len] = 0;
 }
 
+/** Iterate over directory entries.
+ * @param _handle       Handle to directory.
+ * @param cb            Callback to call on each entry.
+ * @param arg           Data to pass to callback.
+ * @return              Status code describing the result of the operation. */
+static status_t iso9660_iterate(fs_handle_t *_handle, fs_iterate_cb_t cb, void *arg) {
+    iso9660_handle_t *handle = (iso9660_handle_t *)_handle;
+    iso9660_mount_t *mount = (iso9660_mount_t *)_handle->mount;
+    size_t name_len;
+    char *name __cleanup_free;
+    char *buf __cleanup_free;
+    uint32_t offset;
+    bool cont;
+    status_t ret;
+
+    /* Allocate a temporary buffer for names. */
+    name_len = 1 + (mount->joliet_level)
+        ? ISO9660_JOLIET_MAX_NAME_LEN * MAX_UTF8_PER_UTF16
+        : ISO9660_MAX_NAME_LEN;
+    name = malloc(name_len);
+
+    /* Read in all the directory data. */
+    buf = malloc(handle->handle.size);
+    ret = iso9660_read(_handle, buf, handle->handle.size, 0);
+    if (ret != STATUS_SUCCESS)
+        return ret;
+
+    /* Iterate through each entry. */
+    cont = true;
+    offset = 0;
+    while (cont && offset < handle->handle.size) {
+        iso9660_directory_record_t *record = (iso9660_directory_record_t *)(buf + offset);
+        iso9660_entry_t entry;
+
+        if (record->rec_len) {
+            offset += record->rec_len;
+        } else {
+            /* A zero record length means we should move on to the next block.
+             * If this is the end, this will cause us to break out of the while
+             * loop if offset becomes >= size. */
+            offset = round_up(offset, ISO9660_BLOCK_SIZE);
+            continue;
+        }
+
+        /* Bit 0 indicates that this is not a user-visible record. */
+        if (record->file_flags & (1<<0))
+            continue;
+
+        /* If this is a directory, check for '.' and '..'. */
+        name[0] = 0;
+        if (record->file_flags & (1<<1) && record->file_ident_len == 1) {
+            if (record->file_ident[0] == 0) {
+                snprintf(name, name_len, ".");
+            } else if (record->file_ident[0] == 1) {
+                snprintf(name, name_len, "..");
+            }
+        }
+
+        if (!name[0])
+            parse_name(record, name, mount->joliet_level);
+
+        entry.entry.owner = &handle->handle;
+        entry.entry.name = name;
+        entry.record = record;
+
+        cont = cb(&entry.entry, arg);
+    }
+
+    return STATUS_SUCCESS;
+}
+
 /** Generate a UUID.
  * @param pri           Primary volume descriptor.
  * @return              Pointer to allocated string for UUID. */
-static char *iso9660_make_uuid(iso9660_primary_volume_desc_t *pri) {
+static char *make_uuid(iso9660_primary_volume_desc_t *pri) {
     iso9660_timestamp_t *time;
     char *uuid;
     size_t i;
@@ -196,21 +229,6 @@ static char *iso9660_make_uuid(iso9660_primary_volume_desc_t *pri) {
     return uuid;
 }
 
-/** Create a handle from a directory record.
- * @param mount         Mount the node is from.
- * @param record        Record to create from.
- * @return              Pointer to handle. */
-static fs_handle_t *iso9660_handle_create(iso9660_mount_t *mount, iso9660_directory_record_t *record) {
-    iso9660_handle_t *handle;
-
-    handle = malloc(sizeof(*handle));
-    handle->handle.mount = &mount->mount;
-    handle->handle.directory = record->file_flags & (1<<1);
-    handle->handle.size = le32_to_cpu(record->data_len_le);
-    handle->extent = le32_to_cpu(record->extent_loc_le);
-    return &handle->handle;
-}
-
 /** Mount an ISO9660 filesystem.
  * @param device        Device to mount.
  * @param _mount        Where to store pointer to mount structure.
@@ -235,7 +253,7 @@ static status_t iso9660_mount(device_t *device, fs_mount_t **_mount) {
             return ret;
 
         /* Check that the identifier is valid. */
-        if (strncmp((char *)desc->header.ident, "CD001", 5) != 0)
+        if (strncmp((char *)desc->header.ident, ISO9660_IDENTIFIER, 5) != 0)
             return STATUS_UNKNOWN_FS;
 
         if (desc->header.type == ISO9660_VOLUME_DESC_PRIMARY) {
@@ -276,11 +294,11 @@ static status_t iso9660_mount(device_t *device, fs_mount_t **_mount) {
     /* Store the filesystem label and UUID. */
     primary->vol_ident[31] = 0;
     primary->sys_ident[31] = 0;
-    mount->mount.uuid = iso9660_make_uuid(primary);
+    mount->mount.uuid = make_uuid(primary);
     mount->mount.label = strdup(strstrip((char *)primary->vol_ident));
 
     /* Retreive the root node. */
-    mount->mount.root = iso9660_handle_create(mount, (supp)
+    mount->mount.root = open_record(mount, (supp)
         ? (iso9660_directory_record_t *)&supp->root_dir_record
         : (iso9660_directory_record_t *)&primary->root_dir_record);
 
@@ -288,106 +306,11 @@ static status_t iso9660_mount(device_t *device, fs_mount_t **_mount) {
     return STATUS_SUCCESS;
 }
 
-/** Read from an ISO9660 handle.
- * @param _handle       Handle to read from.
- * @param buf           Buffer to read into.
- * @param count         Number of bytes to read.
- * @param offset        Offset to read from.
- * @return              Status code describing the result of the operation. */
-static status_t iso9660_read(fs_handle_t *_handle, void *buf, size_t count, offset_t offset) {
-    iso9660_handle_t *handle = (iso9660_handle_t *)_handle;
-
-    offset += (offset_t)handle->extent * ISO9660_BLOCK_SIZE;
-    return device_read(handle->handle.mount->device, buf, count, offset);
-}
-
-/** Open an entry on a ISO9660 filesystem.
- * @param _entry        Entry to open (obtained via iterate()).
- * @param _handle       Where to store pointer to opened handle.
- * @return              Status code describing the result of the operation. */
-static status_t iso9660_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle) {
-    iso9660_entry_t *entry = (iso9660_entry_t *)_entry;
-    iso9660_mount_t *mount = (iso9660_mount_t *)_entry->owner->mount;
-
-    *_handle = iso9660_handle_create(mount, entry->record);
-    return STATUS_SUCCESS;
-}
-
-/** Iterate over directory entries.
- * @param _handle       Handle to directory.
- * @param cb            Callback to call on each entry.
- * @param arg           Data to pass to callback.
- * @return              Status code describing the result of the operation. */
-static status_t iso9660_iterate(fs_handle_t *_handle, fs_iterate_cb_t cb, void *arg) {
-    iso9660_handle_t *handle = (iso9660_handle_t *)_handle;
-    iso9660_mount_t *mount = (iso9660_mount_t *)_handle->mount;
-    char *buf __cleanup_free;
-    uint32_t offset;
-    bool cont;
-    status_t ret;
-
-    /* Read in all the directory data. */
-    buf = malloc(handle->handle.size);
-    ret = iso9660_read(_handle, buf, handle->handle.size, 0);
-    if (ret != STATUS_SUCCESS)
-        return ret;
-
-    /* Iterate through each entry. */
-    cont = true;
-    offset = 0;
-    while (cont && offset < handle->handle.size) {
-        iso9660_directory_record_t *record = (iso9660_directory_record_t *)(buf + offset);
-        char name[ISO9660_NAME_SIZE];
-        iso9660_entry_t entry;
-
-        if (record->rec_len) {
-            offset += record->rec_len;
-        } else {
-            /* A zero record length means we should move on to the next block.
-             * If this is the end, this will cause us to break out of the while
-             * loop if offset becomes >= size. */
-            offset = round_up(offset, ISO9660_BLOCK_SIZE);
-            continue;
-        }
-
-        /* Bit 0 indicates that this is not a user-visible record. */
-        if (record->file_flags & (1<<0))
-            continue;
-
-        /* If this is a directory, check for '.' and '..'. */
-        name[0] = 0;
-        if (record->file_flags & (1<<1) && record->file_ident_len == 1) {
-            if (record->file_ident[0] == 0) {
-                snprintf(name, sizeof(name), ".");
-            } else if (record->file_ident[0] == 1) {
-                snprintf(name, sizeof(name), "..");
-            }
-        }
-
-        if (!name[0]) {
-            /* Parse the name based on the Joliet level. */
-            if (mount->joliet_level) {
-                iso9660_parse_joliet_name(record, name);
-            } else {
-                iso9660_parse_name(record, name);
-            }
-        }
-
-        entry.entry.owner = &handle->handle;
-        entry.entry.name = name;
-        entry.record = record;
-
-        cont = cb(&entry.entry, arg);
-    }
-
-    return STATUS_SUCCESS;
-}
-
 /** ISO9660 filesystem operations structure. */
 BUILTIN_FS_OPS(iso9660_fs_ops) = {
     .name = "ISO9660",
-    .mount = iso9660_mount,
     .read = iso9660_read,
     .open_entry = iso9660_open_entry,
     .iterate = iso9660_iterate,
+    .mount = iso9660_mount,
 };

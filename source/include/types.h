@@ -82,6 +82,11 @@ typedef int64_t mstime_t;               /**< Type used to store a time value in 
 #define INT64_MIN       (-9223372036854775807ll-1)
 #define INT64_MAX       9223372036854775807ll
 #define UINT64_MAX      18446744073709551615ull
+#ifdef CONFIG_64BIT
+#   define SIZE_MAX     UINT64_MAX
+#else
+#   define SIZE_MAX     UINT32_MAX
+#endif
 
 /** Number of bits in a char. */
 #define CHAR_BIT        8

@@ -24,6 +24,9 @@
 
 #include <types.h>
 
+/** ISO9660 identifier. */
+#define ISO9660_IDENTIFIER              "CD001"
+
 /** Size of an ISO9660 block. */
 #define ISO9660_BLOCK_SIZE              2048
 
@@ -35,9 +38,6 @@
 
 /** Maximum Joliet file name length. */
 #define ISO9660_JOLIET_MAX_NAME_LEN     64
-
-/** Name buffer size. */
-#define ISO9660_NAME_SIZE               ISO9660_JOLIET_MAX_NAME_LEN
 
 /** Identifier string separators. */
 #define ISO9660_SEPARATOR1              0x2e    /**< Seperator 1 (.). */

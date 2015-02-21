@@ -268,8 +268,8 @@ static bool parse_long_name(fat_iterate_state_t *state) {
 
     /* If this is the last entry, convert to UTF-8. */
     if (!state->lfn_seq) {
-        uint8_t *end = utf16_to_utf8((uint8_t *)state->name, state->lfn_name, state->num_lfns * 13);
-        *end = 0;
+        size_t len = utf16_to_utf8((uint8_t *)state->name, state->lfn_name, state->num_lfns * 13);
+        state->name[len] = 0;
     }
 
     return true;
