@@ -60,6 +60,12 @@ typedef struct ext2_handle {
     ext2_inode_t inode;                 /**< Inode the handle refers to. */
 } ext2_handle_t;
 
+/** Information about an ext2 directory entry. */
+typedef struct ext2_entry {
+    fs_entry_t entry;                   /**< Entry header. */
+    uint32_t num;                       /**< Inode number. */
+} ext2_entry_t;
+
 /** Read a block from an ext2 filesystem.
  * @param mount         Mount to read from.
  * @param buf           Buffer to read into.
@@ -67,12 +73,16 @@ typedef struct ext2_handle {
  * @param offset        Offset within the block to read from.
  * @param count         Number of bytes to read (0 means whole block).
  * @return              Status code describing the result of the operation. */
-static status_t ext2_read_block(ext2_mount_t *mount, void *buf, uint32_t num, size_t offset, size_t count) {
+static status_t read_raw_block(ext2_mount_t *mount, void *buf, uint32_t num, size_t offset, size_t count) {
+    offset_t disk_offset;
+
     if (!count)
         count = mount->block_size;
 
     assert(offset + count <= mount->block_size);
-    return device_read(mount->mount.device, buf, count, ((uint64_t)num * mount->block_size) + offset);
+
+    disk_offset = ((offset_t)num * mount->block_size) + offset;
+    return device_read(mount->mount.device, buf, count, disk_offset);
 }
 
 /** Recurse through the extent index tree to find a leaf.
@@ -82,7 +92,7 @@ static status_t ext2_read_block(ext2_mount_t *mount, void *buf, uint32_t num, si
  * @param buf           Temporary buffer to use.
  * @param _header       Where to store pointer to header for leaf.
  * @return              Status code describing the result of the operation. */
-static status_t ext4_find_leaf(
+static status_t find_leaf_extent(
     ext2_mount_t *mount, ext4_extent_header_t *header, uint32_t block, void *buf,
     ext4_extent_header_t **_header)
 {
@@ -106,7 +116,7 @@ static status_t ext4_find_leaf(
         if (!i)
             return STATUS_CORRUPT_FS;
 
-        ret = ext2_read_block(mount, buf, le32_to_cpu(index[i - 1].ei_leaf), 0, 0);
+        ret = read_raw_block(mount, buf, le32_to_cpu(index[i - 1].ei_leaf), 0, 0);
         if (ret != STATUS_SUCCESS)
             return ret;
 
@@ -119,7 +129,7 @@ static status_t ext4_find_leaf(
  * @param block         Block number within the inode to get.
  * @param _num          Where to store raw block number.
  * @return              Status code describing the result of the operation. */
-static status_t ext2_inode_block_to_raw(ext2_handle_t *handle, uint32_t block, uint32_t *_num) {
+static status_t inode_block_to_raw(ext2_handle_t *handle, uint32_t block, uint32_t *_num) {
     ext2_mount_t *mount = (ext2_mount_t *)handle->handle.mount;
     ext2_inode_t *inode = &handle->inode;
     status_t ret;
@@ -132,7 +142,7 @@ static status_t ext2_inode_block_to_raw(ext2_handle_t *handle, uint32_t block, u
 
         buf = malloc(mount->block_size);
         header = (ext4_extent_header_t *)inode->i_block;
-        ret = ext4_find_leaf(mount, header, block, buf, &header);
+        ret = find_leaf_extent(mount, header, block, buf, &header);
         if (ret != STATUS_SUCCESS)
             return ret;
 
@@ -177,7 +187,7 @@ static status_t ext2_inode_block_to_raw(ext2_handle_t *handle, uint32_t block, u
                 return STATUS_SUCCESS;
             }
 
-            ret = ext2_read_block(mount, buf, num, 0, 0);
+            ret = read_raw_block(mount, buf, num, 0, 0);
             if (ret != STATUS_SUCCESS)
                 return ret;
 
@@ -198,7 +208,7 @@ static status_t ext2_inode_block_to_raw(ext2_handle_t *handle, uint32_t block, u
                 return STATUS_SUCCESS;
             }
 
-            ret = ext2_read_block(mount, buf, num, 0, 0);
+            ret = read_raw_block(mount, buf, num, 0, 0);
             if (ret != STATUS_SUCCESS)
                 return ret;
 
@@ -209,7 +219,7 @@ static status_t ext2_inode_block_to_raw(ext2_handle_t *handle, uint32_t block, u
                 return STATUS_SUCCESS;
             }
 
-            ret = ext2_read_block(mount, buf, num, 0, 0);
+            ret = read_raw_block(mount, buf, num, 0, 0);
             if (ret != STATUS_SUCCESS)
                 return ret;
 
@@ -217,8 +227,8 @@ static status_t ext2_inode_block_to_raw(ext2_handle_t *handle, uint32_t block, u
             return STATUS_SUCCESS;
         }
 
-        /* Triple indirect block. I somewhat doubt this will be needed,
-         * aren't likely to need to read files that big. */
+        /* Triple indirect block. I somewhat doubt this will be needed, aren't
+         * likely to need to read files that big. */
         dprintf("ext2: tri-indirect blocks not yet supported!\n");
         return STATUS_NOT_SUPPORTED;
     }
@@ -231,17 +241,16 @@ static status_t ext2_inode_block_to_raw(ext2_handle_t *handle, uint32_t block, u
  * @param offset        Offset within the block to read from.
  * @param count         Number of bytes to read (0 means whole block).
  * @return              Status code describing the result of the operation. */
-static status_t ext2_inode_read_block(ext2_handle_t *handle, void *buf, uint32_t num, size_t offset, size_t count) {
+static status_t read_inode_block(ext2_handle_t *handle, void *buf, uint32_t num, size_t offset, size_t count) {
     ext2_mount_t *mount = (ext2_mount_t *)handle->handle.mount;
-    ext2_inode_t *inode = &handle->inode;
     uint32_t total, raw;
     status_t ret;
 
-    total = round_up(le32_to_cpu(inode->i_size), mount->block_size) / mount->block_size;
+    total = round_up(handle->handle.size, mount->block_size) / mount->block_size;
     if (num >= total)
         return STATUS_END_OF_FILE;
 
-    ret = ext2_inode_block_to_raw(handle, num, &raw);
+    ret = inode_block_to_raw(handle, num, &raw);
     if (ret != STATUS_SUCCESS)
         return ret;
 
@@ -250,7 +259,7 @@ static status_t ext2_inode_read_block(ext2_handle_t *handle, void *buf, uint32_t
         memset(buf, 0, mount->block_size);
         return STATUS_SUCCESS;
     } else {
-        return ext2_read_block(mount, buf, raw, offset, count);
+        return read_raw_block(mount, buf, raw, offset, count);
     }
 }
 
@@ -264,16 +273,13 @@ static status_t ext2_read(fs_handle_t *_handle, void *buf, size_t count, offset_
     ext2_handle_t *handle = (ext2_handle_t *)_handle;
     ext2_mount_t *mount = (ext2_mount_t *)_handle->mount;
 
-    if (offset + count > le32_to_cpu(handle->inode.i_size))
-        return STATUS_END_OF_FILE;
-
     while (count) {
         uint32_t block = offset / mount->block_size;
         size_t block_offset = offset % mount->block_size;
         size_t block_count = min(count, mount->block_size - block_offset);
         status_t ret;
 
-        ret = ext2_inode_read_block(handle, buf, block, block_offset, block_count);
+        ret = read_inode_block(handle, buf, block, block_offset, block_count);
         if (ret != STATUS_SUCCESS)
             return ret;
 
@@ -285,27 +291,17 @@ static status_t ext2_read(fs_handle_t *_handle, void *buf, size_t count, offset_
     return STATUS_SUCCESS;
 }
 
-/** Get the size of a file.
- * @param _handle       Handle to the file.
- * @return              Size of the file. */
-static offset_t ext2_size(fs_handle_t *_handle) {
-    ext2_handle_t *handle = (ext2_handle_t *)_handle;
-
-    return le32_to_cpu(handle->inode.i_size);
-}
-
 /** Open an inode from the filesystem.
  * @param mount         Mount to read from.
  * @param id            ID of node. If the node is a symbolic link, the link
  *                      destination will be returned.
- * @param from          Directory that the inode was found in.
+ * @param owner         Directory that the inode was found in.
  * @param _handle       Where to store pointer to handle.
  * @return              Status code describing the result of the operation. */
-static status_t ext2_inode_open(ext2_mount_t *mount, uint32_t id, ext2_handle_t *from, fs_handle_t **_handle) {
+static status_t open_inode(ext2_mount_t *mount, uint32_t id, ext2_handle_t *owner, fs_handle_t **_handle) {
     size_t group, size;
     offset_t offset;
     ext2_handle_t *handle;
-    ext2_inode_t *inode;
     uint16_t type;
     status_t ret;
 
@@ -316,7 +312,8 @@ static status_t ext2_inode_open(ext2_mount_t *mount, uint32_t id, ext2_handle_t 
         return STATUS_CORRUPT_FS;
     }
 
-    handle = fs_handle_alloc(sizeof(*handle), &mount->mount);
+    handle = malloc(sizeof(*handle));
+    handle->handle.mount = &mount->mount;
     handle->num = id;
 
     /* Get the size of the inode and its offset in the group's inode table. */
@@ -325,32 +322,30 @@ static status_t ext2_inode_open(ext2_mount_t *mount, uint32_t id, ext2_handle_t 
         ((offset_t)le32_to_cpu(mount->group_tbl[group].bg_inode_table) * mount->block_size) +
         ((offset_t)((id - 1) % mount->inodes_per_group) * mount->inode_size);
 
-    /* Read the inode into memory. */
-    inode = &handle->inode;
-    ret = device_read(mount->mount.device, inode, size, offset);
+    ret = device_read(mount->mount.device, &handle->inode, size, offset);
     if (ret != STATUS_SUCCESS) {
         dprintf("ext2: failed to read inode %" PRIu32 ": %d\n", id, ret);
         free(handle);
         return false;
     }
 
-    type = le16_to_cpu(inode->i_mode) & EXT2_S_IFMT;
+    type = le16_to_cpu(handle->inode.i_mode) & EXT2_S_IFMT;
     handle->handle.directory = type == EXT2_S_IFDIR;
+    handle->handle.size = le32_to_cpu(handle->inode.i_size);
 
     /* Check for a symbolic link. */
     if (type == EXT2_S_IFLNK) {
         char *dest __cleanup_free;
 
-        assert(from);
+        assert(owner);
 
         /* Read in the link and try to open that path. */
-        size = le32_to_cpu(inode->i_size);
-        dest = malloc(size + 1);
-        dest[size] = 0;
-        if (le32_to_cpu(inode->i_blocks) == 0) {
-            memcpy(dest, inode->i_block, size);
+        dest = malloc(handle->handle.size + 1);
+        dest[handle->handle.size] = 0;
+        if (le32_to_cpu(handle->inode.i_blocks) == 0) {
+            memcpy(dest, handle->inode.i_block, handle->handle.size);
         } else {
-            ret = ext2_read(&handle->handle, dest, size, 0);
+            ret = ext2_read(&handle->handle, dest, handle->handle.size, 0);
             if (ret != STATUS_SUCCESS) {
                 free(handle);
                 return ret;
@@ -362,7 +357,7 @@ static status_t ext2_inode_open(ext2_mount_t *mount, uint32_t id, ext2_handle_t 
         if (mount->symlink_count++ >= EXT2_SYMLINK_LIMIT)
             return STATUS_SYMLINK_LIMIT;
 
-        ret = fs_open(dest, &from->handle, _handle);
+        ret = fs_open(dest, &owner->handle, _handle);
         mount->symlink_count--;
         return ret;
     } else if (type != EXT2_S_IFDIR && type != EXT2_S_IFREG) {
@@ -375,57 +370,61 @@ static status_t ext2_inode_open(ext2_mount_t *mount, uint32_t id, ext2_handle_t 
     return STATUS_SUCCESS;
 }
 
+/** Open an entry on an ext2 filesystem.
+ * @param _entry        Entry to open (obtained via iterate()).
+ * @param _handle       Where to store pointer to opened handle.
+ * @return              Status code describing the result of the operation. */
+static status_t ext2_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle) {
+    ext2_entry_t *entry = (ext2_entry_t *)_entry;
+    ext2_handle_t *owner = (ext2_handle_t *)_entry->owner;
+    ext2_mount_t *mount = (ext2_mount_t *)_entry->owner->mount;
+
+    return open_inode(mount, entry->num, owner, _handle);
+}
+
 /** Iterate over ext2 directory entries.
  * @param _handle       Handle to directory.
  * @param cb            Callback to call on each entry.
  * @param arg           Data to pass to callback.
  * @return              Status code describing the result of the operation. */
-static status_t ext2_iterate(fs_handle_t *_handle, dir_iterate_cb_t cb, void *arg) {
+static status_t ext2_iterate(fs_handle_t *_handle, fs_iterate_cb_t cb, void *arg) {
     ext2_handle_t *handle = (ext2_handle_t *)_handle;
-    ext2_mount_t *mount = (ext2_mount_t *)_handle->mount;
     char *buf __cleanup_free;
     char *name __cleanup_free;
-    bool done;
-    uint32_t offset;
+    bool cont;
+    offset_t offset;
     status_t ret;
 
     /* Allocate buffers to read the data into. */
-    buf = malloc(le32_to_cpu(handle->inode.i_size));
+    buf = malloc(handle->handle.size);
     name = malloc(EXT2_NAME_MAX + 1);
 
-    /* Read in all the directory entries required. */
-    ret = ext2_read(_handle, buf, le32_to_cpu(handle->inode.i_size), 0);
+    /* Read in all the directory entries. */
+    ret = ext2_read(_handle, buf, handle->handle.size, 0);
     if (ret != STATUS_SUCCESS)
         return ret;
 
-    done = false;
+    cont = true;
     offset = 0;
-    while (!done && offset < le32_to_cpu(handle->inode.i_size)) {
-        ext2_dirent_t *dirent = (ext2_dirent_t *)(buf + offset);
+    while (cont && offset < handle->handle.size) {
+        ext2_dir_entry_t *entry = (ext2_dir_entry_t *)(buf + offset);
 
-        if (dirent->file_type != EXT2_FT_UNKNOWN && dirent->name_len != 0) {
-            fs_handle_t *child;
+        if (entry->file_type != EXT2_FT_UNKNOWN && entry->name_len != 0) {
+            ext2_entry_t child;
 
-            strncpy(name, dirent->name, dirent->name_len);
-            name[dirent->name_len] = 0;
+            strncpy(name, entry->name, entry->name_len);
+            name[entry->name_len] = 0;
 
-            if (le32_to_cpu(dirent->inode) == handle->num) {
-                child = _handle;
-                fs_handle_retain(child);
-            } else {
-                /* Create a handle to the child. */
-                ret = ext2_inode_open(mount, le32_to_cpu(dirent->inode), handle, &child);
-                if (ret != STATUS_SUCCESS)
-                    return ret;
-            }
+            child.entry.owner = &handle->handle;
+            child.entry.name = name;
+            child.num = le32_to_cpu(entry->inode);
 
-            done = !cb(name, child, arg);
-            fs_handle_release(child);
-        } else if (!le16_to_cpu(dirent->rec_len)) {
-            done = true;
+            cont = cb(&child.entry, arg);
+        } else if (!le16_to_cpu(entry->rec_len)) {
+            cont = false;
         }
 
-        offset += le16_to_cpu(dirent->rec_len);
+        offset += le16_to_cpu(entry->rec_len);
     }
 
     return STATUS_SUCCESS;
@@ -479,7 +478,7 @@ static status_t ext2_mount(device_t *device, fs_mount_t **_mount) {
         goto err;
 
     /* Get a handle to the root inode. */
-    ret = ext2_inode_open(mount, EXT2_ROOT_INO, NULL, &mount->mount.root);
+    ret = open_inode(mount, EXT2_ROOT_INO, NULL, &mount->mount.root);
     if (ret != STATUS_SUCCESS)
         goto err;
 
@@ -500,8 +499,8 @@ err:
 /** Ext2 filesystem operations structure. */
 BUILTIN_FS_OPS(ext2_fs_ops) = {
     .name = "ext2",
-    .mount = ext2_mount,
     .read = ext2_read,
-    .size = ext2_size,
+    .open_entry = ext2_open_entry,
     .iterate = ext2_iterate,
+    .mount = ext2_mount,
 };

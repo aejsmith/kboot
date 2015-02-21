@@ -246,13 +246,13 @@ typedef struct ext2_inode {
 } __packed ext2_inode_t;
 
 /** Ext2 directory entry. */
-typedef struct ext2_dirent {
+typedef struct ext2_dir_entry {
     uint32_t inode;                         /**< Inode number. */
     uint16_t rec_len;                       /**< Length of the structure. */
     uint8_t name_len;                       /**< Name length. */
     uint8_t file_type;                      /**< File type. */
     char name[];                            /**< Name of the file. */
-} __packed ext2_dirent_t;
+} __packed ext2_dir_entry_t;
 
 /* Ext4 on-disk extent structure. */
 typedef struct ext4_extent {

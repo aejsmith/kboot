@@ -58,10 +58,22 @@ typedef struct fat_mount {
 /** Handle to a FAT file/directory. */
 typedef struct fat_handle {
     fs_handle_t handle;                 /**< Handle header. */
-
     uint32_t cluster;                   /**< Start cluster number. */
-    uint32_t size;                      /**< Size of the file. */
 } fat_handle_t;
+
+/** FAT directory iteration state. */
+typedef struct fat_iterate_state {
+    fs_entry_t header;                  /**< Entry header. */
+
+    fat_handle_t *handle;               /**< Handle being iterated. */
+    fat_dir_entry_t entry;              /**< Current directory entry. */
+    size_t idx;                         /**< Next directory entry index. */
+    char *name;                         /**< Name buffer. */
+    uint16_t *lfn_name;                 /**< Temporary unicode name buffer. */
+    uint8_t lfn_seq;                    /**< Next expected LFN sequence number. */
+    uint8_t lfn_checksum;               /**< LFN checksum. */
+    uint8_t num_lfns;                   /**< Number of LFN entries. */
+} fat_iterate_state_t;
 
 /** Print a warning message.
  * @param h             FAT handle.
@@ -80,14 +92,6 @@ static status_t fat_read(fs_handle_t *_handle, void *buf, size_t count, offset_t
     fat_handle_t *handle = (fat_handle_t *)_handle;
     fat_mount_t *mount = (fat_mount_t *)_handle->mount;
     uint32_t start_logical, current_logical, current_physical;
-
-    /* Directories have a zero size (other than the root directory, which is set
-     * by fat_mount()), so do not check for these. We will return end of file if
-     * we reach the end of the cluster chain. */
-    if (!handle->handle.directory || !handle->cluster) {
-        if (offset + count > handle->size)
-            return STATUS_END_OF_FILE;
-    }
 
     /* Special case for root directory on FAT12/16. */
     if (!handle->cluster) {
@@ -176,26 +180,24 @@ static status_t fat_read(fs_handle_t *_handle, void *buf, size_t count, offset_t
     return STATUS_SUCCESS;
 }
 
-/** Get the size of a file.
- * @param _handle       Handle to the file.
- * @return              Size of the file. */
-static offset_t fat_size(fs_handle_t *_handle) {
-    fat_handle_t *handle = (fat_handle_t *)_handle;
+/** Open an entry on a FAT filesystem.
+ * @param _entry        Entry to open (obtained via iterate()).
+ * @param _handle       Where to store pointer to opened handle.
+ * @return              Status code describing the result of the operation. */
+static status_t fat_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle) {
+    fat_iterate_state_t *state = (fat_iterate_state_t *)_entry;
+    fat_handle_t *handle;
 
-    return handle->size;
+    handle = malloc(sizeof(*handle));
+    handle->handle.mount = _entry->owner->mount;
+    handle->handle.directory = state->entry.attributes & FAT_ATTRIBUTE_DIRECTORY;
+    handle->handle.size = le32_to_cpu(state->entry.file_size);
+    handle->cluster = (le16_to_cpu(state->entry.first_cluster_high) << 16)
+        | le16_to_cpu(state->entry.first_cluster_low);
+
+    *_handle = &handle->handle;
+    return STATUS_SUCCESS;
 }
-
-/** FAT directory iteration state. */
-typedef struct fat_iterate_state {
-    fat_handle_t *handle;               /**< Handle being iterated. */
-    fat_dir_entry_t entry;              /**< Current directory entry. */
-    size_t idx;                         /**< Next directory entry index. */
-    char *name;                         /**< Name buffer. */
-    uint16_t *lfn_name;                 /**< Temporary unicode name buffer. */
-    uint8_t lfn_seq;                    /**< Next expected LFN sequence number. */
-    uint8_t lfn_checksum;               /**< LFN checksum. */
-    uint8_t num_lfns;                   /**< Number of LFN entries. */
-} fat_iterate_state_t;
 
 /** Initialize directory iteration state.
  * @param state         State to initialize.
@@ -208,6 +210,8 @@ static void init_iterate_state(fat_iterate_state_t *state, fat_handle_t *handle)
     state->lfn_seq = 0;
     state->lfn_checksum = 0;
     state->num_lfns = 0;
+    state->header.owner = &handle->handle;
+    state->header.name = state->name;
 }
 
 /** Destroy directory iteration state.
@@ -398,7 +402,7 @@ static status_t next_dir_entry(fat_iterate_state_t *state) {
  * @param cb            Callback to call on each entry.
  * @param arg           Data to pass to callback.
  * @return              Status code describing the result of the operation. */
-static status_t fat_iterate(fs_handle_t *_handle, dir_iterate_cb_t cb, void *arg) {
+static status_t fat_iterate(fs_handle_t *_handle, fs_iterate_cb_t cb, void *arg) {
     fat_handle_t *handle = (fat_handle_t *)_handle;
     fat_iterate_state_t state;
     bool cont;
@@ -408,8 +412,6 @@ static status_t fat_iterate(fs_handle_t *_handle, dir_iterate_cb_t cb, void *arg
 
     cont = true;
     while (cont) {
-        fat_handle_t *child;
-
         ret = next_dir_entry(&state);
         if (ret == STATUS_END_OF_FILE) {
             ret = STATUS_SUCCESS;
@@ -422,15 +424,7 @@ static status_t fat_iterate(fs_handle_t *_handle, dir_iterate_cb_t cb, void *arg
         if (state.entry.attributes & FAT_ATTRIBUTE_VOLUME_ID)
             continue;
 
-        /* Allocate a handle for it. */
-        child = fs_handle_alloc(sizeof(*child), handle->handle.mount);
-        child->handle.directory = state.entry.attributes & FAT_ATTRIBUTE_DIRECTORY;
-        child->cluster = (le16_to_cpu(state.entry.first_cluster_high) << 16)
-            | le16_to_cpu(state.entry.first_cluster_low);
-        child->size = le32_to_cpu(state.entry.file_size);
-
-        cont = cb(state.name, &child->handle, arg);
-        fs_handle_release(&child->handle);
+        cont = cb(&state.header, arg);
     }
 
     destroy_iterate_state(&state);
@@ -549,10 +543,11 @@ static status_t fat_mount(device_t *device, fs_mount_t **_mount) {
     /* Create a handle to the root directory. For FAT32 the root directory does
      * not have a fixed region, so use the specified cluster number, else set
      * it to 0 which fat_read() takes to refer to the root directory. */
-    root = fs_handle_alloc(sizeof(*root), &mount->mount);
+    root = malloc(sizeof(*root));
+    root->handle.mount = &mount->mount;
     root->handle.directory = true;
+    root->handle.size = root_sectors * sector_size;
     root->cluster = (mount->fat_type == 32) ? le32_to_cpu(bpb.fat32.root_cluster) : 0;
-    root->size = root_sectors * sector_size;
     mount->mount.root = &root->handle;
 
     /* Get the volume label, stored in the root directory. */
@@ -576,8 +571,8 @@ err:
 /** FAT filesystem operations structure. */
 BUILTIN_FS_OPS(fat_fs_ops) = {
     .name = "FAT",
-    .mount = fat_mount,
     .read = fat_read,
-    .size = fat_size,
+    .open_entry = fat_open_entry,
     .iterate = fat_iterate,
+    .mount = fat_mount,
 };

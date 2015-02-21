@@ -1059,8 +1059,7 @@ static int load_read_helper(unsigned nest) {
  * @param path          Path of the file.
  * @return              Whether the specified path existed. */
 static bool load_config_file(const char *path) {
-    fs_handle_t *handle __cleanup_fs_handle = NULL;
-    size_t size;
+    fs_handle_t *handle __cleanup_close = NULL;
     command_list_t *list;
     status_t ret;
 
@@ -1068,14 +1067,13 @@ static bool load_config_file(const char *path) {
     if (ret != STATUS_SUCCESS || handle->directory)
         return false;
 
-    size = file_size(handle);
-    current_file = malloc(size + 1);
+    current_file = malloc(handle->size + 1);
 
-    ret = file_read(handle, current_file, size, 0);
+    ret = fs_read(handle, current_file, handle->size, 0);
     if (ret != STATUS_SUCCESS)
         boot_error("Failed to read configuration %s (%d)", path, ret);
 
-    current_file[size] = 0;
+    current_file[handle->size] = 0;
 
     /* Use strlen() to set this in case there is a null byte in the middle of
      * the file somewhere. */

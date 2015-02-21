@@ -25,18 +25,19 @@
 #include <loader.h>
 
 struct device;
+struct fs_entry;
 struct fs_handle;
 struct fs_mount;
 
 /** Length of a standard UUID string (including null terminator). */
-#define UUID_STR_LEN 37
+#define UUID_STR_LEN    37
 
-/** Type of a dir_iterate() callback.
- * @param name          Name of the entry.
- * @param handle        Handle to entry.
- * @param data          Data argument passed to dir_iterate().
+/** Type of a fs_iterate() callback.
+ * @param entry         Details of the entry that was found (only valid in the
+ *                      scope of this function).
+ * @param data          Data argument passed to fs_iterate().
  * @return              Whether to continue iteration. */
-typedef bool (*dir_iterate_cb_t)(const char *name, struct fs_handle *handle, void *arg);
+typedef bool (*fs_iterate_cb_t)(const struct fs_entry *entry, void *arg);
 
 /** Structure containing operations for a filesystem. */
 typedef struct fs_ops {
@@ -52,7 +53,13 @@ typedef struct fs_ops {
      *                      device does not contain a filesystem of this type. */
     status_t (*mount)(struct device *device, struct fs_mount **_mount);
 
-    /** Open a file/directory on the filesystem.
+    /** Open an entry on the filesystem.
+     * @param entry         Entry to open (obtained via iterate()).
+     * @param _handle       Where to store pointer to opened handle.
+     * @return              Status code describing the result of the operation. */
+    status_t (*open_entry)(const struct fs_entry *entry, struct fs_handle **_handle);
+
+    /** Open a path on the filesystem.
      * @note                If not provided, a generic implementation will be
      *                      used that uses iterate().
      * @note                This function will always be passed a relative path,
@@ -63,7 +70,7 @@ typedef struct fs_ops {
      * @param from          Handle on this FS to open relative to.
      * @param _handle       Where to store pointer to opened handle.
      * @return              Status code describing the result of the operation. */
-    status_t (*open)(struct fs_mount *mount, char *path, struct fs_handle *from, struct fs_handle **_handle);
+    status_t (*open_path)(struct fs_mount *mount, char *path, struct fs_handle *from, struct fs_handle **_handle);
 
     /** Close a handle (optional).
      * @param handle        Handle to close. The handle will be freed after this
@@ -79,17 +86,12 @@ typedef struct fs_ops {
      * @return              Status code describing the result of the operation. */
     status_t (*read)(struct fs_handle *handle, void *buf, size_t count, offset_t offset);
 
-    /** Get the size of a file.
-     * @param handle        Handle to the file.
-     * @return              Size of the file. */
-    offset_t (*size)(struct fs_handle *handle);
-
     /** Iterate over directory entries.
      * @param handle        Handle to directory.
      * @param cb            Callback to call on each entry.
      * @param arg           Data to pass to callback.
      * @return              Status code describing the result of the operation. */
-    status_t (*iterate)(struct fs_handle *handle, dir_iterate_cb_t cb, void *arg);
+    status_t (*iterate)(struct fs_handle *handle, fs_iterate_cb_t cb, void *arg);
 } fs_ops_t;
 
 /** Define a builtin filesystem operations structure. */
@@ -112,31 +114,33 @@ typedef struct fs_mount {
 typedef struct fs_handle {
     fs_mount_t *mount;                  /**< Mount the entry is on. */
     bool directory;                     /**< Whether the entry is a directory. */
-    unsigned count;                     /**< Reference count. */
+    offset_t size;                      /**< Size of the file. */
 } fs_handle_t;
 
-extern void *fs_handle_alloc(size_t size, fs_mount_t *mount);
-extern void fs_handle_retain(fs_handle_t *handle);
-extern void fs_handle_release(fs_handle_t *handle);
-
-/** Helper for __cleanup_fs_handle. */
-static inline void fs_handle_releasep(void *p) {
-    fs_handle_t *handle = *(fs_handle_t **)p;
-
-    if (handle)
-        fs_handle_releasep(handle);
-}
-
-/** Variable attribute to release a handle when it goes out of scope. */
-#define __cleanup_fs_handle __cleanup(fs_handle_releasep)
+/** Filesystem entry information structure. */
+typedef struct fs_entry {
+    fs_handle_t *owner;                 /**< Directory containing this entry. */
+    const char *name;                   /**< Name of the entry. */
+} fs_entry_t;
 
 extern fs_mount_t *fs_probe(struct device *device);
 
+extern status_t fs_open_entry(const fs_entry_t *entry, fs_handle_t **_handle);
 extern status_t fs_open(const char *path, fs_handle_t *from, fs_handle_t **_handle);
+extern void fs_close(fs_handle_t *handle);
 
-extern status_t file_read(fs_handle_t *handle, void *buf, size_t count, offset_t offset);
-extern offset_t file_size(fs_handle_t *handle);
+extern status_t fs_read(fs_handle_t *handle, void *buf, size_t count, offset_t offset);
+extern status_t fs_iterate(fs_handle_t *handle, fs_iterate_cb_t cb, void *arg);
 
-extern status_t dir_iterate(fs_handle_t *handle, dir_iterate_cb_t cb, void *arg);
+/** Helper for __cleanup_close. */
+static inline void fs_closep(void *p) {
+    fs_handle_t *handle = *(fs_handle_t **)p;
+
+    if (handle)
+        fs_close(handle);
+}
+
+/** Variable attribute to release a handle when it goes out of scope. */
+#define __cleanup_close __cleanup(fs_closep)
 
 #endif /* __FS_H */

@@ -42,10 +42,14 @@ typedef struct iso9660_mount {
 /** Structure containing details of an ISO9660 handle. */
 typedef struct iso9660_handle {
     fs_handle_t handle;                 /**< Handle header. */
-
-    uint32_t data_len;                  /**< Data length. */
     uint32_t extent;                    /**< Extent block number. */
 } iso9660_handle_t;
+
+/** Structure containing details of an ISO9660 entry. */
+typedef struct iso9660_entry {
+    fs_entry_t entry;                   /**< Entry header. */
+    iso9660_directory_record_t *record; /**< Directory record for the entry. */
+} iso9660_entry_t;
 
 /** Convert a wide character to a multibyte sequence. */
 static int utf8_wctomb(uint8_t *s, uint32_t wc, size_t max) {
@@ -199,9 +203,10 @@ static char *iso9660_make_uuid(iso9660_primary_volume_desc_t *pri) {
 static fs_handle_t *iso9660_handle_create(iso9660_mount_t *mount, iso9660_directory_record_t *record) {
     iso9660_handle_t *handle;
 
-    handle = fs_handle_alloc(sizeof(*handle), &mount->mount);
+    handle = malloc(sizeof(*handle));
+    handle->handle.mount = &mount->mount;
     handle->handle.directory = record->file_flags & (1<<1);
-    handle->data_len = le32_to_cpu(record->data_len_le);
+    handle->handle.size = le32_to_cpu(record->data_len_le);
     handle->extent = le32_to_cpu(record->extent_loc_le);
     return &handle->handle;
 }
@@ -292,19 +297,20 @@ static status_t iso9660_mount(device_t *device, fs_mount_t **_mount) {
 static status_t iso9660_read(fs_handle_t *_handle, void *buf, size_t count, offset_t offset) {
     iso9660_handle_t *handle = (iso9660_handle_t *)_handle;
 
-    if ((uint64_t)offset + count > (uint64_t)handle->data_len)
-        return STATUS_END_OF_FILE;
-
     offset += (offset_t)handle->extent * ISO9660_BLOCK_SIZE;
     return device_read(handle->handle.mount->device, buf, count, offset);
 }
 
-/** Get the size of an ISO9660 file.
- * @param _handle       Handle to the file.
- * @return              Size of the file. */
-static offset_t iso9660_size(fs_handle_t *_handle) {
-    iso9660_handle_t *handle = (iso9660_handle_t *)_handle;
-    return handle->data_len;
+/** Open an entry on a ISO9660 filesystem.
+ * @param _entry        Entry to open (obtained via iterate()).
+ * @param _handle       Where to store pointer to opened handle.
+ * @return              Status code describing the result of the operation. */
+static status_t iso9660_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle) {
+    iso9660_entry_t *entry = (iso9660_entry_t *)_entry;
+    iso9660_mount_t *mount = (iso9660_mount_t *)_entry->owner->mount;
+
+    *_handle = iso9660_handle_create(mount, entry->record);
+    return STATUS_SUCCESS;
 }
 
 /** Iterate over directory entries.
@@ -312,33 +318,34 @@ static offset_t iso9660_size(fs_handle_t *_handle) {
  * @param cb            Callback to call on each entry.
  * @param arg           Data to pass to callback.
  * @return              Status code describing the result of the operation. */
-static status_t iso9660_iterate(fs_handle_t *_handle, dir_iterate_cb_t cb, void *arg) {
+static status_t iso9660_iterate(fs_handle_t *_handle, fs_iterate_cb_t cb, void *arg) {
     iso9660_handle_t *handle = (iso9660_handle_t *)_handle;
     iso9660_mount_t *mount = (iso9660_mount_t *)_handle->mount;
     char *buf __cleanup_free;
     uint32_t offset;
+    bool cont;
     status_t ret;
 
     /* Read in all the directory data. */
-    buf = malloc(handle->data_len);
-    ret = iso9660_read(_handle, buf, handle->data_len, 0);
+    buf = malloc(handle->handle.size);
+    ret = iso9660_read(_handle, buf, handle->handle.size, 0);
     if (ret != STATUS_SUCCESS)
         return ret;
 
     /* Iterate through each entry. */
+    cont = true;
     offset = 0;
-    while (offset < handle->data_len) {
+    while (cont && offset < handle->handle.size) {
         iso9660_directory_record_t *record = (iso9660_directory_record_t *)(buf + offset);
         char name[ISO9660_NAME_SIZE];
-        fs_handle_t *child;
-        bool done;
+        iso9660_entry_t entry;
 
         if (record->rec_len) {
             offset += record->rec_len;
         } else {
             /* A zero record length means we should move on to the next block.
              * If this is the end, this will cause us to break out of the while
-             * loop if offset becomes >= data_len. */
+             * loop if offset becomes >= size. */
             offset = round_up(offset, ISO9660_BLOCK_SIZE);
             continue;
         }
@@ -366,11 +373,11 @@ static status_t iso9660_iterate(fs_handle_t *_handle, dir_iterate_cb_t cb, void 
             }
         }
 
-        child = iso9660_handle_create(mount, record);
-        done = !cb(name, child, arg);
-        fs_handle_release(child);
-        if (done)
-            break;
+        entry.entry.owner = &handle->handle;
+        entry.entry.name = name;
+        entry.record = record;
+
+        cont = cb(&entry.entry, arg);
     }
 
     return STATUS_SUCCESS;
@@ -381,6 +388,6 @@ BUILTIN_FS_OPS(iso9660_fs_ops) = {
     .name = "ISO9660",
     .mount = iso9660_mount,
     .read = iso9660_read,
-    .size = iso9660_size,
+    .open_entry = iso9660_open_entry,
     .iterate = iso9660_iterate,
 };

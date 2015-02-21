@@ -27,50 +27,6 @@
 #include <fs.h>
 #include <memory.h>
 
-/**
- * Allocate a new FS handle structure.
- *
- * Allocates a new FS handle structure. Filesystem implementations are expected
- * to embed the fs_handle_t structure at the beginning of a structure containing
- * any private data required by them. This function allocates a structure of
- * the specified size, and initialises the generic header (aside from the
- * directory flag, which must be initialized by the FS).
- *
- * @param size          Size of the structure.
- * @param mount         Mount that the handle belongs to.
- *
- * @return              Pointer to allocated structure.
- */
-void *fs_handle_alloc(size_t size, fs_mount_t *mount) {
-    fs_handle_t *handle;
-
-    assert(size >= sizeof(fs_handle_t));
-
-    handle = malloc(size);
-    handle->mount = mount;
-    handle->count = 1;
-    return handle;
-}
-
-/** Increase the reference count of a FS handle.
- * @param handle        Handle to increase count of. */
-void fs_handle_retain(fs_handle_t *handle) {
-    handle->count++;
-}
-
-/** Decrease the reference count of a FS handle and free it if it reaches 0.
- * @param handle        Handle to decrease count of. */
-void fs_handle_release(fs_handle_t *handle) {
-    assert(handle->count);
-
-    if (--handle->count == 0) {
-        if (handle->mount->ops->close)
-            handle->mount->ops->close(handle);
-
-        free(handle);
-    }
-}
-
 /** Probe a device for filesystems.
  * @param device        Device to probe.
  * @return              Pointer to mount if found, NULL if not. */
@@ -100,28 +56,47 @@ fs_mount_t *fs_probe(device_t *device) {
     return NULL;
 }
 
+/**
+ * Open a handle to a directory entry.
+ *
+ * Opens a handle given an entry structure provided by fs_iterate(). This is
+ * only valid on entry structures provided by that function, as the structure
+ * is typically embedded inside some FS-specific structure which contains the
+ * information needed to open the file.
+ *
+ * @param entry         Entry to open.
+ * @param _handle       Where to store pointer to opened handle.
+ *
+ * @return              Status code describing the result of the operation.
+ */
+status_t fs_open_entry(const fs_entry_t *entry, fs_handle_t **_handle) {
+    if (!entry->owner->mount->ops->open_entry)
+        return STATUS_NOT_SUPPORTED;
+
+    return entry->owner->mount->ops->open_entry(entry, _handle);
+}
+
 /** Structure containing data for fs_open(). */
 typedef struct fs_open_data {
     const char *name;                   /**< Name of entry being searched for. */
+    status_t ret;                       /**< Result of opening the entry. */
     fs_handle_t *handle;                /**< Handle to found entry. */
 } fs_open_data_t;
 
 /** Directory iteration callback for fs_open().
- * @param name          Name of entry.
- * @param handle        Handle to entry.
+ * @param entry         Entry that was found.
  * @param _data         Pointer to data structure.
  * @return              Whether to continue iteration. */
-static bool fs_open_cb(const char *name, fs_handle_t *handle, void *_data) {
+static bool fs_open_cb(const fs_entry_t *entry, void *_data) {
     fs_open_data_t *data = _data;
     int result;
 
-    result = (handle->mount->case_insensitive)
-        ? strcasecmp(name, data->name)
-        : strcmp(name, data->name);
+    result = (entry->owner->mount->case_insensitive)
+        ? strcasecmp(entry->name, data->name)
+        : strcmp(entry->name, data->name);
 
     if (!result) {
-        fs_handle_retain(handle);
-        data->handle = handle;
+        data->ret = fs_open_entry(entry, &data->handle);
         return false;
     } else {
         return true;
@@ -186,54 +161,63 @@ status_t fs_open(const char *path, fs_handle_t *from, fs_handle_t **_handle) {
         return STATUS_INVALID_ARG;
     }
 
-    if (mount->ops->open) {
-        /* Use the provided open() implementation. */
-        ret = mount->ops->open(mount, dup, from, &handle);
+    /* If an open_path() implementation is provided, use it. */
+    if (mount->ops->open_path)
+        return mount->ops->open_path(mount, dup, from, _handle);
+
+    assert(mount->ops->iterate);
+    assert(mount->ops->open_entry);
+
+    handle = from;
+
+    /* Loop through each element of the path string. */
+    while (true) {
+        fs_open_data_t data;
+
+        tok = strsep(&dup, "/");
+        if (!tok) {
+            /* The last token was the last element of the path string,
+             * return the handle we're currently on. */
+            break;
+        } else if (!handle->directory) {
+            /* The previous node was not a directory: this means the path
+             * string is trying to treat a non-directory as a directory.
+             * Reject this. */
+            if (handle != from)
+                fs_close(handle);
+            return STATUS_NOT_DIR;
+        } else if (!tok[0] || (tok[0] == '.' && !tok[1])) {
+            /* Zero-length path component or current directory, do nothing. */
+            continue;
+        }
+
+        /* Search the directory for the entry. */
+        data.name = tok;
+        data.ret = STATUS_NOT_FOUND;
+        ret = mount->ops->iterate(handle, fs_open_cb, &data);
+
+        if (handle != from)
+            fs_close(handle);
+
+        if (ret == STATUS_SUCCESS)
+            ret = data.ret;
         if (ret != STATUS_SUCCESS)
             return ret;
-    } else {
-        assert(mount->ops->iterate);
 
-        handle = from;
-        fs_handle_retain(handle);
-
-        /* Loop through each element of the path string. */
-        while (true) {
-            fs_open_data_t data;
-
-            tok = strsep(&dup, "/");
-            if (!tok) {
-                /* The last token was the last element of the path string,
-                 * return the handle we're currently on. */
-                break;
-            } else if (!handle->directory) {
-                /* The previous node was not a directory: this means the path
-                 * string is trying to treat a non-directory as a directory.
-                 * Reject this. */
-                fs_handle_release(handle);
-                return STATUS_NOT_DIR;
-            } else if (!tok[0]) {
-                /* Zero-length path component, do nothing. */
-                continue;
-            }
-
-            /* Search the directory for the entry. */
-            data.name = tok;
-            data.handle = NULL;
-            ret = mount->ops->iterate(handle, fs_open_cb, &data);
-            fs_handle_release(handle);
-            if (ret != STATUS_SUCCESS) {
-                return ret;
-            } else if (!data.handle) {
-                return STATUS_NOT_FOUND;
-            }
-
-            handle = data.handle;
-        }
+        handle = data.handle;
     }
 
     *_handle = handle;
     return STATUS_SUCCESS;
+}
+
+/** Close a filesystem handle.
+ * @param handle        Handle to close. */
+void fs_close(fs_handle_t *handle) {
+    if (handle->mount->ops->close)
+        handle->mount->ops->close(handle);
+
+    free(handle);
 }
 
 /** Read from a file.
@@ -242,9 +226,12 @@ status_t fs_open(const char *path, fs_handle_t *from, fs_handle_t **_handle) {
  * @param count         Number of bytes to read.
  * @param offset        Offset into the file.
  * @return              Status code describing the result of the operation. */
-status_t file_read(fs_handle_t *handle, void *buf, size_t count, offset_t offset) {
+status_t fs_read(fs_handle_t *handle, void *buf, size_t count, offset_t offset) {
     if (handle->directory)
         return STATUS_NOT_FILE;
+
+    if (offset + count > handle->size)
+        return STATUS_END_OF_FILE;
 
     if (!count)
         return STATUS_SUCCESS;
@@ -252,21 +239,17 @@ status_t file_read(fs_handle_t *handle, void *buf, size_t count, offset_t offset
     return handle->mount->ops->read(handle, buf, count, offset);
 }
 
-/** Get the size of a file.
- * @param handle        Handle to the file.
- * @return              Size of the file. */
-offset_t file_size(fs_handle_t *handle) {
-    return (!handle->directory) ? handle->mount->ops->size(handle) : 0;
-}
-
 /** Iterate over entries in a directory.
  * @param handle        Handle to directory.
  * @param cb            Callback to call on each entry.
  * @param arg           Data to pass to callback.
  * @return              Status code describing the result of the operation. */
-status_t dir_iterate(fs_handle_t *handle, dir_iterate_cb_t cb, void *arg) {
-    if (!handle->directory)
+status_t fs_iterate(fs_handle_t *handle, fs_iterate_cb_t cb, void *arg) {
+    if (!handle->directory) {
         return STATUS_NOT_DIR;
+    } else if (!handle->mount->ops->iterate) {
+        return STATUS_NOT_SUPPORTED;
+    }
 
     return handle->mount->ops->iterate(handle, cb, arg);
 }
