@@ -378,7 +378,7 @@ static status_t iso9660_iterate(fs_handle_t *_handle, dir_iterate_cb_t cb, void 
 
 /** ISO9660 filesystem operations structure. */
 BUILTIN_FS_OPS(iso9660_fs_ops) = {
-    .name = "iso9660",
+    .name = "ISO9660",
     .mount = iso9660_mount,
     .read = iso9660_read,
     .size = iso9660_size,
