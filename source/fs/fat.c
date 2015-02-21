@@ -277,10 +277,11 @@ static void parse_short_name(fat_iterate_state_t *state) {
     fat_dir_entry_t *entry = &state->entry;
     char *name = state->name;
     size_t pos = 0, dot = 0;
+    bool volume_id = entry->attributes & FAT_ATTRIBUTE_VOLUME_ID;
 
     /* Spaces may exist within the name, can't break off at the first space. */
     for (size_t i = 0; i < 8 && entry->name[i]; i++) {
-        name[pos++] = (entry->case_info & FAT_CASE_NAME_LOWER)
+        name[pos++] = (entry->case_info & FAT_CASE_NAME_LOWER && !volume_id)
             ? tolower(entry->name[i])
             : entry->name[i];
     }
@@ -295,7 +296,7 @@ static void parse_short_name(fat_iterate_state_t *state) {
     }
 
     for (size_t i = 8; i < 11 && entry->name[i]; i++) {
-        name[pos++] = (entry->case_info & FAT_CASE_EXT_LOWER)
+        name[pos++] = (entry->case_info & FAT_CASE_EXT_LOWER && !volume_id)
             ? tolower(entry->name[i])
             : entry->name[i];
     }
