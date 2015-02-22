@@ -117,13 +117,13 @@ static bool config_cmd_device(value_list_t *args) {
     value_t value;
 
     if (args->count != 1 || args->values[0].type != VALUE_TYPE_STRING) {
-        config_printf("device: Invalid arguments\n");
+        config_error("device: Invalid arguments");
         return false;
     }
 
     device = device_lookup(args->values[0].string);
     if (!device) {
-        config_printf("device: Device '%s' not found\n", args->values[0].string);
+        config_error("device: Device '%s' not found", args->values[0].string);
         return false;
     }
 
@@ -142,6 +142,12 @@ static bool config_cmd_device(value_list_t *args) {
         environ_remove(current_environ, "device_label");
         environ_remove(current_environ, "device_uuid");
     }
+
+    /* Change directory to the root (NULL indicates root to the FS code). */
+    if (current_environ->directory)
+        fs_close(current_environ->directory);
+
+    current_environ->directory = NULL;
 
     return true;
 }
@@ -185,7 +191,7 @@ static bool config_cmd_lsdev(value_list_t *args) {
 
         device = device_lookup(args->values[0].string);
         if (!device) {
-            config_printf("lsdev: Device '%s' not found\n", args->values[0].string);
+            config_error("lsdev: Device '%s' not found", args->values[0].string);
             return false;
         }
 
@@ -203,7 +209,7 @@ static bool config_cmd_lsdev(value_list_t *args) {
 
         return true;
     } else {
-        config_printf("lsdev: Invalid arguments");
+        config_error("lsdev: Invalid arguments");
         return false;
     }
 }
@@ -223,6 +229,8 @@ void device_init(void) {
         value_t value;
 
         dprintf("device: boot device is %s\n", (boot_device) ? boot_device->name : "unknown");
+
+        root_environ->device = boot_device;
 
         value.type = VALUE_TYPE_STRING;
         value.string = boot_device->name;

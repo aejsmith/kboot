@@ -336,6 +336,10 @@ environ_t *environ_create(environ_t *parent) {
     if (parent) {
         env->device = parent->device;
 
+        env->directory = parent->directory;
+        if (env->directory)
+            fs_retain(env->directory);
+
         list_foreach(&parent->entries, iter) {
             const environ_entry_t *entry = list_entry(iter, environ_entry_t, header);
             environ_entry_t *clone = malloc(sizeof(*clone));
@@ -347,6 +351,7 @@ environ_t *environ_create(environ_t *parent) {
         }
     } else {
         env->device = NULL;
+        env->directory = NULL;
     }
 
     return env;
@@ -916,6 +921,11 @@ command_list_t *config_parse(const char *path, config_read_helper_t helper) {
  * @param args          Argument list.
  * @return              Whether successful. */
 static bool config_cmd_env(value_list_t *args) {
+    if (args->count != 0) {
+        config_error("env: Invalid arguments");
+        return false;
+    }
+
     list_foreach(&current_environ->entries, iter) {
         environ_entry_t *entry = list_entry(iter, environ_entry_t, header);
         const char *type;
@@ -1101,6 +1111,7 @@ void config_init(void) {
 
     /* Create the root environment. */
     root_environ = environ_create(NULL);
+    current_environ = root_environ;
 }
 
 /** Load the configuration. */

@@ -115,6 +115,7 @@ typedef struct fs_handle {
     fs_mount_t *mount;                  /**< Mount the entry is on. */
     bool directory;                     /**< Whether the entry is a directory. */
     offset_t size;                      /**< Size of the file. */
+    unsigned count;                     /**< Reference count. */
 } fs_handle_t;
 
 /** Filesystem entry information structure. */
@@ -124,6 +125,12 @@ typedef struct fs_entry {
 } fs_entry_t;
 
 extern fs_mount_t *fs_probe(struct device *device);
+
+/** Increase the reference count of a filesystem handle.
+ * @param handle        Handle to retain. */
+static inline void fs_retain(fs_handle_t *handle) {
+    handle->count++;
+}
 
 extern status_t fs_open_entry(const fs_entry_t *entry, fs_handle_t **_handle);
 extern status_t fs_open(const char *path, fs_handle_t *from, fs_handle_t **_handle);

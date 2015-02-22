@@ -28,6 +28,7 @@
 
 struct command;
 struct device;
+struct directory;
 struct loader_ops;
 struct value;
 
@@ -38,6 +39,7 @@ typedef struct environ {
 
     /** Per-environment data used internally. */
     struct device *device;              /**< Current device. */
+    struct fs_handle *directory;        /**< Current directory. */
     struct loader_ops *loader;          /**< Operating system loader type. */
     void *loader_private;               /**< Data used by the loader. */
 } environ_t;

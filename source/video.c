@@ -200,7 +200,7 @@ void video_mode_register(video_mode_t *mode, bool current) {
  * @return              Whether successful. */
 static bool config_cmd_lsvideo(value_list_t *args) {
     if (args->count != 0) {
-        config_printf("lsvideo: Invalid arguments");
+        config_error("lsvideo: Invalid arguments");
         return false;
     }
 
