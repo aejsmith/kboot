@@ -217,7 +217,10 @@ typedef struct ext2_inode {
     uint32_t i_block[EXT2_N_BLOCKS];        /**< Pointers to blocks. */
     uint32_t i_generation;                  /**< File version (NFS). */
     uint32_t i_file_acl;                    /**< File access control list. */
-    uint32_t i_dir_acl;                     /**< Directory access control list. */
+    union {
+        uint32_t i_dir_acl;                 /**< Directory access control list. */
+        uint32_t i_size_high;               /**< High 32 bits of size (for regular files). */
+    };
     uint32_t i_faddr;                       /**< Fragment address. */
     union {
         struct {
