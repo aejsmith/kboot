@@ -351,7 +351,7 @@ static status_t next_dir_entry(fat_iterate_state_t *state) {
         /* Ignore deleted entries and entries that have unknown attributes. */
         if (entry->attributes & ~FAT_ATTRIBUTE_VALID) {
             continue;
-        } else if (entry->name[0] == FAT_DIR_ENTRY_DELETED || entry->name[0] == '.') {
+        } else if (entry->name[0] == FAT_DIR_ENTRY_DELETED) {
             continue;
         }
 
