@@ -78,6 +78,13 @@ status_t fs_open_entry(const fs_entry_t *entry, fs_handle_t **_handle) {
     fs_handle_t *handle;
     status_t ret;
 
+    /* Avoid reopening the same directory. */
+    if (entry->name[0] == '.' && !entry->name[1]) {
+        fs_retain(entry->owner);
+        *_handle = entry->owner;
+        return STATUS_SUCCESS;
+    }
+
     if (!entry->owner->mount->ops->open_entry)
         return STATUS_NOT_SUPPORTED;
 
