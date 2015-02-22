@@ -35,6 +35,15 @@ typedef enum device_type {
     DEVICE_TYPE_IMAGE,                  /**< Boot image. */
 } device_type_t;
 
+/** Device identification information to get. */
+typedef enum device_identify {
+    /** Short identification string shown in device list. */
+    DEVICE_IDENTIFY_SHORT,
+
+    /** Long (multi-line) information given by lsdev for a specific device. */
+    DEVICE_IDENTIFY_LONG,
+} device_identify_t;
+
 /** Device operations structure. */
 typedef struct device_ops {
     /** Read from a device.
@@ -45,11 +54,12 @@ typedef struct device_ops {
      * @return              Status code describing the result of the read. */
     status_t (*read)(struct device *device, void *buf, size_t count, offset_t offset);
 
-    /** Get a string to identify a device, for informational purposes.
+    /** Get identification information for the device.
      * @param device        Device to identify.
+     * @param type          Type of the information to get.
      * @param buf           Where to store identification string.
      * @param size          Size of the buffer. */
-    void (*identify)(struct device *device, char *buf, size_t size);
+    void (*identify)(struct device *device, device_identify_t type, char *buf, size_t size);
 } device_ops_t;
 
 /** Base device structure (embedded by device type structures). */

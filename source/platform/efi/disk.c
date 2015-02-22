@@ -73,14 +73,14 @@ static bool efi_disk_is_boot_partition(disk_device_t *_disk, uint8_t id, uint64_
 
 /** Get a string to identify an EFI disk.
  * @param _disk         Disk to identify.
+ * @param type          Type of the information to get.
  * @param buf           Where to store identification string.
  * @param size          Size of the buffer. */
-static void efi_disk_identify(disk_device_t *_disk, char *buf, size_t size) {
+static void efi_disk_identify(disk_device_t *_disk, device_identify_t type, char *buf, size_t size) {
     efi_disk_t *disk = (efi_disk_t *)_disk;
 
-    snprintf(buf, size,
-        "EFI disk %pE (block size: %zu, blocks: %" PRIu64 ")",
-        disk->path, disk->disk.block_size, disk->disk.blocks);
+    if (type == DEVICE_IDENTIFY_SHORT)
+        snprintf(buf, size, "EFI disk %pE", disk->path);
 }
 
 /** EFI disk operations structure. */

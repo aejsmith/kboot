@@ -172,7 +172,7 @@ static void print_device_list(console_t *console, size_t indent) {
 
         snprintf(buf, sizeof(buf), "Unknown");
         if (device->ops->identify)
-            device->ops->identify(device, buf, sizeof(buf));
+            device->ops->identify(device, DEVICE_IDENTIFY_SHORT, buf, sizeof(buf));
 
         console_printf(console, "%-*s%-*s -> %s\n", indent + child, "", 7 - child, device->name, buf);
     }
@@ -187,7 +187,7 @@ static bool config_cmd_lsdev(value_list_t *args) {
         return true;
     } else if (args->count == 1 && args->values[0].type == VALUE_TYPE_STRING) {
         device_t *device;
-        char buf[128];
+        char buf[256];
 
         device = device_lookup(args->values[0].string);
         if (!device) {
@@ -195,16 +195,25 @@ static bool config_cmd_lsdev(value_list_t *args) {
             return false;
         }
 
-        snprintf(buf, sizeof(buf), "Unknown");
-        if (device->ops->identify)
-            device->ops->identify(device, buf, sizeof(buf));
+        config_printf("name       = %s\n", device->name);
 
-        config_printf("name     = %s\n", device->name);
-        config_printf("identity = %s\n", buf);
+        if (device->ops->identify) {
+            device->ops->identify(device, DEVICE_IDENTIFY_SHORT, buf, sizeof(buf));
+        } else {
+            snprintf(buf, sizeof(buf), "Unknown");
+        }
+
+        config_printf("identity   = %s\n", buf);
+
+        if (device->ops->identify) {
+            device->ops->identify(device, DEVICE_IDENTIFY_LONG, buf, sizeof(buf));
+            config_printf("%s", buf);
+        }
+
         if (device->mount) {
-            config_printf("fs       = %s\n", device->mount->ops->name);
-            config_printf("uuid     = %s\n", device->mount->uuid);
-            config_printf("label    = %s\n", device->mount->label);
+            config_printf("fs         = %s\n", device->mount->ops->name);
+            config_printf("uuid       = %s\n", device->mount->uuid);
+            config_printf("label      = \"%s\"\n", device->mount->label);
         }
 
         return true;

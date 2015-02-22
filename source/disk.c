@@ -112,15 +112,25 @@ status_t disk_device_read(device_t *device, void *buf, size_t count, offset_t of
     return STATUS_SUCCESS;
 }
 
-/** Get a string to identify a device.
+/** Get disk device identification information.
  * @param device        Device to identify.
+ * @param type          Type of the information to get.
  * @param buf           Where to store identification string.
  * @param size          Size of the buffer. */
-static void disk_device_identify(device_t *device, char *buf, size_t size) {
+static void disk_device_identify(device_t *device, device_identify_t type, char *buf, size_t size) {
     disk_device_t *disk = (disk_device_t *)device;
 
+    if (type == DEVICE_IDENTIFY_LONG) {
+        size_t ret = snprintf(buf, size,
+            "block size = %zu\n"
+            "blocks     = %" PRIu64 "\n",
+            disk->block_size, disk->blocks);
+        buf += ret;
+        size -= ret;
+    }
+
     if (disk->ops->identify)
-        disk->ops->identify(disk, buf, size);
+        disk->ops->identify(disk, type, buf, size);
 }
 
 /** Disk device operations. */
@@ -141,16 +151,19 @@ static status_t partition_read_blocks(disk_device_t *disk, void *buf, size_t cou
     return partition->parent->ops->read_blocks(partition->parent, buf, count, lba + partition->offset);
 }
 
-/** Get a string to identify a partition.
+/** Get partition identification information.
  * @param disk          Disk to identify.
+ * @param type          Type of the information to get.
  * @param buf           Where to store identification string.
  * @param size          Size of the buffer. */
-static void partition_identify(disk_device_t *disk, char *buf, size_t size) {
+static void partition_identify(disk_device_t *disk, device_identify_t type, char *buf, size_t size) {
     partition_t *partition = (partition_t *)disk;
 
-    snprintf(buf, size,
-        "%s partition %" PRIu8 " (lba: %" PRIu64 ", blocks: %" PRIu64 ")",
-        partition->parent->partition_ops->name, disk->id, partition->offset, disk->blocks);
+    if (type == DEVICE_IDENTIFY_SHORT) {
+        snprintf(buf, size,
+            "%s partition %" PRIu8 " @ %" PRIu64,
+            partition->parent->partition_ops->name, disk->id, partition->offset);
+    }
 }
 
 /** Operations for a partition. */

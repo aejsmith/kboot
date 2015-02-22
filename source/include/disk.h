@@ -77,11 +77,12 @@ typedef struct disk_ops {
      * @return              Whether partition is a boot partition. */
     bool (*is_boot_partition)(struct disk_device *disk, uint8_t id, uint64_t lba);
 
-    /** Get a string to identify a disk, for informational purposes.
+    /** Get identification information for the device.
      * @param disk          Disk to identify.
+     * @param type          Type of the information to get.
      * @param buf           Where to store identification string.
      * @param size          Size of the buffer. */
-    void (*identify)(struct disk_device *disk, char *buf, size_t size);
+    void (*identify)(struct disk_device *disk, device_identify_t type, char *buf, size_t size);
 } disk_ops_t;
 
 /** Structure representing a disk device. */
