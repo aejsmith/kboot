@@ -112,8 +112,11 @@ static void boot_error_help(ui_window_t *window) {
  * @param key           Key that was pressed.
  * @return              Input handling result. */
 static input_result_t boot_error_input(ui_window_t *window, uint16_t key) {
-    /* TODO: Reboot, debug log. */
+    /* TODO: debug log. */
     switch (key) {
+    case '\e':
+        target_reboot();
+        return INPUT_HANDLED;
     case CONSOLE_KEY_F1:
         /* We start the shell in boot_error() upon return. */
         return INPUT_CLOSE;

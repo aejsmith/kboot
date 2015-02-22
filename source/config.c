@@ -1042,6 +1042,20 @@ static bool config_cmd_unset(value_list_t *args) {
 
 BUILTIN_COMMAND("unset", config_cmd_unset);
 
+/** Reboot the system.
+ * @param args          Argument list.
+ * @return              Whether successful. */
+static bool config_cmd_reboot(value_list_t *args) {
+    if (args->count != 0) {
+        config_error("reboot: Invalid arguments");
+        return false;
+    }
+
+    target_reboot();
+}
+
+BUILTIN_COMMAND("reboot", config_cmd_reboot);
+
 /**
  * Initialization functions.
  */

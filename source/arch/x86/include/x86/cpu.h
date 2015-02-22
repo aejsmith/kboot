@@ -185,5 +185,14 @@ static inline void x86_cpuid(uint32_t level, x86_cpuid_t *cpuid) {
         : "0"(level));
 }
 
+/** Read the Time Stamp Counter.
+ * @return              Value of the TSC. */
+static inline uint64_t x86_rdtsc(void) {
+    uint32_t high, low;
+
+    __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
+    return ((uint64_t)high << 32) | low;
+}
+
 #endif /* __ASM__ */
 #endif /* __ARCH_X86_CPU_H */
