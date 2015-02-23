@@ -88,9 +88,9 @@ static efi_status_t efi_get_memory_map(
     efi_status_t ret;
 
     /* Call a first time to get the needed buffer size. */
-    ret = efi_call(efi_system_table->boot_services->get_memory_map,
-        &size, memory_map, _map_key, &descriptor_size,
-        &descriptor_version);
+    ret = efi_call(
+        efi_boot_services->get_memory_map,
+        &size, memory_map, _map_key, &descriptor_size, &descriptor_version);
     if (ret != EFI_SUCCESS && ret != EFI_BUFFER_TOO_SMALL)
         return ret;
 
@@ -99,9 +99,9 @@ static efi_status_t efi_get_memory_map(
     if (ret == EFI_BUFFER_TOO_SMALL) {
         memory_map = malloc(size);
 
-        ret = efi_call(efi_system_table->boot_services->get_memory_map,
-            &size, memory_map, _map_key, &descriptor_size,
-            &descriptor_version);
+        ret = efi_call(
+            efi_boot_services->get_memory_map,
+            &size, memory_map, _map_key, &descriptor_size, &descriptor_version);
         if (ret != EFI_SUCCESS) {
             free(memory_map);
             return ret;
@@ -236,9 +236,9 @@ void *memory_alloc(
             continue;
 
         /* Ask the firmware to allocate this exact address. */
-        ret = efi_call(efi_system_table->boot_services->allocate_pages,
-            EFI_ALLOCATE_ADDRESS, EFI_LOADER_DATA, size / EFI_PAGE_SIZE,
-            &start);
+        ret = efi_call(
+            efi_boot_services->allocate_pages,
+            EFI_ALLOCATE_ADDRESS, EFI_LOADER_DATA, size / EFI_PAGE_SIZE, &start);
         if (ret != STATUS_SUCCESS) {
             dprintf("efi: failed to allocate memory with status 0x%zx\n", ret);
             return NULL;
@@ -286,8 +286,8 @@ void memory_free(void *addr, phys_size_t size) {
                     size, range->size);
             }
 
-            ret = efi_call(efi_system_table->boot_services->free_pages, phys, size / EFI_PAGE_SIZE);
-            if (ret != STATUS_SUCCESS)
+            ret = efi_call(efi_boot_services->free_pages, phys, size / EFI_PAGE_SIZE);
+            if (ret != EFI_SUCCESS)
                 internal_error("Failed to free EFI memory (0x%zx)", ret);
 
             list_remove(&range->header);
