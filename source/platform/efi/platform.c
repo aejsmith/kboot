@@ -26,9 +26,6 @@
 #include <device.h>
 #include <loader.h>
 
-/** Loaded image protocol GUID. */
-static efi_guid_t loaded_image_guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
-
 /** Handle to the loader image. */
 efi_handle_t efi_image_handle;
 
@@ -63,9 +60,7 @@ efi_status_t efi_init(efi_handle_t image_handle, efi_system_table_t *system_tabl
     efi_video_init();
 
     /* Get the loaded image protocol. */
-    ret = efi_open_protocol(
-        image_handle, &loaded_image_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL,
-        (void **)&efi_loaded_image);
+    ret = efi_get_loaded_image(image_handle, &efi_loaded_image);
     if (ret != EFI_SUCCESS)
         internal_error("Failed to get loaded image protocol (0x%x)", ret);
 

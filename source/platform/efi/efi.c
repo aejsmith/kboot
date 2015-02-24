@@ -26,9 +26,10 @@
 #include <loader.h>
 #include <memory.h>
 
-/** Device path protocol GUID. */
+/** Various protocol GUIDs. */
 static efi_guid_t device_path_guid = EFI_DEVICE_PATH_PROTOCOL_GUID;
 static efi_guid_t device_path_to_text_guid = EFI_DEVICE_PATH_TO_TEXT_PROTOCOL_GUID;
+static efi_guid_t loaded_image_guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 
 /** Device path to text protocol. */
 static efi_device_path_to_text_protocol_t *device_path_to_text;
@@ -140,6 +141,14 @@ efi_status_t efi_open_protocol(
         handle, protocol, interface, efi_image_handle, NULL, attributes);
 }
 
+/** Get the loaded image protocol from an image handle.
+ * @param handle        Image handle.
+ * @param _image        Where to store loaded image pointer.
+ * @return              EFI status code. */
+efi_status_t efi_get_loaded_image(efi_handle_t handle, efi_loaded_image_t **_image) {
+    return efi_open_protocol(handle, &loaded_image_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL, (void **)_image);
+}
+
 /** Open the device path protocol for a handle.
  * @param handle        Handle to open for.
  * @return              Pointer to device path protocol on success, NULL on
@@ -215,4 +224,15 @@ bool efi_is_child_device_node(efi_device_path_t *parent, efi_device_path_t *chil
     }
 
     return child != NULL;
+}
+
+/** Exit the loader.
+ * @param status        Exit status.
+ * @param data          Pointer to null-terminated string giving exit reason.
+ * @param data_size     Size of the exit data in bytes. */
+__noreturn void efi_exit(efi_status_t status, efi_char16_t *data, efi_uintn_t data_size) {
+    efi_status_t ret;
+
+    ret = efi_call(efi_boot_services->exit, efi_image_handle, status, data_size, data);
+    internal_error("EFI exit failed (0x%zx)", ret);
 }
