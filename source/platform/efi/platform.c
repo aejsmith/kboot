@@ -21,6 +21,7 @@
 
 #include <efi/disk.h>
 #include <efi/efi.h>
+#include <efi/memory.h>
 
 #include <device.h>
 #include <loader.h>
