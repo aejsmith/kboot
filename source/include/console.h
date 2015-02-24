@@ -197,6 +197,11 @@ extern void console_vprintf_helper(char ch, void *data, int *total);
 extern int console_vprintf(console_t *console, const char *fmt, va_list args);
 extern int console_printf(console_t *console, const char *fmt, ...) __printf(2, 3);
 
+#define vprintf(fmt, args) console_vprintf(&main_console, fmt, args)
+#define printf(fmt...) console_printf(&main_console, fmt)
+#define dvprintf(fmt, args) console_vprintf(&debug_console, fmt, args)
+#define dprintf(fmt...) console_printf(&debug_console, fmt)
+
 /**
  * Write a character to a console.
  *

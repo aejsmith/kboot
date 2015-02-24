@@ -433,6 +433,35 @@ void environ_remove(environ_t *env, const char *name) {
     }
 }
 
+/**
+ * Set the loader for an environment.
+ *
+ * Sets the loader for an environment. After this is called, no more commands
+ * can be executed on the environment, which guarantees that the environment
+ * cannot be further modified.
+ *
+ * @param env           Environment to set in.
+ * @param ops           Loader operations.
+ * @param private       Private data for the loader.
+ */
+void environ_set_loader(environ_t *env, loader_ops_t *ops, void *private) {
+    assert(!env->loader);
+
+    env->loader = ops;
+    env->loader_private = private;
+}
+
+/** Boot the OS specified by an environment.
+ * @param env           Environment to boot. */
+void environ_boot(environ_t *env) {
+    /* Should be checked beforehand. */
+    assert(env->loader);
+
+    current_environ = env;
+    shell_enabled = false;
+    env->loader->load(env->loader_private);
+}
+
 /** Substitute variable references in a value.
  * @param value         Value to substitute in.
  * @return              Whether variable substitution succeeded. */
@@ -572,6 +601,13 @@ bool command_list_exec(command_list_t *list, environ_t *env) {
     /* Execute each command. */
     list_foreach(list, iter) {
         command_list_entry_t *entry = list_entry(iter, command_list_entry_t, header);
+
+        /* Loader command must be the last command in the list, prevent any
+         * other commands from being run if we have a loader set. */
+        if (current_environ->loader) {
+            config_error("Loader command must be final command");
+            return false;
+        }
 
         if (!command_exec(entry)) {
             current_environ = prev;
@@ -1126,6 +1162,9 @@ void config_init(void) {
     /* Create the root environment. */
     root_environ = environ_create(NULL);
     current_environ = root_environ;
+
+    /* We can now use the shell. */
+    shell_enabled = true;
 }
 
 /** Load the configuration. */

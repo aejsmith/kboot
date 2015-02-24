@@ -40,7 +40,7 @@ typedef struct environ {
     /** Per-environment data used internally. */
     struct device *device;              /**< Current device. */
     struct fs_handle *directory;        /**< Current directory. */
-    struct loader_ops *loader;          /**< Operating system loader type. */
+    struct loader_ops *loader;          /**< Operating system loader operations. */
     void *loader_private;               /**< Data used by the loader. */
 } environ_t;
 
@@ -129,6 +129,8 @@ extern void environ_destroy(environ_t *env);
 extern const value_t *environ_lookup(environ_t *env, const char *name);
 extern const value_t *environ_insert(environ_t *env, const char *name, const value_t *value);
 extern void environ_remove(environ_t *env, const char *name);
+extern void environ_set_loader(environ_t *env, struct loader_ops *ops, void *private);
+extern void environ_boot(environ_t *env) __noreturn;
 
 extern void command_list_destroy(command_list_t *list);
 extern command_list_t *command_list_copy(const command_list_t *source);

@@ -22,6 +22,7 @@
 #include <lib/ctype.h>
 #include <lib/string.h>
 
+#include <assert.h>
 #include <config.h>
 #include <console.h>
 #include <loader.h>
@@ -34,6 +35,9 @@ static char line_buf[LINE_BUF_LEN];
 static size_t line_read_pos;
 static size_t line_write_pos;
 static size_t line_length;
+
+/** Whether the shell is currently enabled. */
+bool shell_enabled;
 
 /** Whether currently in the shell. */
 bool shell_running;
@@ -175,6 +179,8 @@ static int shell_input_helper(unsigned nest) {
 
 /** Main function of the shell. */
 void shell_main(void) {
+    assert(shell_enabled);
+
     shell_running = true;
 
     if (main_console.out && main_console.in) {
@@ -202,6 +208,12 @@ void shell_main(void) {
         if (list) {
             command_list_exec(list, current_environ);
             command_list_destroy(list);
+
+            /* If we now have a loader, load it. */
+            if (current_environ->loader) {
+                shell_running = false;
+                environ_boot(current_environ);
+            }
         }
     }
 

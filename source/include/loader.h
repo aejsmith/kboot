@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2014-2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -100,10 +100,18 @@ extern builtin_t __builtins_start[], __builtins_end[];
             var = (object_type *)__builtins_start[++__iter_##var].object) \
         if(__builtins_start[__iter_##var].type == builtin_type)
 
-#define vprintf(fmt, args) console_vprintf(&main_console, fmt, args)
-#define printf(fmt...) console_printf(&main_console, fmt)
-#define dvprintf(fmt, args) console_vprintf(&debug_console, fmt, args)
-#define dprintf(fmt...) console_printf(&debug_console, fmt)
+/** Operating modes for a loaded OS. */
+typedef enum load_mode {
+    LOAD_MODE_32BIT,                    /**< 32-bit. */
+    LOAD_MODE_64BIT,                    /**< 64-bit. */
+} load_mode_t;
+
+/** Structure defining operations for an OS loader. */
+typedef struct loader_ops {
+    /** Load the operating system.
+     * @param private       Loader private data. */
+    void (*load)(void *private) __noreturn;
+} loader_ops_t;
 
 extern void target_reboot(void) __noreturn;
 
