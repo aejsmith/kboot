@@ -94,8 +94,29 @@ typedef struct disk_device {
     size_t block_size;                  /**< Size of a block on the disk. */
     uint64_t blocks;                    /**< Total number of blocks on the disk. */
     uint8_t id;                         /**< ID of the disk. */
-    partition_ops_t *partition_ops;     /**< If this disk is partitioned, the partition scheme used. */
+
+    /** Partitioning information. */
+    struct disk_device *parent;         /**< Parent disk, or NULL if this is the raw disk. */
+    union {
+        struct {
+            list_t partitions;          /**< List of partitions. */
+
+            /** Partitioning scheme used on the disk. */
+            partition_ops_t *partition_ops;
+        } raw;
+        struct {
+            list_t link;                /**< Link to parent's partition list. */
+            uint64_t offset;            /**< LBA offset of the partition. */
+        } partition;
+    };
 } disk_device_t;
+
+/** Return whether a disk device is a partition.
+ * @param disk          Disk to check.
+ * @return              Whether the disk is a partition. */
+static inline bool disk_device_is_partition(disk_device_t *disk) {
+    return !!disk->parent;
+}
 
 extern void disk_device_register(disk_device_t *disk, bool boot);
 
