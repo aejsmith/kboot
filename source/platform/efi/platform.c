@@ -19,6 +19,7 @@
  * @brief               EFI platform main functions.
  */
 
+#include <efi/disk.h>
 #include <efi/efi.h>
 
 #include <device.h>

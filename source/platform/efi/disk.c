@@ -21,9 +21,9 @@
 
 #include <lib/string.h>
 
+#include <efi/disk.h>
 #include <efi/efi.h>
 
-#include <disk.h>
 #include <loader.h>
 #include <memory.h>
 
@@ -31,6 +31,7 @@
 typedef struct efi_disk {
     disk_device_t disk;                 /**< Disk device header. */
 
+    efi_handle_t handle;                /**< Handle to disk. */
     efi_device_path_t *path;            /**< Device path. */
     efi_block_io_protocol_t *block;     /**< Block I/O protocol. */
     efi_uint32_t media_id;              /**< Media ID. */
@@ -89,6 +90,69 @@ static disk_ops_t efi_disk_ops = {
     .is_boot_partition = efi_disk_is_boot_partition,
     .identify = efi_disk_identify,
 };
+
+/**
+ * Gets an EFI handle from a disk device.
+ *
+ * If the given disk is an EFI disk, or a partition on an EFI disk, tries to
+ * find a handle corresponding to that device.
+ *
+ * @param _disk         Disk to get handle for.
+ *
+ * @return              Handle to disk, or NULL if not found.
+ */
+efi_handle_t efi_disk_get_handle(disk_device_t *_disk) {
+    efi_disk_t *disk;
+    disk_device_t *partition = NULL;
+
+    if (disk_device_is_partition(_disk)) {
+        partition = _disk;
+        _disk = _disk->parent;
+    }
+
+    if (_disk->ops != &efi_disk_ops)
+        return NULL;
+
+    disk = (efi_disk_t *)_disk;
+
+    if (partition) {
+        efi_handle_t *handles __cleanup_free = NULL;
+        efi_uintn_t num_handles;
+        efi_status_t ret;
+
+        /* We need to try to locate the partition device node. */
+        ret = efi_locate_handle(EFI_BY_PROTOCOL, &block_io_guid, NULL, &handles, &num_handles);
+        if (ret != EFI_SUCCESS) {
+            dprintf("efi: failed to get handles while identifying partition (0x%zx)\n", ret);
+            return NULL;
+        }
+
+        for (efi_uintn_t i = 0; i < num_handles; i++) {
+            efi_device_path_t *path = efi_get_device_path(handles[i]);
+
+            if (!path)
+                continue;
+
+            if (efi_is_child_device_node(disk->path, path)) {
+                efi_device_path_t *last = efi_last_device_node(path);
+
+                if (last->type == EFI_DEVICE_PATH_TYPE_MEDIA) {
+                    if (last->subtype == EFI_DEVICE_PATH_MEDIA_SUBTYPE_HD) {
+                        efi_device_path_hd_t *hd = (efi_device_path_hd_t *)last;
+
+                        if (partition->partition.offset == hd->partition_start)
+                            return handles[i];
+                    }
+                }
+            }
+        }
+
+        return NULL;
+    } else {
+        /* Simple, we've got the handle already. */
+        return disk->handle;
+    }
+}
 
 /** Detect and register all disk devices. */
 void efi_disk_init(void) {
@@ -153,6 +217,7 @@ void efi_disk_init(void) {
 
         media = disk->block->media;
 
+        disk->handle = handles[i];
         disk->media_id = media->media_id;
         disk->boot = handles[i] == efi_loaded_image->device_handle;
         disk->disk.ops = &efi_disk_ops;

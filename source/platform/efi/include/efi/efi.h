@@ -69,7 +69,6 @@ static inline efi_device_path_t *efi_last_device_node(efi_device_path_t *path) {
 }
 
 extern void efi_console_init(void);
-extern void efi_disk_init(void);
 extern void efi_memory_init(void);
 extern void efi_video_init(void);
 
