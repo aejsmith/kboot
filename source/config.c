@@ -1092,6 +1092,20 @@ static bool config_cmd_reboot(value_list_t *args) {
 
 BUILTIN_COMMAND("reboot", config_cmd_reboot);
 
+/** Exit the loader and (if supported) return to the firmware.
+ * @param args          Argument list.
+ * @return              Whether successful. */
+static bool config_cmd_exit(value_list_t *args) {
+    if (args->count != 0) {
+        config_error("exit: Invalid arguments");
+        return false;
+    }
+
+    target_exit();
+}
+
+BUILTIN_COMMAND("exit", config_cmd_exit);
+
 /**
  * Initialization functions.
  */

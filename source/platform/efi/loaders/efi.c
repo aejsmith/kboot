@@ -83,7 +83,6 @@ static __noreturn void efi_loader_load(void *_handle) {
     efi_memory_cleanup();
 
     /* Start the image. */
-    dprintf("starting image...\n");
     status = efi_call(efi_boot_services->start_image, image_handle, &exit_data_size, &exit_data);
     dprintf("efi: loaded image returned status 0x%zx\n", status);
 

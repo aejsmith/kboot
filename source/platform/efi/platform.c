@@ -78,3 +78,8 @@ void target_reboot(void) {
     efi_call(efi_runtime_services->reset_system, EFI_RESET_WARM, EFI_SUCCESS, 0, NULL);
     internal_error("EFI reset failed");
 }
+
+/** Exit the loader. */
+void target_exit(void) {
+    efi_exit(EFI_SUCCESS, NULL, 0);
+}

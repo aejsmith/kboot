@@ -115,6 +115,12 @@ typedef struct loader_ops {
 
 extern void target_reboot(void) __noreturn;
 
+#ifdef TARGET_HAS_EXIT
+extern void target_exit(void) __noreturn;
+#else
+static inline __noreturn void target_exit(void) { target_reboot(); }
+#endif
+
 extern void boot_error(const char *fmt, ...) __printf(1, 2) __noreturn;
 extern void internal_error(const char *fmt, ...) __printf(1, 2) __noreturn;
 
