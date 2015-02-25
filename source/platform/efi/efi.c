@@ -22,6 +22,7 @@
 #include <efi/efi.h>
 #include <efi/memory.h>
 
+#include <lib/charset.h>
 #include <lib/string.h>
 
 #include <loader.h>
@@ -173,14 +174,13 @@ efi_device_path_t *efi_get_device_path(efi_handle_t handle) {
  * @param cb            Helper function to print with.
  * @param data          Data to pass to helper function. */
 void efi_print_device_path(efi_device_path_t *path, void (*cb)(void *data, char ch), void *data) {
-    static efi_char16_t unknown[] = { 'U', 'n', 'k', 'n', 'o', 'w', 'n' };
-
     efi_char16_t *str;
+    char *buf __cleanup_free = NULL;
 
     /* For now this only works on UEFI 2.0+, previous versions do not have the
      * device path to text protocol. */
     if (!device_path_to_text) {
-        efi_handle_t *handles;
+        efi_handle_t *handles __cleanup_free = NULL;
         efi_uintn_t num_handles;
         efi_status_t ret;
 
@@ -190,7 +190,6 @@ void efi_print_device_path(efi_device_path_t *path, void (*cb)(void *data, char 
             efi_open_protocol(
                 handles[0], &device_path_to_text_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL,
                 (void **)&device_path_to_text);
-            free(handles);
         }
     }
 
@@ -198,17 +197,23 @@ void efi_print_device_path(efi_device_path_t *path, void (*cb)(void *data, char 
     str = (path && device_path_to_text)
         ? efi_call(device_path_to_text->convert_device_path_to_text, path, false, false)
         : NULL;
-    if (!str)
-        str = unknown;
+    if (str) {
+        size_t len = 0;
 
-    for (size_t i = 0; str[i]; i++) {
-        /* FIXME: Unicode. */
-        if (str[i] & 0x7f)
-            cb(data, str[i] & 0x7f);
+        while (str[len])
+            len++;
+
+        buf = malloc((len * MAX_UTF8_PER_UTF16) + 1);
+        len = utf16_to_utf8((uint8_t *)buf, str, len);
+        buf[len] = 0;
+
+        efi_free_pool(str);
+    } else {
+        buf = strdup("Unknown");
     }
 
-    if (str != unknown)
-        efi_free_pool(str);
+    for (size_t i = 0; buf[i]; i++)
+        cb(data, buf[i]);
 }
 
 /** Determine if a device path is a child of another.
