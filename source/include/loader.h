@@ -30,7 +30,7 @@
 #include <status.h>
 #include <types.h>
 
-extern char __start[], __end[];
+struct ui_window;
 
 /**
  * Offset to apply to a physical address to get a virtual address.
@@ -83,6 +83,7 @@ typedef struct builtin {
     void *object;
 } builtin_t;
 
+extern char __start[], __end[];
 extern builtin_t __builtins_start[], __builtins_end[];
 
 /** Define a builtin object. */
@@ -111,6 +112,12 @@ typedef struct loader_ops {
     /** Load the operating system.
      * @param private       Loader private data. */
     void (*load)(void *private) __noreturn;
+
+    #ifdef CONFIG_TARGET_HAS_UI
+    /** Get a configuration window for the OS.
+     * @return              Window for configuring the OS. */
+    struct ui_window *(*configure)(void);
+    #endif
 } loader_ops_t;
 
 extern void target_reboot(void) __noreturn;

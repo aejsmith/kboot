@@ -16,34 +16,21 @@
 
 /**
  * @file
- * @brief               Loader main function.
+ * @brief               Menu interface.
  */
 
+#ifndef __MENU_H
+#define __MENU_H
+
 #include <config.h>
-#include <device.h>
-#include <loader.h>
-#include <memory.h>
-#include <menu.h>
-#include <shell.h>
 
-/** Main function of the loader. */
-void loader_main(void) {
-    environ_t *env;
+#ifdef CONFIG_TARGET_HAS_UI
 
-    config_init();
-    memory_init();
-    device_init();
+extern environ_t *menu_display(void);
 
-    /* Load the configuration file. */
-    config_load();
+#else
 
-    /* Display the menu. */
-    env = menu_display();
+static inline environ_t *menu_display(void) { return root_environ; }
 
-    /* And finally boot the OS. */
-    if (env->loader) {
-        environ_boot(env);
-    } else {
-        boot_error("No operating system to boot");
-    }
-}
+#endif /* CONFIG_TARGET_HAS_UI */
+#endif /* __MENU_H */

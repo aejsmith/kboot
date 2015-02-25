@@ -40,6 +40,7 @@ sources = FeatureSources(config, [
     'fs.c',
     'main.c',
     'memory.c',
+    ('TARGET_HAS_UI', 'menu.c'),
     'shell.c',
     ('TARGET_HAS_UI', 'ui.c'),
     ('TARGET_HAS_VIDEO', 'video.c'),

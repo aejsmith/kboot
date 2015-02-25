@@ -105,9 +105,9 @@ static void boot_error_help(ui_window_t *window) {
     ui_print_action('\e', "Reboot");
 
     if (shell_enabled)
-        ui_print_action(CONSOLE_KEY_F1, "Shell");
+        ui_print_action(CONSOLE_KEY_F2, "Shell");
 
-    ui_print_action(CONSOLE_KEY_F2, "Debug Log");
+    ui_print_action(CONSOLE_KEY_F10, "Debug Log");
 }
 
 /** Handle input on the boot error window.
@@ -120,7 +120,7 @@ static input_result_t boot_error_input(ui_window_t *window, uint16_t key) {
     case '\e':
         target_reboot();
         return INPUT_HANDLED;
-    case CONSOLE_KEY_F1:
+    case CONSOLE_KEY_F2:
         /* We start the shell in boot_error() upon return. */
         return (shell_enabled) ? INPUT_CLOSE : INPUT_HANDLED;
     default:
