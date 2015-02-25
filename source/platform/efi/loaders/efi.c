@@ -17,9 +17,6 @@
 /**
  * @file
  * @brief               EFI executable loader.
- *
- * TODO:
- *  - Need to generate file path and set in loaded image protocol.
  */
 
 #include <efi/console.h>
@@ -30,6 +27,7 @@
 
 #include <lib/string.h>
 
+#include <assert.h>
 #include <config.h>
 #include <fs.h>
 #include <loader.h>
@@ -39,6 +37,7 @@
 typedef struct efi_loader {
     fs_handle_t *handle;                /**< Handle to EFI image. */
     value_t cmdline;                    /**< Command line to the image. */
+    efi_device_path_t *path;            /**< EFI file path. */
 } efi_loader_t;
 
 /** Load an EFI executable.
@@ -83,6 +82,7 @@ static __noreturn void efi_loader_load(void *_loader) {
     image->device_handle = (device->type == DEVICE_TYPE_DISK)
         ? efi_disk_get_handle((disk_device_t *)device)
         : NULL;
+    image->file_path = loader->path;
 
     fs_close(loader->handle);
 
@@ -116,11 +116,76 @@ static loader_ops_t efi_loader_ops = {
     .load = efi_loader_load,
 };
 
+/** Create an EFI file path for a file path.
+ * @param handle        Handle to file.
+ * @param path          Path to file.
+ * @return              Pointer to generated EFI path, NULL on failure. */
+static efi_device_path_t *convert_file_path(fs_handle_t *handle, const char *path) {
+    efi_device_path_file_t *efi_path;
+    efi_device_path_t *end;
+    size_t len;
+
+    /* We need to generate an EFI path from the file path. Since we can't get
+     * the full path from a relative path, only allow absolute ones (or relative
+     * ones from the root). */
+    if (*path == '(') {
+        while (*path && *path++ != ')')
+            ;
+
+        /* This should be true, fs_open() succeeded. */
+        assert(*path == '/');
+    } else if (*path != '/') {
+        if (current_environ->directory && current_environ->directory != handle->mount->root) {
+            config_error("efi: File path must be absolute or relative to root");
+            return NULL;
+        }
+    }
+
+    while (*path == '/')
+        path++;
+
+    /* This allocation may overestimate, due to duplicate '/'s, but we will put
+     * the correct size in the structure. Add 2 to length for leading '\' and
+     * NULL terminator. */
+    efi_path = malloc(sizeof(efi_device_path_file_t)
+        + ((strlen(path) + 2) * sizeof(efi_char16_t))
+        + sizeof(efi_device_path_t));
+    efi_path->header.type = EFI_DEVICE_PATH_TYPE_MEDIA;
+    efi_path->header.subtype = EFI_DEVICE_PATH_MEDIA_SUBTYPE_FILE;
+
+    /* Always need a leading '\'. */
+    len = 0;
+    efi_path->path[len++] = '\\';
+
+    /* Convert the path. FIXME: UTF-8 conversion. */
+    while (*path) {
+        if (*path == '/') {
+            efi_path->path[len++] = '\\';
+            while (*path == '/')
+                path++;
+        } else {
+            efi_path->path[len++] = *path++;
+        }
+    }
+
+    /* Add the null terminator. */
+    efi_path->path[len++] = 0;
+
+    efi_path->header.length = sizeof(efi_device_path_file_t) + (len * sizeof(efi_char16_t));
+
+    /* Add a terminator entry. */
+    end = (efi_device_path_t *)((char *)efi_path + efi_path->header.length);
+    end->type = EFI_DEVICE_PATH_TYPE_END;
+    end->subtype = EFI_DEVICE_PATH_END_SUBTYPE_WHOLE;
+    return &efi_path->header;
+}
+
 /** Load an EFI executable.
  * @param args          Argument list.
  * @return              Whether successful. */
 static bool config_cmd_efi(value_list_t *args) {
     efi_loader_t *loader;
+    const char *path;
     status_t ret;
 
     if ((args->count != 1 && args->count != 2)
@@ -133,26 +198,35 @@ static bool config_cmd_efi(value_list_t *args) {
 
     loader = malloc(sizeof(*loader));
 
-    ret = fs_open(args->values[0].string, NULL, &loader->handle);
+    path = args->values[0].string;
+    ret = fs_open(path, NULL, &loader->handle);
     if (ret != STATUS_SUCCESS) {
-        config_error("efi: Error %d opening '%s'", ret, args->values[0].string);
-        free(loader);
-        return false;
+        config_error("efi: Error %d opening '%s'", ret, path);
+        goto err_free;
     } else if (loader->handle->directory) {
-        config_error("efi: '%s' is a directory", args->values[0].string);
-        fs_close(loader->handle);
-        free(loader);
-        return false;
+        config_error("efi: '%s' is a directory", path);
+        goto err_close;
     }
 
+    loader->path = convert_file_path(loader->handle, path);
+    if (!loader->path)
+        goto err_close;
+
+    /* Copy the command line. */
     if (args->count == 2) {
-        value_copy(&args->values[1], &loader->cmdline);
+        value_move(&args->values[1], &loader->cmdline);
     } else {
         value_init(&loader->cmdline, VALUE_TYPE_STRING);
     }
 
     environ_set_loader(current_environ, &efi_loader_ops, loader);
     return true;
+
+err_close:
+    fs_close(loader->handle);
+err_free:
+    free(loader);
+    return false;
 }
 
 BUILTIN_COMMAND("efi", config_cmd_efi);

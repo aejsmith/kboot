@@ -25,6 +25,8 @@
 #include <efi/memory.h>
 #include <efi/video.h>
 
+#include <lib/string.h>
+
 #include <device.h>
 #include <loader.h>
 

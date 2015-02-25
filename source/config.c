@@ -319,6 +319,35 @@ void value_copy(const value_t *source, value_t *dest) {
     }
 }
 
+/** Move the contents of one value to another.
+ * @param source        Source value.
+ * @param dest          Destination value. */
+void value_move(value_t *source, value_t *dest) {
+    dest->type = source->type;
+
+    switch (dest->type) {
+    case VALUE_TYPE_INTEGER:
+        dest->integer = source->integer;
+        break;
+    case VALUE_TYPE_BOOLEAN:
+        dest->boolean = source->boolean;
+        break;
+    case VALUE_TYPE_STRING:
+    case VALUE_TYPE_REFERENCE:
+        dest->string = source->string;
+        source->string = NULL;
+        break;
+    case VALUE_TYPE_LIST:
+        dest->list = source->list;
+        source->list = NULL;
+        break;
+    case VALUE_TYPE_COMMAND_LIST:
+        dest->cmds = source->cmds;
+        source->cmds = NULL;
+        break;
+    }
+}
+
 /**
  * Command execution/environment management.
  */

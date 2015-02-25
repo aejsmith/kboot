@@ -154,9 +154,13 @@ typedef struct efi_guid {
 #define EFI_DEVICE_PATH_TYPE_BIOS           5
 #define EFI_DEVICE_PATH_TYPE_END            0x7f
 
+/** EFI end device path subtypes. */
+#define EFI_DEVICE_PATH_END_SUBTYPE_WHOLE   0xff
+
 /** EFI media device path subtypes. */
 #define EFI_DEVICE_PATH_MEDIA_SUBTYPE_HD    1
 #define EFI_DEVICE_PATH_MEDIA_SUBTYPE_CDROM 2
+#define EFI_DEVICE_PATH_MEDIA_SUBTYPE_FILE  4
 
 /** Device path protocol. */
 typedef struct efi_device_path {
@@ -182,6 +186,12 @@ typedef struct efi_device_path_hd {
     efi_uint8_t partition_format;
     efi_uint8_t signature_type;
 } __packed efi_device_path_hd_t;
+
+/** File device path structure. */
+typedef struct efi_device_path_file {
+    efi_device_path_t header;
+    efi_char16_t path[];
+} __packed efi_device_path_file_t;
 
 /** Device path to text protocol GUID. */
 #define EFI_DEVICE_PATH_TO_TEXT_PROTOCOL_GUID \
