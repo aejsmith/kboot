@@ -24,9 +24,11 @@
  *  - Support passing arguments to the image.
  */
 
+#include <efi/console.h>
 #include <efi/disk.h>
 #include <efi/efi.h>
 #include <efi/memory.h>
+#include <efi/video.h>
 
 #include <config.h>
 #include <fs.h>
@@ -74,12 +76,9 @@ static __noreturn void efi_loader_load(void *_handle) {
 
     fs_close(handle);
 
-    /* Clear the framebuffer, and reset the EFI consoles. */
-    console_reset(&main_console);
-    efi_call(efi_system_table->con_in->reset, efi_system_table->con_in, false);
-    efi_call(efi_system_table->con_out->reset, efi_system_table->con_out, false);
-
-    /* Release all memory allocated by the loader. */
+    /* Reset everything to default state. */
+    efi_video_reset();
+    efi_console_reset();
     efi_memory_cleanup();
 
     /* Start the image. */

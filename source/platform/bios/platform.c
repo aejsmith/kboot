@@ -31,7 +31,7 @@
 #include <memory.h>
 
 /** Main function of the BIOS loader. */
-void bios_init(void) {
+void bios_main(void) {
     arch_init();
 
     bios_console_init();

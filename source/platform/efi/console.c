@@ -23,6 +23,7 @@
 
 #include <drivers/serial/ns16550.h>
 
+#include <efi/console.h>
 #include <efi/efi.h>
 
 #include <console.h>
@@ -197,4 +198,10 @@ void efi_console_init(void) {
     console->saved_key.scan_code = console->saved_key.unicode_char = 0;
     main_console.in = &efi_console_in_ops;
     main_console.in_private = console;
+}
+
+/** Reset the console to original state. */
+void efi_console_reset(void) {
+    efi_call(efi_system_table->con_in->reset, efi_system_table->con_in, false);
+    efi_call(efi_system_table->con_out->reset, efi_system_table->con_out, false);
 }

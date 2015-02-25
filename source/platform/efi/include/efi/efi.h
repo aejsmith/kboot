@@ -70,11 +70,7 @@ static inline efi_device_path_t *efi_last_device_node(efi_device_path_t *path) {
     return path;
 }
 
-extern void efi_console_init(void);
-extern void efi_video_init(void);
-
-extern efi_status_t efi_init(efi_handle_t image_handle, efi_system_table_t *system_table);
-
+extern efi_status_t efi_main(efi_handle_t image_handle, efi_system_table_t *system_table);
 extern void efi_exit(efi_status_t status, efi_char16_t *data, efi_uintn_t data_size) __noreturn;
 
 #endif /* __EFI_EFI_H */

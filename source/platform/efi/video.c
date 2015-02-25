@@ -17,9 +17,6 @@
 /**
  * @file
  * @brief               EFI video mode detection.
- *
- * TODO:
- *  - Need to implement UGA support for pre-UEFI 2.0 machines, such as Macs.
  */
 
 #include <drivers/video/fb.h>
@@ -27,6 +24,7 @@
 #include <lib/utility.h>
 
 #include <efi/efi.h>
+#include <efi/video.h>
 
 #include <console.h>
 #include <loader.h>
@@ -36,13 +34,17 @@
 /** EFI video mode structure. */
 typedef struct efi_video_mode {
     video_mode_t mode;                      /**< Video mode structure. */
-
-    efi_graphics_output_protocol_t *gop;    /**< Graphics output protocol. */
     uint32_t num;                           /**< Mode number. */
 } efi_video_mode_t;
 
 /** Graphics output protocol GUID. */
 static efi_guid_t graphics_output_guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
+
+/** Graphics output_protocol. */
+static efi_graphics_output_protocol_t *graphics_output;
+
+/** Original video mode number. */
+static uint32_t original_mode;
 
 /** Set an EFI video mode.
  * @param _mode         Mode to set.
@@ -51,16 +53,16 @@ static status_t efi_video_set_mode(video_mode_t *_mode) {
     efi_video_mode_t *mode = (efi_video_mode_t *)_mode;
     efi_status_t ret;
 
-    ret = efi_call(mode->gop->set_mode, mode->gop, mode->num);
+    ret = efi_call(graphics_output->set_mode, graphics_output, mode->num);
     if (ret != EFI_SUCCESS) {
         dprintf("efi: failed to set video mode %u with status 0x%zx\n", mode->num, ret);
         return efi_convert_status(ret);
     }
 
     /* Get the framebuffer information. */
-    mode->mode.mem_phys = mode->gop->mode->frame_buffer_base;
-    mode->mode.mem_virt = mode->gop->mode->frame_buffer_base;
-    mode->mode.mem_size = mode->gop->mode->frame_buffer_size;
+    mode->mode.mem_phys = graphics_output->mode->frame_buffer_base;
+    mode->mode.mem_virt = graphics_output->mode->frame_buffer_base;
+    mode->mode.mem_size = graphics_output->mode->frame_buffer_size;
 
     return STATUS_SUCCESS;
 }
@@ -109,7 +111,6 @@ static void get_component_size_pos(uint32_t mask, uint8_t *_size, uint8_t *_pos)
 void efi_video_init(void) {
     efi_handle_t *handles;
     efi_uintn_t num_handles;
-    efi_graphics_output_protocol_t *gop;
     video_mode_t *best;
     efi_status_t ret;
 
@@ -119,24 +120,28 @@ void efi_video_init(void) {
         return;
 
     /* Just use the first handle. */
-    ret = efi_open_protocol(handles[0], &graphics_output_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL, (void **)&gop);
+    ret = efi_open_protocol(
+        handles[0], &graphics_output_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL,
+        (void **)&graphics_output);
     free(handles);
     if (ret != EFI_SUCCESS)
         return;
 
+    /* Save original mode to be restored if we exit. */
+    original_mode = graphics_output->mode->mode;
+
     /* Get information on all available modes. */
     best = NULL;
-    for (efi_uint32_t i = 0; i < gop->mode->max_mode; i++) {
+    for (efi_uint32_t i = 0; i < graphics_output->mode->max_mode; i++) {
         efi_graphics_output_mode_information_t *info;
         efi_uintn_t size;
         efi_video_mode_t *mode;
 
-        ret = efi_call(gop->query_mode, gop, i, &size, &info);
+        ret = efi_call(graphics_output->query_mode, graphics_output, i, &size, &info);
         if (ret != STATUS_SUCCESS)
             continue;
 
         mode = malloc(sizeof(*mode));
-        mode->gop = gop;
         mode->num = i;
         mode->mode.type = VIDEO_MODE_LFB;
         mode->mode.ops = &efi_video_ops;
@@ -173,11 +178,13 @@ void efi_video_init(void) {
 
         /* If the current mode width is less than 1024, we try to set 1024x768,
          * else we just keep the current. */
-        if (i == gop->mode->mode) {
-            if (!best || mode->mode.width >= 1024)
+        if (!best) {
+            best = &mode->mode;
+        } else if (i == graphics_output->mode->mode) {
+            if (mode->mode.width >= 1024)
                 best = &mode->mode;
         } else if (mode->mode.width == 1024 && mode->mode.height == 768) {
-            if (!best || best->width < 1024 || (best->width == 1024 && best->height == 768 && mode->mode.bpp > best->bpp))
+            if (best->width < 1024 || (best->width == 1024 && best->height == 768 && mode->mode.bpp > best->bpp))
                 best = &mode->mode;
         }
 
@@ -185,4 +192,12 @@ void efi_video_init(void) {
     }
 
     video_set_mode(best);
+}
+
+/** Reset video mode to original state. */
+void efi_video_reset(void) {
+    if (graphics_output) {
+        video_set_mode(NULL);
+        efi_call(graphics_output->set_mode, graphics_output, original_mode);
+    }
 }

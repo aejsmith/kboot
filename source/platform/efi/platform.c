@@ -19,9 +19,11 @@
  * @brief               EFI platform main functions.
  */
 
+#include <efi/console.h>
 #include <efi/disk.h>
 #include <efi/efi.h>
 #include <efi/memory.h>
+#include <efi/video.h>
 
 #include <device.h>
 #include <loader.h>
@@ -41,7 +43,7 @@ efi_boot_services_t *efi_boot_services;
  * @param image_handle  Handle to the loader image.
  * @param system_table  Pointer to EFI system table.
  * @return              EFI status code. */
-efi_status_t efi_init(efi_handle_t image_handle, efi_system_table_t *system_table) {
+efi_status_t efi_main(efi_handle_t image_handle, efi_system_table_t *system_table) {
     efi_status_t ret;
 
     efi_image_handle = image_handle;
