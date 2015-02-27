@@ -118,12 +118,21 @@ void *realloc(void *addr, size_t size) {
         free(addr);
         return NULL;
     } else {
-        new = malloc(size);
+        size = round_up(size, 8);
+
         if (addr) {
             chunk = (heap_chunk_t *)((char *)addr - sizeof(heap_chunk_t));
+            if (chunk->size - sizeof(heap_chunk_t) == size)
+                return addr;
+        }
+
+        new = malloc(size);
+
+        if (addr) {
             memcpy(new, addr, min(chunk->size - sizeof(heap_chunk_t), size));
             free(addr);
         }
+
         return new;
     }
 }
