@@ -31,9 +31,7 @@
 
 #ifndef __ASM__
 
-#include <types.h>
-
-struct disk;
+#include <disk.h>
 
 /** Drive parameters structure. We only care about the EDD 1.x fields. */
 typedef struct drive_parameters {
@@ -68,6 +66,10 @@ typedef struct specification_packet {
 
 extern uint8_t bios_boot_device;
 extern uint64_t bios_boot_partition;
+
+extern uint8_t bios_disk_get_id(disk_device_t *disk);
+
+extern void bios_disk_init(void);
 
 #endif /* __ASM__ */
 #endif /* __PC_DISK_H */

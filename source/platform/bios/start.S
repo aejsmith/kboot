@@ -77,7 +77,7 @@ FUNCTION_END(loader_entry)
 /** Test whether the A20 line is enabled.
  * @note                Partially based on code found at http://wiki.osdev.org/A20_Line
  * @return              AX = 1 if enabled, AX = 0 if not. */
-PRIVATE_FUNCTION_START(test_a20)
+FUNCTION_START(test_a20)
 .code16
     /* Iterate checking to give time for enabling attempts we make to take
      * effect. */

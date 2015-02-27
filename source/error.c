@@ -89,6 +89,8 @@ static void boot_error_message(void) {
     error_printf("Ensure that you have enough memory available, that you do not have any\n");
     error_printf("malfunctioning hardware and that your computer meets the minimum system\n");
     error_printf("requirements for the operating system.\n");
+
+    console_putc(&debug_console, '\n');
 }
 
 #ifdef CONFIG_TARGET_HAS_UI
@@ -161,7 +163,6 @@ void __noreturn boot_error(const char *fmt, ...) {
         console_reset(&main_console);
         console_printf(&main_console, "\nBoot Error: ");
         boot_error_message();
-        error_printf("\n");
     #endif
 
     va_end(boot_error_args);

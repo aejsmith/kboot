@@ -18,6 +18,9 @@ Import('config', 'defaults', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
+    'loaders/chain.c',
+    'loaders/chain_enter.S',
+
     'bios.S',
     'console.c',
     'disk.c',
