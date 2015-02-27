@@ -78,15 +78,23 @@ static input_result_t menu_entry_input(ui_entry_t *_entry, uint16_t key) {
         return INPUT_CLOSE;
     case CONSOLE_KEY_F1:
         if (entry->env->loader->configure) {
+            size_t len;
+            char *title __cleanup_free;
             ui_window_t *window;
             environ_t *prev;
 
+            /* Determine the window title. */
+            len = strlen(entry->name) + 13;
+            title = malloc(len);
+            snprintf(title, len, "Configure '%s'", entry->name);
+
             prev = current_environ;
             current_environ = entry->env;
-            window = entry->env->loader->configure();
+            window = entry->env->loader->configure(entry->env->loader_private, title);
             current_environ = prev;
 
             ui_display(window, ui_console, 0);
+            ui_window_destroy(window);
             return INPUT_RENDER_WINDOW;
         } else {
             return INPUT_HANDLED;

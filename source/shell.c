@@ -43,7 +43,7 @@ bool shell_enabled;
 bool shell_running;
 
 /** Insert a character to the buffer at the current position.
- * @param ch        Character to insert. */
+ * @param ch            Character to insert. */
 static void insert_char(char ch) {
     if (line_length < LINE_BUF_LEN - 1) {
         console_putc(config_console, ch);

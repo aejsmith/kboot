@@ -320,7 +320,8 @@ void value_copy(const value_t *source, value_t *dest) {
 }
 
 /** Move the contents of one value to another.
- * @param source        Source value.
+ * @param source        Source value (will be invalidated, do not use except
+ *                      for passing to value_destroy()).
  * @param dest          Destination value. */
 void value_move(value_t *source, value_t *dest) {
     dest->type = source->type;

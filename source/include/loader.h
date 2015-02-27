@@ -99,7 +99,7 @@ extern builtin_t __builtins_start[], __builtins_end[];
     for (object_type *var = (object_type *)__builtins_start[0].object; \
             __iter_##var < (__builtins_end - __builtins_start); \
             var = (object_type *)__builtins_start[++__iter_##var].object) \
-        if(__builtins_start[__iter_##var].type == builtin_type)
+        if (__builtins_start[__iter_##var].type == builtin_type)
 
 /** Operating modes for a loaded OS. */
 typedef enum load_mode {
@@ -115,8 +115,10 @@ typedef struct loader_ops {
 
     #ifdef CONFIG_TARGET_HAS_UI
     /** Get a configuration window for the OS.
+     * @param private       Loader private data.
+     * @param title         Title to give the window.
      * @return              Window for configuring the OS. */
-    struct ui_window *(*configure)(void);
+    struct ui_window *(*configure)(void *private, const char *title);
     #endif
 } loader_ops_t;
 

@@ -32,6 +32,7 @@
 #include <fs.h>
 #include <loader.h>
 #include <memory.h>
+#include <ui.h>
 
 /** EFI loader data. */
 typedef struct efi_loader {
@@ -111,9 +112,25 @@ static __noreturn void efi_loader_load(void *_loader) {
     efi_exit(status, str, str_size);
 }
 
+/** Get a configuration window.
+ * @param _loader       Pointer to loader data.
+ * @param title         Title to give the window.
+ * @return              Configuration window. */
+static ui_window_t *efi_loader_configure(void *_loader, const char *title) {
+    efi_loader_t *loader = _loader;
+    ui_window_t *window;
+    ui_entry_t *entry;
+
+    window = ui_list_create(title, true);
+    entry = ui_entry_create("Command Line", &loader->cmdline);
+    ui_list_insert(window, entry, false);
+    return window;
+}
+
 /** EFI loader operations. */
 static loader_ops_t efi_loader_ops = {
     .load = efi_loader_load,
+    .configure = efi_loader_configure,
 };
 
 /** Create an EFI file path for a file path.
