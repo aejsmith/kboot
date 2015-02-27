@@ -287,7 +287,7 @@ PRIVATE_FUNCTION_START(__common_entry)
     rep stosb
 
     /* Call the main function. */
-    call    bios_init
+    call    bios_main
 1:  jmp     1b
 FUNCTION_END(__common_entry)
 
