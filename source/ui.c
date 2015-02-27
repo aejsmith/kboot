@@ -799,9 +799,14 @@ static input_result_t ui_textbox_input(ui_entry_t *entry, uint16_t key) {
         editor.window.title = title;
         editor.len = strlen(box->value->string);
         editor.offset = editor.len;
-        editor.buf = malloc(round_up(editor.len, TEXTBOX_EDITOR_CHUNK_SIZE));
-        memcpy(editor.buf, box->value->string, editor.len);
         editor.update = false;
+
+        if (editor.len) {
+            editor.buf = malloc(round_up(editor.len, TEXTBOX_EDITOR_CHUNK_SIZE));
+            memcpy(editor.buf, box->value->string, editor.len);
+        } else {
+            editor.buf = NULL;
+        }
 
         ui_display(&editor.window, ui_console, 0);
 
