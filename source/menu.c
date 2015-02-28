@@ -27,6 +27,7 @@
 #include <memory.h>
 #include <menu.h>
 #include <shell.h>
+#include <time.h>
 #include <ui.h>
 
 /** Structure containing a menu entry. */
@@ -147,6 +148,7 @@ static menu_entry_t *get_default_entry(void) {
 environ_t *menu_display(void) {
     ui_window_t *window;
     const value_t *value;
+    bool display;
     unsigned timeout;
 
     /* Assume if no entries are declared the root environment is bootable. */
@@ -156,18 +158,40 @@ environ_t *menu_display(void) {
     /* Determine the default entry. */
     selected_menu_entry = get_default_entry();
 
-    /* Build the UI. */
-    window = ui_list_create("Boot Menu", false);
-    list_foreach(&menu_entries, iter) {
-        menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
-        ui_list_insert(window, &entry->entry, entry == selected_menu_entry);
+    /* Check if the menu was requested to be hidden. */
+    value = environ_lookup(root_environ, "hidden");
+    if (value && value->type == VALUE_TYPE_BOOLEAN && value->boolean) {
+        display = false;
+        timeout = 0;
+
+        /* Wait half a second for Esc to be pressed. */
+        delay(500);
+        while (console_poll(&main_console)) {
+            if (console_getc(&main_console) == '\e') {
+                /* We don't set a timeout if forced to show. */
+                display = true;
+                break;
+            }
+        }
+    } else {
+        display = true;
+
+        /* Get the timeout. */
+        value = environ_lookup(root_environ, "timeout");
+        timeout = (value && value->type == VALUE_TYPE_INTEGER) ? value->integer : 0;
     }
 
-    value = environ_lookup(root_environ, "timeout");
-    timeout = (value && value->type == VALUE_TYPE_INTEGER) ? value->integer : 0;
+    if (display) {
+        /* Build the UI. */
+        window = ui_list_create("Boot Menu", false);
 
-    // TODO: hidden, destroy window
-    ui_display(window, &main_console, timeout);
+        list_foreach(&menu_entries, iter) {
+            menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
+            ui_list_insert(window, &entry->entry, entry == selected_menu_entry);
+        }
+
+        ui_display(window, &main_console, timeout);
+    }
 
     if (selected_menu_entry) {
         dprintf("menu: booting menu entry '%s'\n", selected_menu_entry->name);
