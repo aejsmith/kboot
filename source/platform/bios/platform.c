@@ -30,6 +30,7 @@
 #include <device.h>
 #include <loader.h>
 #include <memory.h>
+#include <time.h>
 
 /** Main function of the BIOS loader. */
 void bios_main(void) {
@@ -49,7 +50,6 @@ void target_device_probe(void) {
 /** Reboot the system. */
 void target_reboot(void) {
     uint8_t val;
-    uint64_t target;
 
     /* Try the keyboard controller. */
     do {
@@ -58,11 +58,7 @@ void target_reboot(void) {
             in8(0x60);
     } while (val & (1 << 1));
     out8(0x64, 0xfe);
-
-    /* FIXME: delay function. */
-    target = x86_rdtsc() + 1000000000ull;
-    while (x86_rdtsc() < target)
-        __asm__ volatile("pause");
+    delay(100);
 
     /* Fall back on a triple fault. */
     x86_lidt(0, 0);
