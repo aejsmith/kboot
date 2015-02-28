@@ -146,6 +146,8 @@ static menu_entry_t *get_default_entry(void) {
  * @return              Environment to boot. */
 environ_t *menu_display(void) {
     ui_window_t *window;
+    const value_t *value;
+    unsigned timeout;
 
     /* Assume if no entries are declared the root environment is bootable. */
     if (list_empty(&menu_entries))
@@ -161,8 +163,11 @@ environ_t *menu_display(void) {
         ui_list_insert(window, &entry->entry, entry == selected_menu_entry);
     }
 
-    // TODO: timeout, hidden, destroy window
-    ui_display(window, &main_console, 0);
+    value = environ_lookup(root_environ, "timeout");
+    timeout = (value && value->type == VALUE_TYPE_INTEGER) ? value->integer : 0;
+
+    // TODO: hidden, destroy window
+    ui_display(window, &main_console, timeout);
 
     if (selected_menu_entry) {
         dprintf("menu: booting menu entry '%s'\n", selected_menu_entry->name);
