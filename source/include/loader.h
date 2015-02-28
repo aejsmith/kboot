@@ -122,6 +122,7 @@ typedef struct loader_ops {
     #endif
 } loader_ops_t;
 
+extern void target_halt(void) __noreturn;
 extern void target_reboot(void) __noreturn;
 
 #ifdef TARGET_HAS_EXIT

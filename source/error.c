@@ -78,7 +78,7 @@ void __noreturn internal_error(const char *fmt, ...) {
     #endif
     backtrace(error_printf);
 
-    system_halt();
+    target_halt();
 }
 
 /** Display the boot error message. */
@@ -169,5 +169,5 @@ void __noreturn boot_error(const char *fmt, ...) {
 
     /* Jump into the shell (will only get here if it is enabled). */
     shell_main();
-    system_halt();
+    target_halt();
 }

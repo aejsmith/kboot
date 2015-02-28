@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,23 +16,20 @@
 
 /**
  * @file
- * @brief               x86 architecture core definitions.
+ * @brief               x86 timing functions.
  */
 
-#ifndef __ARCH_LOADER_H
-#define __ARCH_LOADER_H
+#ifndef __X86_TIME_H
+#define __X86_TIME_H
 
-#include <types.h>
+#include <platform/loader.h>
 
-/** Properties of the architecture (functions we provide etc.). */
-#define TARGET_HAS_MEMCPY   1
-#define TARGET_HAS_MEMSET   2
+#include <time.h>
 
-/** Spin loop hint. */
-static inline void arch_pause(void) {
-    __asm__ __volatile__("pause");
-}
+#ifdef CONFIG_X86_TSC
+extern void x86_time_init(void);
+#else
+static inline void x86_time_init(void) {}
+#endif
 
-extern void arch_init(void);
-
-#endif /* __ARCH_LOADER_H */
+#endif /* __X86_TIME_H */

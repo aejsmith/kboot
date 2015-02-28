@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,23 +16,21 @@
 
 /**
  * @file
- * @brief               x86 architecture core definitions.
+ * @brief               Timing functions.
  */
 
-#ifndef __ARCH_LOADER_H
-#define __ARCH_LOADER_H
+#include <loader.h>
+#include <time.h>
 
-#include <types.h>
+#ifndef TARGET_HAS_DELAY
 
-/** Properties of the architecture (functions we provide etc.). */
-#define TARGET_HAS_MEMCPY   1
-#define TARGET_HAS_MEMSET   2
+/** Delay for a number of milliseconds.
+ * @param msecs         Milliseconds to delay for. */
+void delay(mstime_t msecs) {
+    mstime_t target = target_internal_time() + msecs;
 
-/** Spin loop hint. */
-static inline void arch_pause(void) {
-    __asm__ __volatile__("pause");
+    while (target_internal_time() < target)
+        arch_pause();
 }
 
-extern void arch_init(void);
-
-#endif /* __ARCH_LOADER_H */
+#endif /* TARGET_HAS_DELAY */

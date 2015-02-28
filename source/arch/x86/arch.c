@@ -20,10 +20,21 @@
  */
 
 #include <x86/descriptor.h>
+#include <x86/time.h>
 
 #include <loader.h>
 
 /** Perform early architecture initialization. */
 void arch_init(void) {
     x86_descriptor_init();
+    x86_time_init();
+}
+
+/** Halt the system. */
+__noreturn void target_halt(void) {
+    while (true) {
+        __asm__ __volatile__(
+            "cli\n"
+            "hlt\n");
+    }
 }

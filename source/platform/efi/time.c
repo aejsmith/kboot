@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Alex Smith
+ * Copyright (C) 2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,23 +16,15 @@
 
 /**
  * @file
- * @brief               x86 architecture core definitions.
+ * @brief               EFI timing functions.
  */
 
-#ifndef __ARCH_LOADER_H
-#define __ARCH_LOADER_H
+#include <efi/efi.h>
 
-#include <types.h>
+#include <time.h>
 
-/** Properties of the architecture (functions we provide etc.). */
-#define TARGET_HAS_MEMCPY   1
-#define TARGET_HAS_MEMSET   2
-
-/** Spin loop hint. */
-static inline void arch_pause(void) {
-    __asm__ __volatile__("pause");
+/** Delay for a number of milliseconds.
+ * @param msecs         Milliseconds to delay for. */
+void delay(mstime_t msecs) {
+    efi_call(efi_boot_services->stall, msecs * 1000);
 }
-
-extern void arch_init(void);
-
-#endif /* __ARCH_LOADER_H */

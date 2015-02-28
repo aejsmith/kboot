@@ -21,6 +21,7 @@ include = {
         'TARGET_HAS_DISK': True,
         'TARGET_HAS_UI': True,
         'TARGET_HAS_VIDEO': True,
+        'X86_TSC': True,
         'DRIVER_SERIAL_NS16550': True,
         'TARGET_NS16550_IO': True,
         'DRIVER_VIDEO_VGA': True,
