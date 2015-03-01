@@ -27,7 +27,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#ifdef CONFIG_64BIT
+#ifdef __LP64__
 #   define __INT_64     long
 #   define __PRI_64     "l"
 #else
@@ -82,7 +82,7 @@ typedef int64_t mstime_t;               /**< Type used to store a time value in 
 #define INT64_MIN       (-9223372036854775807ll-1)
 #define INT64_MAX       9223372036854775807ll
 #define UINT64_MAX      18446744073709551615ull
-#ifdef CONFIG_64BIT
+#ifdef __LP64__
 #   define SIZE_MAX     UINT64_MAX
 #else
 #   define SIZE_MAX     UINT32_MAX

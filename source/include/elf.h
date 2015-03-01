@@ -571,7 +571,7 @@ typedef struct {
     Elf64_Word n_type;                      /**< Type of the note. */
 } __packed Elf64_Note;
 
-#ifdef CONFIG_64BIT
+#ifdef __LP64__
 
 /** Type definitions for native ELF types. */
 typedef Elf64_Ehdr elf_ehdr_t;              /**< ELF executable header. */
@@ -583,7 +583,7 @@ typedef Elf64_Dyn  elf_dyn_t;               /**< ELF dynamic section type. */
 typedef Elf64_Rel  elf_rel_t;               /**< ELF REL type. */
 typedef Elf64_Rela elf_rela_t;              /**< ELF RELA type. */
 
-#else /* CONFIG_64BIT */
+#else /* __LP64__ */
 
 /** Type definitions for native ELF types. */
 typedef Elf32_Ehdr elf_ehdr_t;              /**< ELF executable header. */
@@ -595,6 +595,6 @@ typedef Elf32_Dyn  elf_dyn_t;               /**< ELF dynamic section type. */
 typedef Elf32_Rel  elf_rel_t;               /**< ELF REL type. */
 typedef Elf32_Rela elf_rela_t;              /**< ELF RELA type. */
 
-#endif /* CONFIG_64BIT */
+#endif /* __LP64__ */
 
 #endif /* __ELF_H */

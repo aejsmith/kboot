@@ -23,7 +23,7 @@
 #define __ARCH_TYPES_H
 
 /** Format character definitions for printf(). */
-#ifdef CONFIG_64BIT
+#ifdef __LP64__
 #   define PRIxPHYS    "lx"         /**< Format for phys_ptr_t (hexadecimal). */
 #   define PRIuPHYS    "lu"         /**< Format for phys_ptr_t. */
 #else

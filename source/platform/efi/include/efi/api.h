@@ -37,7 +37,7 @@
 
 /** Basic integer types. */
 typedef unsigned char efi_boolean_t;
-#ifdef CONFIG_64BIT
+#ifdef __LP64__
     typedef int64_t efi_intn_t;
     typedef uint64_t efi_uintn_t;
 #else

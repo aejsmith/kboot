@@ -27,7 +27,7 @@
 #define PAGE_SIZE       0x1000          /**< Size of a page (4KB). */
 
 /** Mask to clear page offset and unsupported bits from a virtual address. */
-#ifdef CONFIG_64BIT
+#ifdef __LP64__
 #   define PAGE_MASK    0x000ffffffffff000l
 #else
 #   define PAGE_MASK    0xfffff000l

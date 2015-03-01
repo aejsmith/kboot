@@ -46,7 +46,7 @@
 
 #include <types.h>
 
-#ifdef CONFIG_64BIT
+#ifdef __LP64__
 
 /** Structure defining an exception stack frame. */
 typedef struct exception_frame {
@@ -74,7 +74,7 @@ typedef struct exception_frame {
     unsigned long ss;               /**< SS. */
 } __packed exception_frame_t;
 
-#else /* CONFIG_64BIT */
+#else /* __LP64__ */
 
 /** Structure defining an interrupt stack frame. */
 typedef struct exception_frame {
@@ -99,7 +99,7 @@ typedef struct exception_frame {
     unsigned long ss;               /**< SS. */
 } __packed exception_frame_t;
 
-#endif /* CONFIG_64BIT */
+#endif /* __LP64__ */
 
 extern void x86_exception_handler(exception_frame_t *frame) __noreturn;
 

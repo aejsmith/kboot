@@ -23,7 +23,7 @@
 #define __ARCH_ELF_H
 
 /** Definitions of native ELF machine type, endianness, etc. */
-#ifdef CONFIG_64BIT
+#ifdef __LP64__
 #   define ELF_MACHINE  ELF_EM_X86_64   /**< ELF machine (x86_64). */
 #   define ELF_CLASS    ELFCLASS64      /**< ELF class (64-bit). */
 #else

@@ -74,7 +74,7 @@ void x86_descriptor_init(void) {
         addr = (ptr_t)&isr_array[i];
         loader_idt[i].base0 = (addr & 0xffff);
         loader_idt[i].base1 = ((addr >> 16) & 0xffff);
-        #ifdef CONFIG_64BIT
+        #ifdef __LP64__
             loader_idt[i].base2 = ((addr >> 32) & 0xffffffff);
             loader_idt[i].ist = 0;
         #endif

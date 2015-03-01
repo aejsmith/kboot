@@ -48,7 +48,7 @@ void backtrace(int (*print)(const char *fmt, ...)) {
     }
 }
 
-#ifdef CONFIG_64BIT
+#ifdef __LP64__
 
 /** Handle an exception.
  * @param frame         Interrupt frame. */
@@ -68,7 +68,7 @@ void x86_exception_handler(exception_frame_t *frame) {
         frame->r14, frame->r15);
 }
 
-#else /* CONFIG_64BIT */
+#else /* __LP64__ */
 
 /** Handle an exception.
  * @param frame         Interrupt frame. */
@@ -84,4 +84,4 @@ void x86_exception_handler(exception_frame_t *frame) {
         frame->si, frame->bp);
 }
 
-#endif /* CONFIG_64BIT */
+#endif /* __LP64__ */

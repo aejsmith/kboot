@@ -24,7 +24,7 @@
 
 .section ".text", "ax", @progbits
 
-#ifdef CONFIG_64BIT
+#ifdef __LP64__
 
 /** Push registers onto the stack. */
 .macro PUSH_REGS
@@ -45,7 +45,7 @@
     push    %r15
 .endm
 
-#else /* CONFIG_64BIT */
+#else /* __LP64__ */
 
 /** Push registers onto the stack. */
 .macro PUSH_REGS
@@ -61,7 +61,7 @@
     andl    $0xffff, (%esp)
 .endm
 
-#endif /* CONFIG_64BIT */
+#endif /* __LP64__ */
 
 /**
  * Macro to define an ISR.
@@ -140,7 +140,7 @@ PRIVATE_FUNCTION_START(isr_common)
     /* Clear direction flag. */
     cld
 
-    #ifdef CONFIG_64BIT
+    #ifdef __LP64__
         movq    %rsp, %rdi
     #else
         /* Set sane segment descriptors. */

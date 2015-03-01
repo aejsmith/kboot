@@ -146,7 +146,7 @@ BUILD_WRITE_REG(cr4, unsigned long);
 static inline unsigned long x86_read_bp(void) {
     unsigned long r;
 
-    #ifdef CONFIG_64BIT
+    #ifdef __LP64__
         __asm__ __volatile__("mov %%rbp, %0" : "=r"(r));
     #else
         __asm__ __volatile__("mov %%ebp, %0" : "=r"(r));

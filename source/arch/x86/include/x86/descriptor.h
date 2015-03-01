@@ -30,7 +30,7 @@
 #define SEGMENT_CS16        0x28    /**< 16-bit code segment. */
 #define SEGMENT_DS16        0x30    /**< 16-bit code segment. */
 
-#ifdef CONFIG_64BIT
+#ifdef __LP64__
 #   define SEGMENT_CS       SEGMENT_CS64
 #   define SEGMENT_DS       SEGMENT_DS64
 #else
@@ -74,7 +74,7 @@ typedef struct gdt_entry {
     unsigned base1 : 8;             /**< High part of base. */
 } __packed __aligned(8) gdt_entry_t;
 
-#ifdef CONFIG_64BIT
+#ifdef __LP64__
 
 /** Structure of an IDT entry. */
 typedef struct idt_entry {
@@ -88,7 +88,7 @@ typedef struct idt_entry {
     unsigned : 32;                  /**< Reserved. */
 } __packed __aligned(8) idt_entry_t;
 
-#else /* CONFIG_64BIT */
+#else /* __LP64__ */
 
 /** Structure of an IDT entry. */
 typedef struct idt_entry {
@@ -99,7 +99,7 @@ typedef struct idt_entry {
     unsigned base1 : 16;            /**< High part of handler address. */
 } __packed __aligned(8) idt_entry_t;
 
-#endif /* CONFIG_64BIT */
+#endif /* __LP64__ */
 
 /** Set the GDTR register.
  * @param base          Virtual address of GDT.
