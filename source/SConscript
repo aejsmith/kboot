@@ -76,9 +76,6 @@ env['ASFLAGS'] += ['-include', 'build/%s/source/config.h' % (env['CONFIG'])]
 # Platform code needs the location of the loader binary.
 env['LOADER'] = File('loader.elf')
 
-# We place the final output binaries in a single directory.
-env['OUTDIR'] = Dir('bin')
-
 # Get the list of source files from the architecture/platform.
 arch_sources = SConscript(dirs = ['arch/' + config['ARCH']], exports = vars)
 platform_sources = SConscript(dirs = ['platform/' + config['PLATFORM']], exports = vars)
