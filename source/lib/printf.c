@@ -214,7 +214,7 @@ static void print_pointer(printf_state_t *state, const char **fmt, void *ptr) {
      */
     switch ((*fmt)[1]) {
     case 'E':
-        #ifdef CONFIG_PLATFORM_EFI
+        #if defined(CONFIG_PLATFORM_EFI) && !defined(__TEST)
             ++(*fmt);
             efi_print_device_path((efi_device_path_t *)ptr, (void *)print_char, state);
             break;

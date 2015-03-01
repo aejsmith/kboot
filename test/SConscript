@@ -1,0 +1,90 @@
+#
+# Copyright (C) 2011-2013 Alex Smith
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+
+import os
+
+Import('env', 'config')
+
+if config['ARCH'] == 'x86':
+    x86_sources = ['../source/drivers/serial/ns16550.c']
+    variants = [
+        {
+            'name': '32',
+            'ccflags': ['-m32'],
+            'asflags': ['-m32'],
+            'linkflags': ['-m32'],
+            'ldscript': 'link-ia32.ld.in',
+            'sources': x86_sources + [
+                '../source/lib/runtime/i386/udivdi3.S',
+                '../source/lib/runtime/i386/umoddi3.S',
+            ],
+        }, {
+            'name': '64',
+            'ccflags': ['-m64', '-mcmodel=kernel', '-mno-red-zone'],
+            'asflags': ['-m64'],
+            'linkflags': ['-m64'],
+            'ldscript': 'link-amd64.ld.in',
+            'sources': x86_sources,
+        },
+    ]
+else:
+    variants = []
+
+main_sources = [
+    'console.c',
+    'main.c',
+    'support.c',
+    '../source/lib/printf.c',
+    '../source/lib/string.c',
+]
+
+for variant in variants:
+    name = variant['name'] if 'name' in variant else ''
+    ccflags = variant['ccflags'] if 'ccflags' in variant else []
+    asflags = variant['asflags'] if 'asflags' in variant else []
+    linkflags = variant['linkflags'] if 'linkflags' in variant else []
+    variant_sources = variant['sources'] if 'sources' in variant else []
+
+    ldscript = env.LDScript('link%s.ld' % (name), variant['ldscript'])
+
+    # Override whatever machine-specific flags were used to compile the loader.
+    ccflags += [x for x in env['CCFLAGS'] if not x.startswith('-m') and x != '-fpic']
+    asflags += [x for x in env['ASFLAGS'] if not x.startswith('-m') and x != '-fpic']
+
+    linkflags += ['-nostdlib', '-Wl,--build-id=none']
+    linkflags += ["-Wl,-T,${File('link%s.ld')}" % name]
+
+    sources = map(File, main_sources + variant_sources)
+
+    # Generate a unique object name per variant for each source file.
+    objects = map(
+        lambda source: env.Object(
+            os.path.join(name, '%s.o' % (os.path.splitext(os.path.basename(str(source)))[0])),
+            source,
+            CCFLAGS = ccflags, ASFLAGS = asflags, CPPDEFINES = ['__TEST']),
+        sources)
+
+    target = env.Program('test%s.elf' % (name), objects, LINKFLAGS = linkflags)
+    Depends(target, ldscript)
+
+    # Generate various information files.
+    env.AddPostAction(target, [
+        Action('$OBJDUMP -d $TARGET > ${TARGET.base}.lst', None),
+        Action('$READELF -aW $TARGET > ${TARGET.base}.rde', None),
+        Action('$NM -C $TARGET | sort > ${TARGET.base}.sym', None),
+    ])
+
+    Alias('test', File('test%s.elf' % (name)))

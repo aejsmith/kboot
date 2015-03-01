@@ -70,8 +70,8 @@ for (k, v) in config.items():
 f.close()
 
 # Include the generated configuration header.
-env['CCFLAGS'] += ['-include', 'build/%s/config.h' % (env['CONFIG'])]
-env['ASFLAGS'] += ['-include', 'build/%s/config.h' % (env['CONFIG'])]
+env['CCFLAGS'] += ['-include', 'build/%s/source/config.h' % (env['CONFIG'])]
+env['ASFLAGS'] += ['-include', 'build/%s/source/config.h' % (env['CONFIG'])]
 
 # Platform code needs the location of the loader binary.
 env['LOADER'] = File('loader.elf')
@@ -94,6 +94,6 @@ Depends(target, env['LDSCRIPT'])
 # Generate various information files.
 env.AddPostAction(target, [
     Action('$OBJDUMP -d $TARGET > ${TARGET.base}.lst', None),
-    Action('$READELF -a $TARGET > ${TARGET.base}.rde', None),
+    Action('$READELF -aW $TARGET > ${TARGET.base}.rde', None),
     Action('$NM -C $TARGET | sort > ${TARGET.base}.sym', None),
 ])

@@ -6,17 +6,17 @@ fsdir=${builddir}/testfs
 mkdir -p ${fsdir}/efi/boot
 
 cp ${builddir}/bin/bootx64.efi ${fsdir}/efi/boot/
-#cp ${builddir}/test/test32.elf ${builddir}/test/test64.elf ${fsdir}/
+cp ${builddir}/test/test32.elf ${builddir}/test/test64.elf ${fsdir}/
 
 cat > ${fsdir}/kboot.cfg << EOF
 set "timeout" 5
 
 entry "Test (32-bit)" {
-	kboot "/test32.elf" ["/test32.elf"]
+    kboot "test32.elf" ["test32.elf"]
 }
 
 entry "Test (64-bit)" {
-	kboot "/test64.elf" ["/test64.elf"]
+    kboot "test64.elf" ["test64.elf"]
 }
 EOF
 
