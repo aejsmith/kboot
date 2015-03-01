@@ -28,6 +28,8 @@
  *    and store it in case the next cluster resides within the same chunk.
  */
 
+#include <fs/fat.h>
+
 #include <lib/charset.h>
 #include <lib/ctype.h>
 #include <lib/string.h>
@@ -39,8 +41,6 @@
 #include <fs.h>
 #include <loader.h>
 #include <memory.h>
-
-#include "fat.h"
 
 /** Mounted FAT filesystem. */
 typedef struct fat_mount {

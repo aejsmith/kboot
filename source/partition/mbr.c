@@ -22,12 +22,12 @@
 
 #include <lib/utility.h>
 
+#include <partition/mbr.h>
+
 #include <disk.h>
 #include <endian.h>
 #include <loader.h>
 #include <memory.h>
-
-#include "mbr.h"
 
 /** Read in an MBR and convert endianness.
  * @param disk          Disk to read from.

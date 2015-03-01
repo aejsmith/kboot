@@ -21,13 +21,13 @@
 
 #include <lib/string.h>
 
+#include <partition/gpt.h>
+#include <partition/mbr.h>
+
 #include <disk.h>
 #include <endian.h>
 #include <loader.h>
 #include <memory.h>
-
-#include "gpt.h"
-#include "mbr.h"
 
 /** Zero GUID (for easy comparison). */
 static gpt_guid_t zero_guid;

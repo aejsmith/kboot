@@ -22,11 +22,11 @@
 #include <bios/bios.h>
 #include <bios/disk.h>
 
+#include <partition/mbr.h>
+
 #include <config.h>
 #include <fs.h>
 #include <loader.h>
-
-#include "../../../partition/mbr.h"
 
 /** Where to load the boot sector to. */
 #define CHAIN_LOAD_ADDR         0x7c00

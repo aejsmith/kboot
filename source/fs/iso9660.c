@@ -19,6 +19,8 @@
  * @brief               ISO9660 filesystem support.
  */
 
+#include <fs/iso9660.h>
+
 #include <lib/charset.h>
 #include <lib/ctype.h>
 #include <lib/string.h>
@@ -30,8 +32,6 @@
 #include <fs.h>
 #include <loader.h>
 #include <memory.h>
-
-#include "iso9660.h"
 
 /** Structure containing details of an ISO9660 filesystem. */
 typedef struct iso9660_mount {

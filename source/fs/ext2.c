@@ -23,6 +23,8 @@
  *    a file so large will be read during boot.
  */
 
+#include <fs/ext2.h>
+
 #include <lib/string.h>
 #include <lib/utility.h>
 
@@ -32,8 +34,6 @@
 #include <fs.h>
 #include <loader.h>
 #include <memory.h>
-
-#include "ext2.h"
 
 /** Symbolic link recursion limit. */
 #define EXT2_SYMLINK_LIMIT 8

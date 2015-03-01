@@ -20,7 +20,7 @@ Import(*vars)
 from util import FeatureSources
 
 sources = FeatureSources(config, [
-    'loaders/efi.c',
+    'loader/efi.c',
 
     'console.c',
     'disk.c',

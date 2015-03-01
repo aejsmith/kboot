@@ -19,8 +19,8 @@
  * @brief               Ext2 filesystem types/definitions.
  */
 
-#ifndef __EXT2_H
-#define __EXT2_H
+#ifndef __FS_EXT2_H
+#define __FS_EXT2_H
 
 /** Ext2 filesystem magic number. */
 #define EXT2_MAGIC              0xef53
@@ -283,4 +283,4 @@ typedef struct ext4_extent_header {
 } __packed ext4_extent_header_t;
 
 #endif /* __ASM__ */
-#endif /* __EXT2_H */
+#endif /* __FS_EXT2_H */
