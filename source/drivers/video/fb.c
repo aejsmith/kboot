@@ -526,13 +526,8 @@ static void *fb_console_init(video_mode_t *mode) {
     /* Allocate a backbuffer and character cache. */
     size = round_up(mode->pitch * mode->height, PAGE_SIZE);
     fb->backbuffer = memory_alloc(size, 0, 0, 0, MEMORY_TYPE_INTERNAL, MEMORY_ALLOC_HIGH, NULL);
-    if (!fb->backbuffer)
-        internal_error("Failed to allocate console backbuffer");
-
     size = round_up(fb->cols * fb->rows * sizeof(*fb->chars), PAGE_SIZE);
     fb->chars = memory_alloc(size, 0, 0, 0, MEMORY_TYPE_INTERNAL, MEMORY_ALLOC_HIGH, NULL);
-    if (!fb->chars)
-        internal_error("Failed to allocate console character cache");
 
     fb_console_reset(fb);
 

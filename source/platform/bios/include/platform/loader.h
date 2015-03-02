@@ -22,6 +22,9 @@
 #ifndef __PLATFORM_LOADER_H
 #define __PLATFORM_LOADER_H
 
+/** Avoid allocating low memory as firmware tends to do funny things with it. */
+#define TARGET_PHYS_MIN         0x100000
+
 /** Load address of the boot loader. */
 #define LOADER_LOAD_ADDR        0x10000
 

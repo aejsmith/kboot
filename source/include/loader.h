@@ -46,6 +46,21 @@ struct ui_window;
 #endif
 
 /**
+ * Minimum physical address to allocate.
+ *
+ * Unless specifically requested to with non-zero minimum address constraints,
+ * the loader will not allocate addresses below this address. Targets can
+ * override this, for example, to avoid allocating from low memory.
+ */
+#ifdef TARGET_PHYS_MIN
+#   if TARGET_PHYS_MIN < 0x1000
+#       error "Invalid minimum physical address"
+#   endif
+#else
+#   define TARGET_PHYS_MIN      0x1000
+#endif
+
+/**
  * Highest physical address accessible to the loader.
  *
  * Specifies the highest physical address which the loader can access. If this

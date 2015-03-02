@@ -58,8 +58,6 @@ static __noreturn void efi_loader_load(void *_loader) {
     /* Allocate a buffer to read the image into. */
     buf_size = round_up(loader->handle->size, PAGE_SIZE);
     buf = memory_alloc(buf_size, 0, 0, 0, MEMORY_TYPE_INTERNAL, 0, NULL);
-    if (!buf)
-        boot_error("Failed to allocate %" PRIu64 " bytes", loader->handle->size);
 
     /* Read it in. */
     ret = fs_read(loader->handle, buf, loader->handle->size, 0);

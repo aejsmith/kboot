@@ -378,64 +378,60 @@ static bool is_suitable_range(
  * @param flags         Behaviour flags.
  * @param _phys         Where to store physical address of allocation.
  *
- * @return              Pointer to virtual mapping of the allocation on success,
- *                      NULL on failure.
+ * @return              Virtual address of allocation on success, NULL if the
+ *                      MEMORY_ALLOC_CAN_FAIL flag is set and insufficient
+ *                      memory is available.
  */
 void *memory_alloc(
     phys_size_t size, phys_size_t align, phys_ptr_t min_addr, phys_ptr_t max_addr,
     uint8_t type, unsigned flags, phys_ptr_t *_phys)
 {
-    memory_range_t *range;
-    bool found = false;
-    phys_ptr_t start;
+    list_t *iter;
+
+    assert(!(size % PAGE_SIZE));
+    assert(!(align % PAGE_SIZE));
+    assert(type != MEMORY_TYPE_FREE);
 
     if (!align)
         align = PAGE_SIZE;
 
-    /* Ensure that all addresses allocated are accessible to us, and avoid
-     * allocating 0 as we use 0 to indicate error. */
-    if (min_addr < PAGE_SIZE)
-        min_addr = PAGE_SIZE;
+    /* Ensure that all addresses allocated are accessible to us, and set a
+     * sensible minimum address if no constraint was given. */
+    if (!min_addr)
+        min_addr = TARGET_PHYS_MIN;
     if (!max_addr || max_addr > TARGET_PHYS_MAX)
         max_addr = TARGET_PHYS_MAX;
 
-    assert(!(size % PAGE_SIZE));
     assert((max_addr - min_addr) >= (size - 1));
-    assert(type != MEMORY_TYPE_FREE);
 
     /* Find a free range that is large enough to hold the new range. */
-    if (flags & MEMORY_ALLOC_HIGH) {
-        list_foreach_reverse(&memory_ranges, iter) {
-            range = list_entry(iter, memory_range_t, header);
+    iter = (flags & MEMORY_ALLOC_HIGH) ? memory_ranges.prev : memory_ranges.next;
+    while (iter != &memory_ranges) {
+        memory_range_t *range = list_entry(iter, memory_range_t, header);
+        phys_ptr_t start;
 
-            found = is_suitable_range(range, size, align, min_addr, max_addr, flags, &start);
-            if (found)
-                break;
-        }
-    } else {
-        list_foreach(&memory_ranges, iter) {
-            range = list_entry(iter, memory_range_t, header);
+        if (is_suitable_range(range, size, align, min_addr, max_addr, flags, &start)) {
+            /* Insert a new range over the top of the allocation. */
+            memory_range_insert(start, size, type);
 
-            found = is_suitable_range(range, size, align, min_addr, max_addr, flags, &start);
-            if (found)
-                break;
+            dprintf(
+                "memory: allocated 0x%" PRIxPHYS "-0x%" PRIxPHYS " (align: 0x%" PRIxPHYS ", type: %u)\n",
+                start, start + size, align, type);
+
+            if (_phys)
+                *_phys = start;
+
+            return (void *)phys_to_virt(start);
         }
+
+        iter = (flags & MEMORY_ALLOC_HIGH) ? range->header.prev : range->header.next;
     }
 
-    if (!found)
+    if (flags & MEMORY_ALLOC_CAN_FAIL) {
         return NULL;
-
-    /* Insert a new range over the top of the allocation. */
-    memory_range_insert(start, size, type);
-
-    dprintf(
-        "memory: allocated 0x%" PRIxPHYS "-0x%" PRIxPHYS " (align: 0x%" PRIxPHYS ", type: %u, flags: 0x%x)\n",
-        start, start + size, align, type, flags);
-
-    if (_phys)
-        *_phys = start;
-
-    return (void *)phys_to_virt(start);
+    } else {
+        boot_error("Insufficient memory available (allocating %" PRIuPHYS " bytes)", size);
+    }
 }
 
 /** Free a range of physical memory.

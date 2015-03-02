@@ -193,23 +193,23 @@ static int reverse_sort_compare(const void *a, const void *b) {
  * @param type          Type to give the allocated range.
  * @param flags         Behaviour flags.
  * @param _phys         Where to store physical address of allocation.
- * @return              Virtual address of the allocation on success, NULL on failure. */
+ * @return              Virtual address of allocation on success, NULL on failure. */
 void *memory_alloc(
     phys_size_t size, phys_size_t align, phys_ptr_t min_addr, phys_ptr_t max_addr,
     uint8_t type, unsigned flags, phys_ptr_t *_phys)
 {
-    efi_memory_descriptor_t *memory_map;
+    efi_memory_descriptor_t *memory_map __cleanup_free = NULL;
     efi_uintn_t num_entries, map_key;
     efi_status_t ret;
 
+    assert(!(size % PAGE_SIZE));
+    assert(!(align % PAGE_SIZE));
+    assert(type != MEMORY_TYPE_FREE);
+
     if (!align)
         align = PAGE_SIZE;
-
-    /* Ensure that all addresses allocated are accessible to us, and avoid
-     * allocating below 1MB as firmwares tend to do all sorts of funny things
-     * with low memory. */
-    if (min_addr < 0x100000)
-        min_addr = 0x100000;
+    if (!min_addr)
+        min_addr = TARGET_PHYS_MIN;
     if (!max_addr || max_addr > TARGET_PHYS_MAX)
         max_addr = TARGET_PHYS_MAX;
 
@@ -233,38 +233,40 @@ void *memory_alloc(
         efi_physical_address_t start;
         efi_memory_range_t *range;
 
-        if (!is_suitable_range(&memory_map[i], size, align, min_addr, max_addr, flags, &start))
-            continue;
+        if (is_suitable_range(&memory_map[i], size, align, min_addr, max_addr, flags, &start)) {
+            /* Ask the firmware to allocate this exact address. Should succeed
+             * as it is marked in the memory map as free, so raise an error if
+             * this fails. */
+            ret = efi_call(
+                efi_boot_services->allocate_pages,
+                EFI_ALLOCATE_ADDRESS, EFI_LOADER_DATA, size / EFI_PAGE_SIZE, &start);
+            if (ret != STATUS_SUCCESS)
+                internal_error("Failed to allocate memory (0x%zx)", ret);
 
-        /* Ask the firmware to allocate this exact address. */
-        ret = efi_call(
-            efi_boot_services->allocate_pages,
-            EFI_ALLOCATE_ADDRESS, EFI_LOADER_DATA, size / EFI_PAGE_SIZE, &start);
-        if (ret != STATUS_SUCCESS) {
-            dprintf("efi: failed to allocate memory with status 0x%zx\n", ret);
-            return NULL;
+            /* Add a structure to track the allocation type (see comment at top). */
+            range = malloc(sizeof(*range));
+            range->start = start;
+            range->size = size;
+            range->type = type;
+            list_init(&range->header);
+            list_append(&efi_memory_ranges, &range->header);
+
+            dprintf(
+                "memory: allocated 0x%" PRIxPHYS "-0x%" PRIxPHYS " (align: 0x%" PRIxPHYS ", type: %u)\n",
+                start, start + size, align, type);
+
+            if (_phys)
+                *_phys = start;
+
+            return (void *)phys_to_virt(start);
         }
-
-        /* Add a structure to track the allocation type (see comment at top). */
-        range = malloc(sizeof(*range));
-        range->start = start;
-        range->size = size;
-        range->type = type;
-        list_init(&range->header);
-        list_append(&efi_memory_ranges, &range->header);
-
-        dprintf(
-            "memory: allocated 0x%" PRIxPHYS "-0x%" PRIxPHYS " (align: 0x%" PRIxPHYS ", type: %u, flags: 0x%x)\n",
-            start, start + size, align, type, flags);
-
-        if (_phys)
-            *_phys = start;
-
-        return (void *)phys_to_virt(start);
     }
 
-    free(memory_map);
-    return NULL;
+    if (flags & MEMORY_ALLOC_CAN_FAIL) {
+        return NULL;
+    } else {
+        boot_error("Insufficient memory available (allocating %" PRIuPHYS " bytes)", size);
+    }
 }
 
 /** Free a range of physical memory.
