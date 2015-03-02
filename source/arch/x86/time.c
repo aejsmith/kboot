@@ -24,6 +24,8 @@
 #include <x86/cpu.h>
 #include <x86/time.h>
 
+#include <loader.h>
+
 /** Frequency of the PIT. */
 #define PIT_FREQUENCY       1193182ul
 
@@ -51,8 +53,14 @@ mstime_t target_internal_time(void) {
 
 /** Initialize the TSC. */
 void x86_time_init(void) {
+    x86_cpuid_t cpuid;
     uint16_t start_high, start_low, end_high, end_low, ticks;
     uint64_t end_tsc, cycles;
+
+    /* Check for TSC support. TODO: Use the RTC as a (terrible) fallback? */
+    x86_cpuid(X86_CPUID_FEATURE_INFO, &cpuid);
+    if (!(cpuid.edx & X86_FEATURE_TSC))
+        boot_error("CPU does not support TSC");
 
     /* Calculate the TSC frequncy. First set the PIT to rate generator mode. */
     out8(PIT_MODE, PIT_MODE_CHANNEL_0 | PIT_MODE_RATE_GENERATOR | PIT_MODE_ACCESS_BOTH);

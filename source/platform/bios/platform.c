@@ -34,10 +34,10 @@
 
 /** Main function of the BIOS loader. */
 void bios_main(void) {
-    arch_init();
-
     bios_console_init();
     bios_video_init();
+
+    arch_init();
 
     loader_main();
 }
