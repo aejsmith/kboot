@@ -24,6 +24,7 @@ sources = FeatureSources(config, [
     'descriptor.c',
     'entry.S',
     'exception.c',
+    'mmu.c',
     ('X86_TSC', 'time.c'),
 ])
 
