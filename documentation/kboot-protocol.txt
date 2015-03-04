@@ -182,7 +182,7 @@ address space.
 Fields:
 
  * `virt`: The virtual address to map at. If this is set to the special value
-   `0xFFFFFFFFFFFFFFFF`, then the boot loader will allocate an address to map
+   `0xffffffffffffffff`, then the boot loader will allocate an address to map
    at. The allocated address can be found in the kernel by iterating over the
    provided virtual address space map to find an entry with matching physical
    address and size. Otherwise, the exact address specified (must be aligned to
@@ -229,7 +229,7 @@ The kernel entry point takes 2 arguments:
 
     void kmain(uint32_t magic, kboot_tag_t *tags);
 
-The first argument is the magic value, `0xB007CAFE`, which can be used by the
+The first argument is the magic value, `0xb007cafe`, which can be used by the
 kernel to ensure that it has been loaded by a KBoot boot loader. The second
 argument is a pointer to the first tag in the information tag list, described
 in the _Kernel Information_ section.
@@ -266,7 +266,7 @@ physical memory used by it.
 The following sections describe the environment upon entering the kernel for
 each supported architecture.
 
-### x86
+### IA32
 
 The arguments to the kernel entry point are passed on the stack. The machine
 state upon entry to the kernel is as follows:
@@ -297,9 +297,17 @@ The address space set up by the boot loader will _not_ have the global flag set
 on any mappings.
 
 To allow the kernel to manipulate the virtual address space, the page directory
-is recursively mapped. A 4MB region of address space is allocated, and the page
-directory entry for that range is set to point to itself. The format of the
-`KBOOT_TAG_PAGETABLES` tag for x86 is as follows:
+is recursively mapped. A 4MB (sized and aligned) region of address space is
+allocated, and the page directory entry for that range is set to point to
+itself. This region is allocated as high as possible _outside_ of the virtual
+map range specified by the `KBOOT_ITAG_LOAD` tag and any mappings specified by
+`KBOOT_ITAG_MAPPING` tags. The range is additionally not included in any
+`KBOOT_TAG_VMEM` tags passed to the kernel. This region is kept separate like
+this because it is intended to be temporary to assist the kernel in setting up
+its own page tables, and should be hidden from architecture-independent kernel
+code.
+
+The format of the `KBOOT_TAG_PAGETABLES` tag for IA32 is as follows:
 
     typedef struct kboot_tag_pagetables {
     	kboot_tag_t   header;
@@ -313,7 +321,7 @@ Fields:
  * `page_dir`: Physical address of the page directory.
  * `mapping`: Virtual address of the recursive page directory mapping.
 
-### x86_64
+### AMD64
 
 The arguments to the kernel entry point are passed as per the AMD64 ABI. The
 machine state upon entry to the kernel is as follows:
@@ -340,12 +348,11 @@ The address space set up by the boot loader will _not_ have the global flag set
 on any mappings.
 
 To allow the kernel to manipulate the virtual address space, the PML4 is
-recursively mapped. A 512GB region of the virtual address space is allocated,
-and the PML4 entry for that range is set to point to itself. Since this is such
-a large region, it is _not_ allocated from the available range stated in the
-`KBOOT_ITAG_LOAD` tag. Instead, the first available PML4 entry searching back
-from the end of the virtual address space is chosen. The format of the
-`KBOOT_TAG_PAGETABLES` tag for x86_64 is as follows:
+recursively mapped. A 512GB (sized and aligned) region of the virtual address
+space is allocated, and the PML4 entry for that range is set to point to itself.
+The same rules for allocation of this region as for IA32 apply here.
+
+The format of the `KBOOT_TAG_PAGETABLES` tag for AMD64 is as follows:
 
     typedef struct kboot_tag_pagetables {
     	kboot_tag_t   header;
@@ -379,13 +386,15 @@ The boot loader may make use of sections (1MB page mappings) within a single
 virtual mapping when constructing the virtual address space, however separate
 mappings should not be mapped together on a single section.
 
-Unlike x86 and x86_64, on ARM it is not possible to recursively map the paging
+Unlike IA32 and AMD64, on ARM it is not possible to recursively map the paging
 structures as the first and second level tables have different formats.
-Instead, a 1MB region of the virtual address space is allocated, and the last
-page within it is mapped to the second level table that covers that region.
-The kernel can then set up temporary mappings within this region by modifying
-the page table. The format of the `KBOOT_TAG_PAGETABLES` tag for ARM is as
-follows:
+Instead, a 1MB (sized and aligned) region of the virtual address space is
+allocated, and the last page within it is mapped to the second level table that
+covers that region. The kernel can then set up temporary mappings within this
+region by modifying the page table. The same rules for allocation of this region
+as for IA32 apply here.
+
+The format of the `KBOOT_TAG_PAGETABLES` tag for ARM is as follows:
 
     typedef struct kboot_tag_pagetables {
     	kboot_tag_t   header;
@@ -551,9 +560,7 @@ Fields:
 
  * `start`: Start address of the virtual memory range. Aligned to the page size.
  * `size`: Size of the virtual memory range. Multiple of the page size.
- * `phys`: Start of the physical memory range that this range maps to. If set
-   to `0xFFFFFFFFFFFFFFFF`, ignore this value (virtual range is a special
-   mapping, such as a recursive page directory mapping).
+ * `phys`: Start of the physical memory range that this range maps to.
 
 ### `KBOOT_TAG_PAGETABLES` (`5`)
 
@@ -656,7 +663,7 @@ Fields (`KBOOT_VIDEO_VGA`):
  * `lines`: Number of lines on the text display (in characters).
  * `x`: Current X position of the cursor.
  * `y`: Current Y position of the cursor.
- * `mem_phys`: Physical address of VGA memory (0xB8000 on PC).
+ * `mem_phys`: Physical address of VGA memory (0xb8000 on PC).
  * `mem_virt`: Virtual address of a mapping of the VGA memory.
  * `mem_size`: Size of the virtual mapping (multiple of page size). The size of
    the mapping will be sufficient to access the entire screen (i.e. at least
@@ -756,9 +763,9 @@ Fields (`KBOOT_BOOTDEV_DISK`):
    other platforms.
  * `partition`: Partition number on the boot device. Partitions are numebered
    starting from 0. Logical partitions in DOS extended partitions start from 4.
-   If not booted from a partition, will be set to `0xFF`.
+   If not booted from a partition, will be set to `0xff`.
  * `sub_partition`: Sub-partition number within the partition, e.g. for BSD
-   disklabels. If not booted from a sub-partition, will be set to `0xFF`.
+   disklabels. If not booted from a sub-partition, will be set to `0xff`.
 
 Fields (`KBOOT_BOOTDEV_NET`):
 
