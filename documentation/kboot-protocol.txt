@@ -74,8 +74,8 @@ All other tags are optional. It is used to identify the image as a KBoot kernel.
 There must only be one `KBOOT_ITAG_IMAGE` tag in a kernel image.
 
     typedef struct kboot_itag_image {
-    	uint32_t version;
-    	uint32_t flags;
+        uint32_t version;
+        uint32_t flags;
     } kboot_itag_image_t;
 
 Fields:
@@ -98,12 +98,12 @@ layout set up by the boot loader. There must be at most one `KBOOT_ITAG_LOAD`
 tag in a kernel image.
 
     typedef struct kboot_itag_load {
-    	uint32_t      flags;
-    	uint32_t      _pad;
-    	kboot_paddr_t alignment;
-    	kboot_paddr_t min_alignment;
-    	kboot_vaddr_t virt_map_base;
-    	kboot_vaddr_t virt_map_size;
+        uint32_t      flags;
+        uint32_t      _pad;
+        kboot_paddr_t alignment;
+        kboot_paddr_t min_alignment;
+        kboot_vaddr_t virt_map_base;
+        kboot_vaddr_t virt_map_size;
     } kboot_itag_load_t;
 
 Fields:
@@ -141,10 +141,10 @@ The boot loader can use the information given by these tags, for example, to
 display a configuration menu.
 
     typedef struct kboot_itag_option {
-    	uint8_t  type;
-    	uint32_t name_len;
-    	uint32_t desc_len;
-    	uint32_t default_len;
+        uint8_t  type;
+        uint32_t name_len;
+        uint32_t desc_len;
+        uint32_t default_len;
     } kboot_itag_option_t;
 
 This structure is followed by 3 variable length fields: `name`, `desc` and
@@ -174,9 +174,9 @@ This tag specifies a range of physical memory to map in to the kernel virtual
 address space.
 
     typedef struct kboot_itag_mapping {
-    	kboot_vaddr_t virt;
-    	kboot_paddr_t phys;
-    	kboot_vaddr_t size;
+        kboot_vaddr_t virt;
+        kboot_paddr_t phys;
+        kboot_vaddr_t size;
     } kboot_itag_mapping_t;
 
 Fields:
@@ -200,10 +200,10 @@ and what display mode it should attempt to set. There must be at most one
 `KBOOT_ITAG_VIDEO` tag in a kernel image.
 
     typedef struct kboot_itag_video {
-    	uint32_t types;
-    	uint32_t width;
-    	uint32_t height;
-    	uint8_t  bpp;
+        uint32_t types;
+        uint32_t width;
+        uint32_t height;
+        uint8_t  bpp;
     } kboot_itag_video_t;
 
 Fields:
@@ -310,10 +310,10 @@ code.
 The format of the `KBOOT_TAG_PAGETABLES` tag for IA32 is as follows:
 
     typedef struct kboot_tag_pagetables {
-    	kboot_tag_t   header;
+        kboot_tag_t   header;
     
-    	kboot_paddr_t page_dir;
-    	kboot_vaddr_t mapping;
+        kboot_paddr_t page_dir;
+        kboot_vaddr_t mapping;
     } kboot_tag_pagetables_t;
 
 Fields:
@@ -355,10 +355,10 @@ The same rules for allocation of this region as for IA32 apply here.
 The format of the `KBOOT_TAG_PAGETABLES` tag for AMD64 is as follows:
 
     typedef struct kboot_tag_pagetables {
-    	kboot_tag_t   header;
+        kboot_tag_t   header;
     
-    	kboot_paddr_t pml4;
-    	kboot_vaddr_t mapping;
+        kboot_paddr_t pml4;
+        kboot_vaddr_t mapping;
     } kboot_tag_pagetables_t;
 
 Fields:
@@ -397,10 +397,10 @@ as for IA32 apply here.
 The format of the `KBOOT_TAG_PAGETABLES` tag for ARM is as follows:
 
     typedef struct kboot_tag_pagetables {
-    	kboot_tag_t   header;
+        kboot_tag_t   header;
     
-    	kboot_paddr_t l1;
-    	kboot_vaddr_t mapping;
+        kboot_paddr_t l1;
+        kboot_vaddr_t mapping;
     } kboot_tag_pagetables_t;
 
 Fields:
@@ -426,8 +426,8 @@ be grouped together in the tag list.
 The header of each tag is in the following format:
 
     typedef struct kboot_tag {
-    	uint32_t type;
-    	uint32_t size;
+        uint32_t type;
+        uint32_t size;
     } kboot_tag_t;
 
 Fields:
@@ -450,17 +450,17 @@ This tag is always present in the tag list, and it is always the first tag in
 the list.
 
     typedef struct kboot_tag_core {
-    	kboot_tag_t   header;
+        kboot_tag_t   header;
     
-    	kboot_paddr_t tags_phys;
-    	uint32_t      tags_size;
-    	uint32_t      _pad;
+        kboot_paddr_t tags_phys;
+        uint32_t      tags_size;
+        uint32_t      _pad;
 
-    	kboot_paddr_t kernel_phys;
+        kboot_paddr_t kernel_phys;
 
-    	kboot_vaddr_t stack_base;
-    	kboot_paddr_t stack_phys;
-    	uint32_t      stack_size;
+        kboot_vaddr_t stack_base;
+        kboot_paddr_t stack_phys;
+        uint32_t      stack_size;
     } kboot_tag_core_t;
 
 Fields:
@@ -482,11 +482,11 @@ by a `KBOOT_ITAG_OPTION` image tag, a `KBOOT_TAG_OPTION` will be present to
 give the option value.
 
     typedef struct kboot_tag_option {
-    	kboot_tag_t header;
+        kboot_tag_t header;
     
-    	uint8_t     type;
-    	uint32_t    name_size;
-    	uint32_t    value_size;
+        uint8_t     type;
+        uint32_t    name_len;
+        uint32_t    value_len;
     } kboot_tag_option_t;
 
 This structure is followed by 2 variable length fields, `name` and `value`.
@@ -494,8 +494,8 @@ This structure is followed by 2 variable length fields, `name` and `value`.
 Fields:
 
  * `type`: Type of the option (see `KBOOT_ITAG_OPTION`).
- * `name_size`: Length of the name string, including null terminator.
- * `value_size`: Size of the option value, in bytes.
+ * `name_len`: Length of the name string, including null terminator.
+ * `value_len`: Size of the option value, in bytes.
  * `name`: Name of the option. The start of this field is the end of the tag
    structure, aligned up to an 8 byte boundary.
  * `value`: Value of the option, dependent on the type (see `KBOOT_ITAG_OPTION`).
@@ -517,11 +517,11 @@ the _Platform Specifics_ section for more information. All memory tags are
 sorted in the tag list by lowest start address first.
 
     typedef struct kboot_tag_memory {
-    	kboot_tag_t   header;
+        kboot_tag_t   header;
     
-    	kboot_paddr_t start;
-    	kboot_paddr_t size;
-    	uint8_t       type;
+        kboot_paddr_t start;
+        kboot_paddr_t size;
+        uint8_t       type;
     } kboot_tag_memory_t;
 
 Fields:
@@ -549,11 +549,11 @@ exist in the kernel virtual address space. All virtual memory tags are sorted
 in the tag list by lowest start address first.
 
     typedef struct kboot_tag_vmem {
-    	kboot_tag_t   header;
+        kboot_tag_t   header;
     
-    	kboot_vaddr_t start;
-    	kboot_vaddr_t size;
-    	kboot_paddr_t phys;
+        kboot_vaddr_t start;
+        kboot_vaddr_t size;
+        kboot_paddr_t phys;
     } kboot_tag_vmem_t;
 
 Fields:
@@ -579,11 +579,11 @@ the OS from. Each instance of this tag describes one of the modules that has
 been loaded.
 
     typedef struct kboot_tag_module {
-    	kboot_tag_t   header;
+        kboot_tag_t   header;
     
-    	kboot_paddr_t addr;
-    	uint32_t      size;
-    	uint32_t      name_size;
+        kboot_paddr_t addr;
+        uint32_t      size;
+        uint32_t      name_len;
     } kboot_tag_module_t;
 
 This structure is followed by a variable length `name` field.
@@ -594,7 +594,7 @@ Fields:
    page size. The data is not mapped into the virtual address space. The memory
    containing module data is marked as `KBOOT_MEMORY_MODULES`.
  * `size`: Size of the module data, in bytes.
- * `name_size`: Length of the name string, including null terminator.
+ * `name_len`: Length of the name string, including null terminator.
  * `name`: Name of the module. This is the base name of the file that the module
    was loaded from.
 
@@ -605,49 +605,49 @@ whether it is is platform dependent. For more details, see `KBOOT_ITAG_VIDEO`
 and the _Platform Specifics_ section.
 
     typedef struct kboot_colour {
-    	uint8_t red;
-    	uint8_t green;
-    	uint8_t blue;
+        uint8_t red;
+        uint8_t green;
+        uint8_t blue;
     } kboot_colour_t;
     
     typedef struct kboot_tag_video {
-    	kboot_tag_t header;
+        kboot_tag_t header;
     
-    	uint32_t     type;
-    	uint32_t    _pad;
+        uint32_t     type;
+        uint32_t    _pad;
     
-    	union {
-    		struct {
-    			uint8_t        cols;
-    			uint8_t        lines;
-    			uint8_t        x;
-    			uint8_t        y;
-    			uint32_t       _pad;
-    			kboot_paddr_t  mem_phys;
-    			kboot_vaddr_t  mem_virt;
-    			uint32_t       mem_size;
-    		} vga;
+        union {
+            struct {
+                uint8_t        cols;
+                uint8_t        lines;
+                uint8_t        x;
+                uint8_t        y;
+                uint32_t       _pad;
+                kboot_paddr_t  mem_phys;
+                kboot_vaddr_t  mem_virt;
+                uint32_t       mem_size;
+            } vga;
     
-    		struct {
-    			uint32_t       flags;
-    			uint32_t       width;
-    			uint32_t       height;
-    			uint8_t        bpp;
-    			uint32_t       pitch;
-    			uint32_t       _pad;
-    			kboot_paddr_t  fb_phys;
-    			kboot_vaddr_t  fb_virt;
-    			uint32_t       fb_size;
-    			uint8_t        red_size;
-    			uint8_t        red_pos;
-    			uint8_t        green_size;
-    			uint8_t        green_pos;
-    			uint8_t        blue_size;
-    			uint8_t        blue_pos;
-    			uint16_t       palette_size;
-    			kboot_colour_t palette[0];
-    		} lfb;
-    	};
+            struct {
+                uint32_t       flags;
+                uint32_t       width;
+                uint32_t       height;
+                uint8_t        bpp;
+                uint32_t       pitch;
+                uint32_t       _pad;
+                kboot_paddr_t  fb_phys;
+                kboot_vaddr_t  fb_virt;
+                uint32_t       fb_size;
+                uint8_t        red_size;
+                uint8_t        red_pos;
+                uint8_t        green_size;
+                uint8_t        green_pos;
+                uint8_t        blue_size;
+                uint8_t        blue_pos;
+                uint16_t       palette_size;
+                kboot_colour_t palette[0];
+            } lfb;
+        };
     } kboot_tag_video_t;
 
 Fields:
@@ -704,8 +704,8 @@ This tag describes the device that the system was booted from.
     typedef uint8_t kboot_ipv4_addr_t[4];
     typedef uint8_t kboot_ipv6_addr_t[16];
     typedef union kboot_ip_addr {
-    	kboot_ipv4_addr_t v4;
-    	kboot_ipv6_addr_t v6;
+        kboot_ipv4_addr_t v4;
+        kboot_ipv6_addr_t v6;
     } kboot_ip_addr_t;
 
 The above types are used to store network address information. A MAC address is
@@ -714,30 +714,34 @@ provided in the tag. IP addresses are stored in the `kboot_ip_addr_t` union,
 in network byte order.
 
     typedef struct kboot_tag_bootdev {
-    	kboot_tag_t header;
+        kboot_tag_t header;
     
-    	uint32_t type;
+        uint32_t type;
     
-    	union {
-    		struct {
-    			uint32_t         flags;
-    			uint8_t          uuid[64];
-    			uint8_t          device;
-    			uint8_t          partition;
-    			uint8_t          sub_partition;
-    		} disk;
+        union {
+            struct {
+                uint32_t         flags;
+                uint8_t          uuid[64];
+                uint8_t          device;
+                uint8_t          partition;
+                uint8_t          sub_partition;
+            } disk;
     
-    		struct {
-    			uint32_t         flags;
-    			kboot_ip_addr_t  server_ip;
-    			uint16_t         server_port;
-    			kboot_ip_addr_t  gateway_ip;
-    			kboot_ip_addr_t  client_ip;
-    			kboot_mac_addr_t client_mac;
-    			uint8_t          hw_type;
-    			uint8_t          hw_addr_len;
-    		} net;
-    	};
+            struct {
+                uint32_t         flags;
+                kboot_ip_addr_t  server_ip;
+                uint16_t         server_port;
+                kboot_ip_addr_t  gateway_ip;
+                kboot_ip_addr_t  client_ip;
+                kboot_mac_addr_t client_mac;
+                uint8_t          hw_type;
+                uint8_t          hw_addr_len;
+            } net;
+
+            struct {
+                uint32_t         str_len;
+            } other;
+        };
     } kboot_tag_bootdev_t;
 
 Fields:
@@ -748,6 +752,8 @@ Fields:
       from a boot image.
     - `KBOOT_BOOTDEV_DISK` (1): Booted from a disk device.
     - `KBOOT_BOOTDEV_NET` (2): Booted from the network.
+    - `KBOOT_BOOTDEV_OTHER` (3): Booted from some other device, specified by a
+      string, the meaning of which is OS-defined.
    
    The remainder of the structure is dependent on the device type.
 
@@ -782,6 +788,11 @@ Fields (`KBOOT_BOOTDEV_NET`):
    section of RFC 1700.
  * `hw_addr_len`: Length of the client MAC address.
 
+Fields (`KBOOT_BOOTDEV_OTHER`):
+
+ * `str_len`: Length of the device specifier string following the structure,
+   including null terminator.
+
 ### `KBOOT_TAG_LOG` (`9`)
 
 This tag is part of an optional feature that enables the boot loader to display
@@ -796,15 +807,15 @@ that it wishes to use this feature by setting the `KBOOT_IMAGE_LOG` flag in the
 will be included in the tag list.
 
     typedef struct kboot_tag_log {
-    	kboot_tag_t   header;
+        kboot_tag_t   header;
     
-    	kboot_vaddr_t log_virt;
-    	kboot_paddr_t log_phys;
-    	uint32_t      log_size;
-    	uint32_t      _pad;
+        kboot_vaddr_t log_virt;
+        kboot_paddr_t log_phys;
+        uint32_t      log_size;
+        uint32_t      _pad;
     
-    	kboot_paddr_t prev_phys;
-    	uint32_t      prev_size;
+        kboot_paddr_t prev_phys;
+        uint32_t      prev_size;
     } kboot_tag_log_t;
 
 Fields:
@@ -824,13 +835,13 @@ The log buffer is a circular buffer. It includes a header at the start, any
 remaining space contains the log itself. The header has the following format:
 
     typedef struct kboot_log {
-    	uint32_t magic;
+        uint32_t magic;
     
-    	uint32_t start;
-    	uint32_t length;
+        uint32_t start;
+        uint32_t length;
     
-    	uint32_t info[3];
-    	uint8_t  buffer[0];
+        uint32_t info[3];
+        uint8_t  buffer[0];
     } kboot_log_t;
 
 Fields:
@@ -853,9 +864,9 @@ buffer. An algorithm for writing to the buffer is shown below:
     log_size = tag->log_size - sizeof(kboot_log_t);
     log->buffer[(log->start + log->length) % log_size] = ch;
     if(log->length < log_size) {
-    	log->length++;
+        log->length++;
     } else {
-    	log->start = (log->start + 1) % log_size;
+        log->start = (log->start + 1) % log_size;
     }
 
 A point to bear in mind is that when the CPU is reset, the CPU cache may not be
@@ -875,15 +886,15 @@ will have its header modified to contain the allocated physical address in the
 `sh_addr` field.
 
     typedef struct kboot_tag_sections {
-    	kboot_tag_t header;
+        kboot_tag_t header;
     
-    	uint32_t    num;
-    	uint32_t    entsize;
-    	uint32_t    shstrndx;
+        uint32_t    num;
+        uint32_t    entsize;
+        uint32_t    shstrndx;
     
-    	uint32_t    _pad;
+        uint32_t    _pad;
     
-    	uint8_t     sections[0];
+        uint8_t     sections[0];
     } kboot_tag_sections_t;
 
 Fields:
@@ -918,12 +929,12 @@ data will contain the tag header and then the data returned by the BIOS. The
 format of each descriptor as of ACPI 5.0 is as follows:
 
     typedef struct kboot_tag_e820 {
-    	kboot_tag_t header;
+        kboot_tag_t header;
 
-    	uint64_t    start;
-    	uint64_t    length;
-    	uint32_t    type;
-    	uint32_t    attr;
+        uint64_t    start;
+        uint64_t    length;
+        uint32_t    type;
+        uint32_t    attr;
     } kboot_tag_e820_t;
 
 The `start`, `length` and `type` fields are guaranteed to be present, however
@@ -938,12 +949,11 @@ field of the `KBOOT_TAG_BOOTDEV` tag contains a string representation of the
 filesystem's UUID. There are others that do not, however for some it is
 possible to give a reasonably unique identifier based on other information.
 This section describes what a boot loader should give as a UUID for certain
-filesystems.
+filesystems. These should follow the behaviour of the `libblkid` library.
 
 ### ISO9660
 
-The algorithm used to generate a UUID for ISO9660 filesystems originates from
-the libblkid library on Linux. If the filesystem has a modification date set,
-that is used, else the creation date is used, and formatted into the following:
+If the filesystem has a modification date set, that is used, else the creation
+date is used, and formatted into the following:
 
     yyyy-mm-dd-hh-mm-ss-cc
