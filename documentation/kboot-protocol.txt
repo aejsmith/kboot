@@ -722,9 +722,6 @@ in network byte order.
             struct {
                 uint32_t         flags;
                 uint8_t          uuid[64];
-                uint8_t          device;
-                uint8_t          partition;
-                uint8_t          sub_partition;
             } disk;
     
             struct {
@@ -764,14 +761,6 @@ Fields (`KBOOT_BOOTDEV_DISK`):
    given as a string. It is recommended that this is used if present to identify
    the boot FS, as it is the most reliable method. See the section
    _Filesystem UUIDs_ for more information about this field.
- * `device`: Boot device number. This field is platform-specific. On the PC
-   platform it contains the BIOS device number. It is currently undefined for
-   other platforms.
- * `partition`: Partition number on the boot device. Partitions are numebered
-   starting from 0. Logical partitions in DOS extended partitions start from 4.
-   If not booted from a partition, will be set to `0xff`.
- * `sub_partition`: Sub-partition number within the partition, e.g. for BSD
-   disklabels. If not booted from a sub-partition, will be set to `0xff`.
 
 Fields (`KBOOT_BOOTDEV_NET`):
 
