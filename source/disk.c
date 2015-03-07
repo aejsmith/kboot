@@ -44,17 +44,13 @@ static const char *const disk_type_names[] = {
  * @return              Whether the read was successful. */
 status_t disk_device_read(device_t *device, void *buf, size_t count, offset_t offset) {
     disk_device_t *disk = (disk_device_t *)device;
-    void *block __cleanup_free = NULL;
+    void *tmp __cleanup_free = NULL;
     uint64_t start, end;
     size_t size;
     status_t ret;
 
     if (offset + count > disk->blocks * disk->block_size)
         return STATUS_END_OF_FILE;
-
-    /* Allocate a temporary buffer for partial transfers if required. */
-    if (offset % disk->block_size || count % disk->block_size)
-        block = malloc(disk->block_size);
 
     /* Now work out the start block and the end block. Subtract one from count
      * to prevent end from going onto the next block when the offset plus the
@@ -66,37 +62,58 @@ status_t disk_device_read(device_t *device, void *buf, size_t count, offset_t of
      * transfer on the initial block to get up to a block boundary. If the
      * transfer only goes across one block, this will handle it. */
     if (offset % disk->block_size) {
+        tmp = malloc(disk->block_size);
+
         /* Read the block into the temporary buffer. */
-        ret = disk->ops->read_blocks(disk, block, 1, start);
+        ret = disk->ops->read_blocks(disk, tmp, 1, start);
         if (ret != STATUS_SUCCESS)
             return ret;
 
         size = (start == end) ? count : disk->block_size - (size_t)(offset % disk->block_size);
-        memcpy(buf, block + (offset % disk->block_size), size);
+        memcpy(buf, tmp + (offset % disk->block_size), size);
         buf += size;
         count -= size;
         start++;
     }
 
     /* Handle any full blocks. */
-    size = count / disk->block_size;
-    if (size) {
-        ret = disk->ops->read_blocks(disk, buf, size, start);
+    while (count / disk->block_size) {
+        void *dest;
+
+        /* Some disk backends (e.g. EFI) cannot handle unaligned buffers. */
+        if ((ptr_t)buf % 8) {
+            if (!tmp)
+                tmp = malloc(disk->block_size);
+
+            dest = tmp;
+            size = 1;
+        } else {
+            dest = buf;
+            size = count / disk->block_size;
+        }
+
+        ret = disk->ops->read_blocks(disk, dest, size, start);
         if (ret != STATUS_SUCCESS)
             return ret;
 
-        buf += (size * disk->block_size);
-        count -= (size * disk->block_size);
+        if (dest != buf)
+            memcpy(buf, dest, disk->block_size);
+
+        buf += size * disk->block_size;
+        count -= size * disk->block_size;
         start += size;
     }
 
     /* Handle anything that's left. */
-    if (count > 0) {
-        ret = disk->ops->read_blocks(disk, block, 1, start);
+    if (count) {
+        if (!tmp)
+            tmp = malloc(disk->block_size);
+
+        ret = disk->ops->read_blocks(disk, tmp, 1, start);
         if (ret != STATUS_SUCCESS)
             return ret;
 
-        memcpy(buf, block, count);
+        memcpy(buf, tmp, count);
     }
 
     return STATUS_SUCCESS;
