@@ -127,8 +127,8 @@ extern value_list_t *value_list_copy(const value_list_t *source);
 
 extern environ_t *environ_create(environ_t *parent);
 extern void environ_destroy(environ_t *env);
-extern const value_t *environ_lookup(environ_t *env, const char *name);
-extern const value_t *environ_insert(environ_t *env, const char *name, const value_t *value);
+extern value_t *environ_lookup(environ_t *env, const char *name);
+extern value_t *environ_insert(environ_t *env, const char *name, const value_t *value);
 extern void environ_remove(environ_t *env, const char *name);
 extern void environ_set_loader(environ_t *env, struct loader_ops *ops, void *private);
 extern void environ_boot(environ_t *env) __noreturn;

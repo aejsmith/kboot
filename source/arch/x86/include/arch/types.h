@@ -26,9 +26,13 @@
 #ifdef __LP64__
 #   define PRIxPHYS    "lx"         /**< Format for phys_ptr_t (hexadecimal). */
 #   define PRIuPHYS    "lu"         /**< Format for phys_ptr_t. */
+#   define PRIxLOAD    "lx"         /**< Format for load_ptr_t (hexadecimal). */
+#   define PRIuLOAD    "lu"         /**< Format for load_ptr_t. */
 #else
 #   define PRIxPHYS    "llx"        /**< Format for phys_ptr_t (hexadecimal). */
 #   define PRIuPHYS    "llu"        /**< Format for phys_ptr_t. */
+#   define PRIxLOAD    "llx"        /**< Format for load_ptr_t (hexadecimal). */
+#   define PRIuLOAD    "llu"        /**< Format for load_ptr_t. */
 #endif
 
 /** Integer type that can represent a pointer in the loader's address space. */

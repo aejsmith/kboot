@@ -573,6 +573,10 @@ typedef struct {
 
 #ifdef __LP64__
 
+/** Definitions of native ELF properties. */
+#define ELF_MACHINE     ELF_MACHINE_64      /**< ELF machine type. */
+#define ELF_CLASS       ELFCLASS64          /**< ELF class. */
+
 /** Type definitions for native ELF types. */
 typedef Elf64_Ehdr elf_ehdr_t;              /**< ELF executable header. */
 typedef Elf64_Phdr elf_phdr_t;              /**< ELF program header. */
@@ -585,6 +589,10 @@ typedef Elf64_Rela elf_rela_t;              /**< ELF RELA type. */
 
 #else /* __LP64__ */
 
+/** Definitions of native ELF properties. */
+#define ELF_MACHINE     ELF_MACHINE_32      /**< ELF machine type. */
+#define ELF_CLASS       ELFCLASS32          /**< ELF class. */
+
 /** Type definitions for native ELF types. */
 typedef Elf32_Ehdr elf_ehdr_t;              /**< ELF executable header. */
 typedef Elf32_Phdr elf_phdr_t;              /**< ELF program header. */
@@ -596,5 +604,36 @@ typedef Elf32_Rel  elf_rel_t;               /**< ELF REL type. */
 typedef Elf32_Rela elf_rela_t;              /**< ELF RELA type. */
 
 #endif /* __LP64__ */
+
+/** ELF note type (structure is the same for both ELF32 and ELF64). */
+typedef Elf32_Note elf_note_t;
+
+/** Check validity of an ELF header.
+ * @param buf           Buffer containing ELF header.
+ * @param class         Expected ELF class.
+ * @param endian        Expected endianness (or 0).
+ * @param machine       Expected machine type (or 0).
+ * @param type          Expected executable type (or 0).
+ * @return              Whether the header is valid. */
+static inline bool elf_check(const void *buf, uint8_t class, uint8_t endian, uint8_t machine, uint8_t type) {
+    const elf_ehdr_t *ehdr = buf;
+    const uint8_t *ident = ehdr->e_ident;
+
+    if (ident[0] != ELF_MAG0 || ident[1] != ELF_MAG1 || ident[2] != ELF_MAG2 || ident[3] != ELF_MAG3) {
+        return false;
+    } else if (ident[ELF_EI_VERSION] != 1 || ehdr->e_version != 1) {
+        return false;
+    } else if (ident[ELF_EI_CLASS] != class) {
+        return false;
+    } else if (endian && ident[ELF_EI_DATA] != endian) {
+        return false;
+    } else if (machine && ehdr->e_machine != machine) {
+        return false;
+    } else if (type && ehdr->e_type != type) {
+        return false;
+    }
+
+    return true;
+}
 
 #endif /* __ELF_H */

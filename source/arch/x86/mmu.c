@@ -468,6 +468,10 @@ mmu_context_t *mmu_context_create(load_mode_t mode, unsigned phys_type) {
         /* Check for large page support. */
         x86_cpuid(X86_CPUID_FEATURE_INFO, &cpuid);
         large_pages_supported = cpuid.edx & X86_FEATURE_PSE;
+
+        /* Enable it for the kernel, as we will use them if they are supported. */
+        if (large_pages_supported)
+            x86_write_cr4(x86_read_cr4() | X86_CR4_PSE);
     }
 
     ctx = malloc(sizeof(*ctx));

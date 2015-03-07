@@ -25,8 +25,8 @@
 
 KBOOT_IMAGE(KBOOT_IMAGE_SECTIONS | KBOOT_IMAGE_LOG);
 KBOOT_VIDEO(KBOOT_VIDEO_LFB | KBOOT_VIDEO_VGA, 0, 0, 0);
-KBOOT_BOOLEAN_OPTION("bool_option", "Boolean Option", true);
-KBOOT_STRING_OPTION("string_option", "String Option", "Default Value");
+KBOOT_BOOLEAN_OPTION("bool_option", "Boolean option", true);
+KBOOT_STRING_OPTION("string_option", "String option", "Default Value");
 KBOOT_LOAD(0, 0, 0, VIRT_MAP_BASE, VIRT_MAP_SIZE);
 KBOOT_MAPPING(PHYS_MAP_BASE, PHYS_MAP_OFFSET, PHYS_MAP_SIZE);
 
@@ -48,13 +48,13 @@ static void dump_option_tag(kboot_tag_option_t *tag) {
 
     printf("KBOOT_TAG_OPTION:\n");
     printf("  type       = %" PRIu8 "\n", tag->type);
-    printf("  name_size  = %" PRIu32 "\n", tag->name_size);
-    printf("  value_size = %" PRIu32 "\n", tag->value_size);
+    printf("  name_len   = %" PRIu32 "\n", tag->name_len);
+    printf("  value_len  = %" PRIu32 "\n", tag->value_len);
 
     name = (const char *)round_up((ptr_t)tag + sizeof(kboot_tag_option_t), 8);
     printf("  name       = `%s'\n", name);
 
-    value = (void *)round_up((ptr_t)name + tag->name_size, 8);
+    value = (void *)round_up((ptr_t)name + tag->name_len, 8);
     switch (tag->type) {
     case KBOOT_OPTION_BOOLEAN:
         printf("  value      = boolean: %d\n", *(bool *)value);
@@ -130,7 +130,7 @@ static void dump_module_tag(kboot_tag_module_t *tag) {
     printf("KBOOT_TAG_MODULE:\n");
     printf("  addr      = 0x%" PRIx64 "\n", tag->addr);
     printf("  size      = %" PRIu32 "\n", tag->size);
-    printf("  name_size = %" PRIu32 "\n", tag->name_size);
+    printf("  name_len  = %" PRIu32 "\n", tag->name_len);
 
     name = (const char *)round_up((ptr_t)tag + sizeof(kboot_tag_module_t), 8);
     printf("  name      = `%s'\n", name);
@@ -213,12 +213,9 @@ static void dump_bootdev_tag(kboot_tag_bootdev_t *tag) {
         printf("  type = %" PRIu32 " (KBOOT_BOOTDEV_NONE)\n", tag->type);
         break;
     case KBOOT_BOOTDEV_DISK:
-        printf("  type          = %" PRIu32 " (KBOOT_BOOTDEV_DISK)\n", tag->type);
-        printf("  flags         = 0x%" PRIx32 "\n", tag->disk.flags);
-        printf("  uuid          = `%s'\n", tag->disk.uuid);
-        printf("  device        = 0x%x\n", tag->disk.device);
-        printf("  partition     = 0x%x\n", tag->disk.partition);
-        printf("  sub_partition = 0x%x\n", tag->disk.sub_partition);
+        printf("  type  = %" PRIu32 " (KBOOT_BOOTDEV_DISK)\n", tag->type);
+        printf("  flags = 0x%" PRIx32 "\n", tag->disk.flags);
+        printf("  uuid  = `%s'\n", tag->disk.uuid);
         break;
     case KBOOT_BOOTDEV_NET:
         printf("  type        = %" PRIu32 " (KBOOT_BOOTDEV_NET)\n", tag->type);

@@ -100,7 +100,7 @@ void bios_video_init(void) {
     if ((regs.eax & 0xff) != 0x4f) {
         dprintf("bios: VBE is not supported\n");
         return;
-    } else if((regs.ax & 0xff00) != 0) {
+    } else if ((regs.ax & 0xff00) != 0) {
         dprintf("bios: failed to obtain VBE information (0x%" PRIx16 ")\n", regs.ax);
         return;
     }

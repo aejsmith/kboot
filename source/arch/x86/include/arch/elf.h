@@ -22,14 +22,9 @@
 #ifndef __ARCH_ELF_H
 #define __ARCH_ELF_H
 
-/** Definitions of native ELF machine type, endianness, etc. */
-#ifdef __LP64__
-#   define ELF_MACHINE  ELF_EM_X86_64   /**< ELF machine (x86_64). */
-#   define ELF_CLASS    ELFCLASS64      /**< ELF class (64-bit). */
-#else
-#   define ELF_MACHINE  ELF_EM_386      /**< ELF machine (i386). */
-#   define ELF_CLASS    ELFCLASS32      /**< ELF class (32-bit). */
-#endif
+/** Definitions of platform ELF properties. */
+#define ELF_MACHINE_32  ELF_EM_386      /**< 32-bit ELF machine type. */
+#define ELF_MACHINE_64  ELF_EM_X86_64   /**< 64-bit ELF machine type. */
 #define ELF_ENDIAN      ELFDATA2LSB     /**< ELF endianness (little-endian). */
 
 #endif /* __ARCH_ELF_H */

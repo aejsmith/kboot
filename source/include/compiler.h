@@ -35,6 +35,7 @@
 #   define __cleanup(f)     __attribute__((cleanup(f)))
 #   define likely(x)        __builtin_expect(!!(x), 1)
 #   define unlikely(x)      __builtin_expect(!!(x), 0)
+#   define unreachable()    __builtin_unreachable()
 #else
 #   error "KBoot does not currently support non-GCC compatible compilers"
 #endif

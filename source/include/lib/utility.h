@@ -86,6 +86,18 @@
 #define abs(val) \
     ((val) < 0 ? -(val) : (val))
 
+/** Get a pointer to the object containing a given object.
+ * @param ptr           Pointer to child object.
+ * @param type          Type of parent object.
+ * @param member        Member in parent.
+ * @return              Pointer to parent object. */
+#define container_of(ptr, type, member) \
+    __extension__ \
+    ({ \
+        const typeof(((type *)0)->member) *__mptr = ptr; \
+        (type *)((char *)__mptr - offsetof(type, member)); \
+    })
+
 /** Checksum a memory range.
  * @param start         Start of range to check.
  * @param size          Size of range to check.

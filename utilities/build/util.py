@@ -22,9 +22,9 @@ from SCons.Script import *
 def FeatureSources(config, files):
     output = []
     for f in files:
-        if type(f) == tuple:
-            if config[f[0]]:
-                output.append(File(f[1]))
+        if type(f) is tuple:
+            if reduce(lambda x, y: x or y, [config[x] for x in f[0:-1]]):
+                output.append(File(f[-1]))
         else:
             output.append(File(f))
     return output

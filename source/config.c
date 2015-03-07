@@ -406,7 +406,7 @@ void environ_destroy(environ_t *env) {
  * @param env           Environment to look up in.
  * @param name          Name of entry to look up.
  * @return              Pointer to value if found, NULL if not. */
-const value_t *environ_lookup(environ_t *env, const char *name) {
+value_t *environ_lookup(environ_t *env, const char *name) {
     list_foreach(&env->entries, iter) {
         environ_entry_t *entry = list_entry(iter, environ_entry_t, header);
 
@@ -422,7 +422,7 @@ const value_t *environ_lookup(environ_t *env, const char *name) {
  * @param name          Name of entry to look up.
  * @param value         Value to insert. Will be copied.
  * @return              Pointer to inserted value. */
-const value_t *environ_insert(environ_t *env, const char *name, const value_t *value) {
+value_t *environ_insert(environ_t *env, const char *name, const value_t *value) {
     environ_entry_t *entry;
 
     /* Look for an existing entry with the same name. */

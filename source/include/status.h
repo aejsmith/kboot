@@ -40,8 +40,8 @@ typedef enum status {
     STATUS_END_OF_FILE,             /**< Attempted to read beyond end of file. */
     STATUS_SYMLINK_LIMIT,           /**< Exceeded nested symbolic link limit. */
     STATUS_DEVICE_ERROR,            /**< An error occurred during a hardware operation. */
-    STATUS_UNKNOWN_IMAGE,           /**< Executable image has an unrecognised format. */
-    STATUS_MALFORMED_IMAGE,         /**< Executable image format is incorrect. */
+    STATUS_UNKNOWN_IMAGE,           /**< Image has an unrecognised format. */
+    STATUS_MALFORMED_IMAGE,         /**< Image format is incorrect. */
     STATUS_SYSTEM_ERROR,            /**< Other error from system firmware. */
 } status_t;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2014 Alex Smith
+ * Copyright (C) 2010-2015 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -82,8 +82,8 @@ typedef struct kboot_tag_option {
     kboot_tag_t header;                     /**< Tag header. */
 
     uint8_t type;                           /**< Type of the option. */
-    uint32_t name_size;                     /**< Length of name string, including null terminator. */
-    uint32_t value_size;                    /**< Size of the option value, in bytes. */
+    uint32_t name_len;                      /**< Length of name string, including null terminator. */
+    uint32_t value_len;                     /**< Size of the option value, in bytes. */
 } kboot_tag_option_t;
 
 /** Possible option types. */
@@ -123,7 +123,7 @@ typedef struct kboot_tag_module {
 
     kboot_paddr_t addr;                     /**< Address of the module. */
     uint32_t size;                          /**< Size of the module. */
-    uint32_t name_size;                     /**< Length of name string, including null terminator. */
+    uint32_t name_len;                      /**< Length of name string, including null terminator. */
 } kboot_tag_module_t;
 
 /** Structure describing an RGB colour. */
@@ -212,9 +212,6 @@ typedef struct kboot_tag_bootdev {
         struct {
             uint32_t flags;                 /**< Behaviour flags. */
             uint8_t uuid[64];               /**< UUID of the boot filesystem. */
-            uint8_t device;                 /**< Device ID (platform-specific). */
-            uint8_t partition;              /**< Partition number. */
-            uint8_t sub_partition;          /**< Sub-partition number. */
         } disk;
 
         /** Network boot information. */
@@ -242,6 +239,11 @@ typedef struct kboot_tag_bootdev {
             /** Hardware address length. */
             uint8_t hw_addr_len;
         } net;
+
+        /** Other device information. */
+        struct {
+            uint32_t str_len;               /**< Length of device identification string. */
+        } other;
     };
 } kboot_tag_bootdev_t;
 
@@ -249,6 +251,7 @@ typedef struct kboot_tag_bootdev {
 #define KBOOT_BOOTDEV_NONE          0       /**< No boot device (e.g. boot image). */
 #define KBOOT_BOOTDEV_DISK          1       /**< Booted from a disk device. */
 #define KBOOT_BOOTDEV_NET           2       /**< Booted from the network. */
+#define KBOOT_BOOTDEV_OTHER         3       /**< Other device (specified by string). */
 
 /** Network boot behaviour flags. */
 #define KBOOT_NET_IPV6              (1<<0)  /**< Given addresses are IPv6 addresses. */
@@ -300,21 +303,38 @@ typedef struct kboot_tag_e820 {
     uint32_t attr;
 } kboot_tag_e820_t;
 
-/** Tag containing page table information. */
-typedef struct kboot_tag_pagetables {
-    kboot_tag_t header;         /**< Tag header. */
+/** Tag containing page table information (IA32). */
+typedef struct kboot_tag_pagetables_ia32 {
+    kboot_tag_t header;                     /**< Tag header. */
 
-    #if defined(__i386__)
-        kboot_paddr_t page_dir;             /**< Physical address of the page directory. */
-        kboot_vaddr_t mapping;              /**< Virtual address of recursive mapping. */
-    #elif defined(__x86_64__)
-        kboot_paddr_t pml4;                 /**< Physical address of the PML4. */
-        kboot_vaddr_t mapping;              /**< Virtual address of recursive mapping. */
-    #elif defined(__arm__)
-        kboot_paddr_t l1;                   /**< Physical address of the first level page table. */
-        kboot_vaddr_t mapping;              /**< Virtual address of temporary mapping region. */
-    #endif
-} kboot_tag_pagetables_t;
+    kboot_paddr_t page_dir;                 /**< Physical address of the page directory. */
+    kboot_vaddr_t mapping;                  /**< Virtual address of recursive mapping. */
+} kboot_tag_pagetables_ia32_t;
+
+/** Tag containing page table information (AMD64). */
+typedef struct kboot_tag_pagetables_amd64 {
+    kboot_tag_t header;                     /**< Tag header. */
+
+    kboot_paddr_t pml4;                     /**< Physical address of the page directory. */
+    kboot_vaddr_t mapping;                  /**< Virtual address of recursive mapping. */
+} kboot_tag_pagetables_amd64_t;
+
+/** Tag containing page table information (ARM). */
+typedef struct kboot_tag_pagetables_arm {
+    kboot_tag_t header;                     /**< Tag header. */
+
+    kboot_paddr_t l1;                       /**< Physical address of the first level page table. */
+    kboot_vaddr_t mapping;                  /**< Virtual address of temporary mapping region. */
+} kboot_tag_pagetables_arm_t;
+
+/** Tag containing page table information. */
+#if defined(__i386__)
+    typedef kboot_tag_pagetables_ia32_t kboot_tag_pagetables_t;
+#elif defined(__x86_64__)
+    typedef kboot_tag_pagetables_amd64_t kboot_tag_pagetables_t;
+#elif defined(__arm__)
+    typedef kboot_tag_pagetables_arm_t kboot_tag_pagetables_t;
+#endif
 
 /**
  * Image tags.
@@ -354,12 +374,12 @@ typedef struct kboot_itag_image {
         "   .long 1f - 0f\n" \
         "   .long 3f - 2f\n" \
         "   .long " XSTRINGIFY(KBOOT_ITAG_IMAGE) "\n" \
-        "0: .asciz \"KBoot\"\n" \
+        "0: .asciz \"" KBOOT_NOTE_NAME "\"\n" \
         "1: .p2align 2\n" \
         "2: .long " XSTRINGIFY(KBOOT_VERSION) "\n" \
         "   .long " STRINGIFY(flags) "\n" \
-        "3: .p2align 2\n" \
-        "   .popsection\n")
+        "   .p2align 2\n" \
+        "3: .popsection\n")
 
 /** Image tag specifying loading parameters. */
 typedef struct kboot_itag_load {
@@ -381,7 +401,7 @@ typedef struct kboot_itag_load {
         "   .long 1f - 0f\n" \
         "   .long 3f - 2f\n" \
         "   .long " XSTRINGIFY(KBOOT_ITAG_LOAD) "\n" \
-        "0: .asciz \"KBoot\"\n" \
+        "0: .asciz \"" KBOOT_NOTE_NAME "\"\n" \
         "1: .p2align 2\n" \
         "2: .long " STRINGIFY(flags) "\n" \
         "   .long 0\n" \
@@ -389,8 +409,8 @@ typedef struct kboot_itag_load {
         "   .quad " STRINGIFY(min_alignment) "\n" \
         "   .quad " STRINGIFY(virt_map_base) "\n" \
         "   .quad " STRINGIFY(virt_map_size) "\n" \
-        "3: .p2align 2\n" \
-        "   .popsection\n")
+        "   .p2align 2\n" \
+        "3: .popsection\n")
 
 /** Image tag containing an option description. */
 typedef struct kboot_itag_option {
@@ -407,7 +427,7 @@ typedef struct kboot_itag_option {
         "   .long 1f - 0f\n" \
         "   .long 6f - 2f\n" \
         "   .long " XSTRINGIFY(KBOOT_ITAG_OPTION) "\n" \
-        "0: .asciz \"KBoot\"\n" \
+        "0: .asciz \"" KBOOT_NOTE_NAME "\"\n" \
         "1: .p2align 2\n" \
         "2: .byte " XSTRINGIFY(KBOOT_OPTION_BOOLEAN) "\n" \
         "   .byte 0\n" \
@@ -419,8 +439,8 @@ typedef struct kboot_itag_option {
         "3: .asciz \"" name "\"\n" \
         "4: .asciz \"" desc "\"\n" \
         "5: .byte " STRINGIFY(default) "\n" \
-        "6: .p2align 2\n" \
-        "   .popsection\n")
+        "   .p2align 2\n" \
+        "6: .popsection\n")
 
 /** Macro to declare an integer option itag. */
 #define KBOOT_INTEGER_OPTION(name, desc, default) \
@@ -429,7 +449,7 @@ typedef struct kboot_itag_option {
         "   .long 1f - 0f\n" \
         "   .long 6f - 2f\n" \
         "   .long " XSTRINGIFY(KBOOT_ITAG_OPTION) "\n" \
-        "0: .asciz \"KBoot\"\n" \
+        "0: .asciz \"" KBOOT_NOTE_NAME "\"\n" \
         "1: .p2align 2\n" \
         "2: .byte " XSTRINGIFY(KBOOT_OPTION_INTEGER) "\n" \
         "   .byte 0\n" \
@@ -441,8 +461,8 @@ typedef struct kboot_itag_option {
         "3: .asciz \"" name "\"\n" \
         "4: .asciz \"" desc "\"\n" \
         "5: .quad " STRINGIFY(default) "\n" \
-        "6: .p2align 2\n" \
-        "   .popsection\n")
+        "   .p2align 2\n" \
+        "6: .popsection\n")
 
 /** Macro to declare an string option itag. */
 #define KBOOT_STRING_OPTION(name, desc, default) \
@@ -451,7 +471,7 @@ typedef struct kboot_itag_option {
         "   .long 1f - 0f\n" \
         "   .long 6f - 2f\n" \
         "   .long " XSTRINGIFY(KBOOT_ITAG_OPTION) "\n" \
-        "0: .asciz \"KBoot\"\n" \
+        "0: .asciz \"" KBOOT_NOTE_NAME "\"\n" \
         "1: .p2align 2\n" \
         "2: .byte " XSTRINGIFY(KBOOT_OPTION_STRING) "\n" \
         "   .byte 0\n" \
@@ -463,8 +483,8 @@ typedef struct kboot_itag_option {
         "3: .asciz \"" name "\"\n" \
         "4: .asciz \"" desc "\"\n" \
         "5: .asciz \"" default "\"\n" \
-        "6: .p2align 2\n" \
-        "   .popsection\n")
+        "   .p2align 2\n" \
+        "6: .popsection\n")
 
 /** Image tag containing a virtual memory mapping description. */
 typedef struct kboot_itag_mapping {
@@ -480,13 +500,13 @@ typedef struct kboot_itag_mapping {
         "   .long 1f - 0f\n" \
         "   .long 3f - 2f\n" \
         "   .long " XSTRINGIFY(KBOOT_ITAG_MAPPING) "\n" \
-        "0: .asciz \"KBoot\"\n" \
+        "0: .asciz \"" KBOOT_NOTE_NAME "\"\n" \
         "1: .p2align 2\n" \
         "2: .quad " STRINGIFY(virt) "\n" \
         "   .quad " STRINGIFY(phys) "\n" \
         "   .quad " STRINGIFY(size) "\n" \
-        "3: .p2align 2\n" \
-        "   .popsection\n")
+        "   .p2align 2\n" \
+        "3: .popsection\n")
 
 /** Image tag specifying the kernel's requested video mode. */
 typedef struct kboot_itag_video {
@@ -503,14 +523,14 @@ typedef struct kboot_itag_video {
         "   .long 1f - 0f\n" \
         "   .long 3f - 2f\n" \
         "   .long " XSTRINGIFY(KBOOT_ITAG_VIDEO) "\n" \
-        "0: .asciz \"KBoot\"\n" \
+        "0: .asciz \"" KBOOT_NOTE_NAME "\"\n" \
         "1: .p2align 2\n" \
         "2: .long " STRINGIFY(types) "\n" \
         "   .long " STRINGIFY(width) "\n" \
         "   .long " STRINGIFY(height) "\n" \
         "   .byte " STRINGIFY(bpp) "\n" \
-        "3: .p2align 2\n" \
-        "   .popsection\n")
+        "   .p2align 2\n" \
+        "3: .popsection\n")
 
 #endif /* __ASM__ */
 #endif /* __KBOOT_H */

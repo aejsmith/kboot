@@ -344,7 +344,10 @@ void memory_finalize(list_t *map) {
     /* Mark all ranges allocated by memory_alloc() with the correct type. */
     list_foreach(&efi_memory_ranges, iter) {
         memory_range_t *range = list_entry(iter, memory_range_t, header);
-        memory_map_insert(map, range->start, range->size, range->type);
+
+        memory_map_insert(
+            map, range->start, range->size,
+            (range->type == MEMORY_TYPE_INTERNAL) ? MEMORY_TYPE_FREE : range->type);
     }
 }
 
