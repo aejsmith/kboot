@@ -3,6 +3,7 @@
 builddir=build/efi-amd64
 fsdir=${builddir}/testfs
 
+mkdir ${fsdir}
 mkdir -p ${fsdir}/efi/boot
 
 cp ${builddir}/bin/bootx64.efi ${fsdir}/efi/boot/
