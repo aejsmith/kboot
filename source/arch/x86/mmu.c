@@ -66,7 +66,7 @@ static uint64_t *get_pdir_64(mmu_context_t *ctx, uint64_t virt, bool alloc) {
     pml4 = (uint64_t *)phys_to_virt(ctx->cr3);
 
     /* Get the page directory pointer number. */
-    pml4e = virt / X86_PDPT_RANGE_64;
+    pml4e = (virt / X86_PDPT_RANGE_64) % 512;
     if (!(pml4[pml4e] & X86_PTE_PRESENT)) {
         if (!alloc)
             return NULL;
@@ -76,7 +76,7 @@ static uint64_t *get_pdir_64(mmu_context_t *ctx, uint64_t virt, bool alloc) {
     }
 
     /* Get the PDPT from the PML4. */
-    pdpt = (uint64_t *)phys_to_virt((ptr_t)(pml4[pml4e] & PHYS_PAGE_MASK_64));
+    pdpt = (uint64_t *)phys_to_virt((ptr_t)(pml4[pml4e] & X86_PTE_ADDR_MASK_64));
 
     /* Get the page directory number. */
     pdpte = (virt % X86_PDPT_RANGE_64) / X86_PDIR_RANGE_64;
@@ -89,7 +89,7 @@ static uint64_t *get_pdir_64(mmu_context_t *ctx, uint64_t virt, bool alloc) {
     }
 
     /* Return the page directory address. */
-    return (uint64_t *)phys_to_virt((ptr_t)(pdpt[pdpte] & PHYS_PAGE_MASK_64));
+    return (uint64_t *)phys_to_virt((ptr_t)(pdpt[pdpte] & X86_PTE_ADDR_MASK_64));
 }
 
 /** Map a large page in a 64-bit context.
@@ -130,7 +130,7 @@ static void map_small_64(mmu_context_t *ctx, uint64_t virt, uint64_t phys) {
     }
 
     /* Get the page table from the page directory. */
-    ptbl = (uint64_t *)phys_to_virt((ptr_t)(pdir[pde] & PHYS_PAGE_MASK_64));
+    ptbl = (uint64_t *)phys_to_virt((ptr_t)(pdir[pde] & X86_PTE_ADDR_MASK_64));
 
     /* Map the page. */
     pte = (virt % X86_PTBL_RANGE_64) / PAGE_SIZE;
@@ -206,7 +206,7 @@ static void map_small_32(mmu_context_t *ctx, uint32_t virt, uint32_t phys) {
     }
 
     /* Get the page table from the page directory. */
-    ptbl = (uint32_t *)phys_to_virt((ptr_t)(pdir[pde] & PHYS_PAGE_MASK_32));
+    ptbl = (uint32_t *)phys_to_virt((ptr_t)(pdir[pde] & X86_PTE_ADDR_MASK_32));
 
     /* Map the page. */
     pte = (virt % X86_PTBL_RANGE_32) / PAGE_SIZE;
@@ -249,8 +249,9 @@ static void mmu_map_32(mmu_context_t *ctx, uint32_t virt, uint32_t phys, uint32_
  * @param size          Size of the mapping to create.
  * @return              Whether the supplied addresses were valid. */
 bool mmu_map(mmu_context_t *ctx, load_ptr_t virt, phys_ptr_t phys, load_size_t size) {
-    if (virt % PAGE_SIZE || phys % PAGE_SIZE || size % PAGE_SIZE)
-        return false;
+    assert(!(virt % PAGE_SIZE));
+    assert(!(phys % PAGE_SIZE));
+    assert(!(size % PAGE_SIZE));
 
     if (ctx->mode == LOAD_MODE_64BIT) {
         if (!is_canonical_range(virt, size))
@@ -258,11 +259,10 @@ bool mmu_map(mmu_context_t *ctx, load_ptr_t virt, phys_ptr_t phys, load_size_t s
 
         mmu_map_64(ctx, virt, phys, size);
     } else {
-        if (phys >= 0x100000000ull || phys + size > 0x100000000ull) {
+        assert(virt + size <= 0x100000000ull);
+
+        if (phys >= 0x100000000ull || phys + size > 0x100000000ull)
             return false;
-        } else if (virt >= 0x100000000ull || virt + size > 0x100000000ull) {
-            return false;
-        }
 
         mmu_map_32(ctx, virt, phys, size);
     }
@@ -322,11 +322,11 @@ static bool mmu_mem_op_64(mmu_context_t *ctx, uint64_t addr, uint64_t size, unsi
                 return false;
 
             if (pdir[pde] & X86_PTE_LARGE) {
-                page = (pdir[pde] & PHYS_PAGE_MASK_64) + (addr % LARGE_PAGE_SIZE_64);
+                page = (pdir[pde] & X86_PTE_ADDR_MASK_64) + (addr % LARGE_PAGE_SIZE_64);
                 page_size = LARGE_PAGE_SIZE_64 - (addr % LARGE_PAGE_SIZE_64);
                 ptbl = NULL;
             } else {
-                ptbl = (uint64_t *)phys_to_virt((ptr_t)(pdir[pde] & PHYS_PAGE_MASK_64));
+                ptbl = (uint64_t *)phys_to_virt((ptr_t)(pdir[pde] & X86_PTE_ADDR_MASK_64));
             }
         }
 
@@ -335,7 +335,7 @@ static bool mmu_mem_op_64(mmu_context_t *ctx, uint64_t addr, uint64_t size, unsi
             if (!(ptbl[pte] & X86_PTE_PRESENT))
                 return false;
 
-            page = (ptbl[pte] & PHYS_PAGE_MASK_64) + (addr % PAGE_SIZE);
+            page = (ptbl[pte] & X86_PTE_ADDR_MASK_64) + (addr % PAGE_SIZE);
             page_size = PAGE_SIZE - (addr % PAGE_SIZE);
         }
 
@@ -348,7 +348,7 @@ static bool mmu_mem_op_64(mmu_context_t *ctx, uint64_t addr, uint64_t size, unsi
     return true;
 }
 
-/** Memory operation on 64-bit MMU context.
+/** Memory operation on 32-bit MMU context.
  * @param ctx           Context to operate on.
  * @param addr          Virtual address to operate on.
  * @param size          Size of range.
@@ -370,11 +370,11 @@ static bool mmu_mem_op_32(mmu_context_t *ctx, uint32_t addr, uint32_t size, unsi
                 return false;
 
             if (pdir[pde] & X86_PTE_LARGE) {
-                page = (pdir[pde] & PHYS_PAGE_MASK_32) + (addr % LARGE_PAGE_SIZE_32);
+                page = (pdir[pde] & X86_PTE_ADDR_MASK_32) + (addr % LARGE_PAGE_SIZE_32);
                 page_size = LARGE_PAGE_SIZE_32 - (addr % LARGE_PAGE_SIZE_32);
                 ptbl = NULL;
             } else {
-                ptbl = (uint32_t *)phys_to_virt((ptr_t)(pdir[pde] & PHYS_PAGE_MASK_32));
+                ptbl = (uint32_t *)phys_to_virt((ptr_t)(pdir[pde] & X86_PTE_ADDR_MASK_32));
             }
         }
 
@@ -383,7 +383,7 @@ static bool mmu_mem_op_32(mmu_context_t *ctx, uint32_t addr, uint32_t size, unsi
             if (!(ptbl[pte] & X86_PTE_PRESENT))
                 return false;
 
-            page = (ptbl[pte] & PHYS_PAGE_MASK_32) + (addr % PAGE_SIZE);
+            page = (ptbl[pte] & X86_PTE_ADDR_MASK_32) + (addr % PAGE_SIZE);
             page_size = PAGE_SIZE - (addr % PAGE_SIZE);
         }
 
