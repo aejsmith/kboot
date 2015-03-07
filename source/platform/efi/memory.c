@@ -30,6 +30,11 @@
  * we implement memory_alloc() by getting the current memory map each time it
  * is called and scanning it for a suitable range, and then allocating an exact
  * range with AllocatePages.
+ *
+ * There is a widespread bug which prevents the use of user-defined memory type
+ * values, which causes the firmware to crash if a value outside of the pre-
+ * defined value range is used. To avoid this we keep track of range types
+ * ourself rather than storing it as a user-defined memory type.
  */
 
 #include <lib/list.h>
@@ -45,22 +50,6 @@
 
 /** EFI specifies page size as 4KB regardless of the system. */
 #define EFI_PAGE_SIZE       0x1000
-
-/**
- * Structure describing an allocated memory range.
- *
- * There is a widespread bug which prevents the use of user-defined memory type
- * values, which causes the firmware to crash if a value outside of the pre-
- * defined value range is used. To avoid this we keep track of range types
- * ourself rather than storing it as a user-defined memory type.
- */
-typedef struct efi_memory_range {
-    list_t header;                      /**< Link to memory range list. */
-
-    phys_ptr_t start;                   /**< Start address of range. */
-    phys_size_t size;                   /**< Size of range. */
-    uint8_t type;                       /**< Type of the range. */
-} efi_memory_range_t;
 
 /** List of allocated memory ranges. */
 static LIST_DECLARE(efi_memory_ranges);
@@ -174,7 +163,13 @@ static int forward_sort_compare(const void *a, const void *b) {
     efi_memory_descriptor_t *first = (efi_memory_descriptor_t *)a;
     efi_memory_descriptor_t *second = (efi_memory_descriptor_t *)b;
 
-    return first->physical_start - second->physical_start;
+    if (first->physical_start > second->physical_start) {
+        return 1;
+    } else if (first->physical_start < second->physical_start) {
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
 /** Reverse sort comparison function for the EFI memory map. */
@@ -182,7 +177,13 @@ static int reverse_sort_compare(const void *a, const void *b) {
     efi_memory_descriptor_t *first = (efi_memory_descriptor_t *)a;
     efi_memory_descriptor_t *second = (efi_memory_descriptor_t *)b;
 
-    return second->physical_start - first->physical_start;
+    if (second->physical_start > first->physical_start) {
+        return 1;
+    } else if (second->physical_start < first->physical_start) {
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
 /** Allocate a range of physical memory.
@@ -231,7 +232,7 @@ void *memory_alloc(
     /* Find a free range that is large enough to hold the new range. */
     for (efi_uintn_t i = 0; i < num_entries; i++) {
         efi_physical_address_t start;
-        efi_memory_range_t *range;
+        memory_range_t *range;
 
         if (is_suitable_range(&memory_map[i], size, align, min_addr, max_addr, flags, &start)) {
             /* Ask the firmware to allocate this exact address. Should succeed
@@ -279,13 +280,14 @@ void memory_free(void *addr, phys_size_t size) {
     assert(!(size % PAGE_SIZE));
 
     list_foreach(&efi_memory_ranges, iter) {
-        efi_memory_range_t *range = list_entry(iter, efi_memory_range_t, header);
+        memory_range_t *range = list_entry(iter, memory_range_t, header);
 
         if (range->start == phys) {
             efi_status_t ret;
 
             if (range->size != size) {
-                internal_error("Bad memory_free size 0x%" PRIxPHYS " (expected 0x%" PRIxPHYS ")",
+                internal_error(
+                    "Bad memory_free size 0x%" PRIxPHYS " (expected 0x%" PRIxPHYS ")",
                     size, range->size);
             }
 
@@ -309,10 +311,41 @@ void memory_free(void *addr, phys_size_t size) {
  * marks all internal memory ranges as free and returns the final memory map
  * to be passed to the OS.
  *
- * @param memory_map    Head of list to place the memory map into.
+ * @param map           Head of list to place the memory map into.
  */
-void memory_finalize(list_t *memory_map) {
-    internal_error("memory_finalize: TODO");
+void memory_finalize(list_t *map) {
+    efi_memory_descriptor_t *efi_map __cleanup_free = NULL;
+    efi_uintn_t num_entries, map_key;
+    efi_status_t ret;
+
+    list_init(map);
+
+    /* Get the current memory map. */
+    ret = efi_get_memory_map(&efi_map, &num_entries, &map_key);
+    if (ret != EFI_SUCCESS)
+        internal_error("Failed to get memory map (0x%zx)", ret);
+
+    /* Add all free ranges to the memory map. */
+    for (efi_uintn_t i = 0; i < num_entries; i++) {
+        switch (efi_map[i].type) {
+        case EFI_CONVENTIONAL_MEMORY:
+        case EFI_BOOT_SERVICES_CODE:
+        case EFI_BOOT_SERVICES_DATA:
+        case EFI_LOADER_CODE:
+        case EFI_LOADER_DATA:
+            memory_map_insert(map,
+                efi_map[i].physical_start,
+                efi_map[i].num_pages * EFI_PAGE_SIZE,
+                MEMORY_TYPE_FREE);
+            break;
+        }
+    }
+
+    /* Mark all ranges allocated by memory_alloc() with the correct type. */
+    list_foreach(&efi_memory_ranges, iter) {
+        memory_range_t *range = list_entry(iter, memory_range_t, header);
+        memory_map_insert(map, range->start, range->size, range->type);
+    }
 }
 
 /** Initialize the EFI memory allocator. */
@@ -334,7 +367,8 @@ void efi_memory_init(void) {
         if (memory_map[i].type != EFI_CONVENTIONAL_MEMORY)
             continue;
 
-        dprintf(" 0x%016" PRIxPHYS "-0x%016" PRIxPHYS " (%" PRIu64 " KiB)\n",
+        dprintf(
+            " 0x%016" PRIxPHYS "-0x%016" PRIxPHYS " (%" PRIu64 " KiB)\n",
             memory_map[i].physical_start,
             memory_map[i].physical_start + (memory_map[i].num_pages * EFI_PAGE_SIZE),
             (memory_map[i].num_pages * EFI_PAGE_SIZE) / 1024);
@@ -346,7 +380,7 @@ void efi_memory_init(void) {
 /** Release all allocated memory. */
 void efi_memory_cleanup(void) {
     list_foreach_safe(&efi_memory_ranges, iter) {
-        efi_memory_range_t *range = list_entry(iter, efi_memory_range_t, header);
+        memory_range_t *range = list_entry(iter, memory_range_t, header);
         efi_status_t ret;
 
         ret = efi_call(efi_boot_services->free_pages, range->start, range->size / EFI_PAGE_SIZE);

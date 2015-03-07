@@ -49,6 +49,10 @@ static LIST_DECLARE(memory_ranges);
 #endif /* TARGET_HAS_MM */
 
 /**
+ * Heap allocator.
+ */
+
+/**
  * Allocate memory from the heap.
  *
  * Allocates temporary memory from the heap. This memory will never reach the
@@ -170,15 +174,131 @@ void free(void *addr) {
     }
 }
 
+/**
+ * Physical memory manager.
+ */
+
+/** Merge adjacent ranges.
+ * @param map           Memory map to add to.
+ * @param range         Range to merge. */
+static inline void merge_ranges(list_t *maps, memory_range_t *range) {
+    memory_range_t *other;
+    phys_ptr_t end;
+
+    if (range != list_first(maps, memory_range_t, header)) {
+        other = list_prev(range, header);
+        end = other->start + other->size;
+
+        if (end == range->start && other->type == range->type) {
+            range->start = other->start;
+            range->size += other->size;
+            list_remove(&other->header);
+            free(other);
+        }
+    }
+
+    if (range != list_last(maps, memory_range_t, header)) {
+        other = list_next(range, header);
+        end = range->start + range->size;
+
+        if (other->start == end && other->type == range->type) {
+            range->size += other->size;
+            list_remove(&other->header);
+            free(other);
+        }
+    }
+}
+
+/** Add a range of physical memory.
+ * @param map           Memory map to add to.
+ * @param start         Start of the range (must be page-aligned).
+ * @param size          Size of the range (must be page-aligned).
+ * @param type          Type of the range. */
+void memory_map_insert(list_t *map, phys_ptr_t start, phys_size_t size, uint8_t type) {
+    memory_range_t *range, *other, *split;
+    phys_ptr_t range_end, other_end;
+
+    assert(!(start % PAGE_SIZE));
+    assert(!(size % PAGE_SIZE));
+    assert(size);
+
+    range = malloc(sizeof(*range));
+    list_init(&range->header);
+    range->start = start;
+    range->size = size;
+    range->type = type;
+
+    range_end = start + size - 1;
+
+    /* Try to find where to insert the region in the list. */
+    list_foreach(map, iter) {
+        other = list_entry(iter, memory_range_t, header);
+        if (start <= other->start) {
+            list_add_before(&other->header, &range->header);
+            break;
+        }
+    }
+
+    /* Not before any existing range, goes at the end of the list. */
+    if (list_empty(&range->header))
+        list_append(map, &range->header);
+
+    /* Check if the new range has overlapped part of the previous range. */
+    if (range != list_first(map, memory_range_t, header)) {
+        other = list_prev(range, header);
+        other_end = other->start + other->size - 1;
+
+        if (range->start <= other_end) {
+            if (other_end > range_end) {
+                /* Must split the range. */
+                split = malloc(sizeof(*split));
+                list_init(&split->header);
+                split->start = range_end + 1;
+                split->size = other_end - range_end;
+                split->type = other->type;
+                list_add_after(&range->header, &split->header);
+            }
+
+            other->size = range->start - other->start;
+        }
+    }
+
+    /* Swallow up any following ranges that the new range overlaps. */
+    list_foreach_safe(&range->header, iter) {
+        if (iter == map)
+            break;
+
+        other = list_entry(iter, memory_range_t, header);
+        other_end = other->start + other->size - 1;
+
+        if (other->start > range_end) {
+            break;
+        } else if (other_end > range_end) {
+            /* Resize the range and finish. */
+            other->start = range_end + 1;
+            other->size = other_end - range_end;
+            break;
+        } else {
+            /* Completely remove the range. */
+            list_remove(&other->header);
+            free(other);
+        }
+    }
+
+    /* Finally, merge the region with adjacent ranges of the same type. */
+    merge_ranges(map, range);
+}
+
 /** Dump a list of physical memory ranges.
- * @param memory_map    Memory map to dump. */
-void memory_dump(list_t *memory_map) {
+ * @param map           Memory map to dump. */
+void memory_map_dump(list_t *map) {
     memory_range_t *range;
 
-    list_foreach(memory_map, iter) {
+    list_foreach(map, iter) {
         range = list_entry(iter, memory_range_t, header);
 
-        dprintf(" 0x%016" PRIxPHYS "-0x%016" PRIxPHYS " (%" PRIu64 " KiB) -> ",
+        dprintf(
+            " 0x%016" PRIxPHYS "-0x%016" PRIxPHYS " (%" PRIu64 " KiB) -> ",
             range->start, range->start + range->size, range->size / 1024);
 
         switch (range->type) {
@@ -210,115 +330,6 @@ void memory_dump(list_t *memory_map) {
 }
 
 #ifndef TARGET_HAS_MM
-
-/** Merge adjacent ranges.
- * @param range         Range to merge. */
-static inline void memory_range_merge(memory_range_t *range) {
-    memory_range_t *other;
-    phys_ptr_t end;
-
-    if (range != list_first(&memory_ranges, memory_range_t, header)) {
-        other = list_prev(range, header);
-        end = other->start + other->size;
-
-        if (end == range->start && other->type == range->type) {
-            range->start = other->start;
-            range->size += other->size;
-            list_remove(&other->header);
-            free(other);
-        }
-    }
-
-    if (range != list_last(&memory_ranges, memory_range_t, header)) {
-        other = list_next(range, header);
-        end = range->start + range->size;
-
-        if (other->start == end && other->type == range->type) {
-            range->size += other->size;
-            list_remove(&other->header);
-            free(other);
-        }
-    }
-}
-
-/** Add a range of physical memory.
- * @param start         Start of the range (must be page-aligned).
- * @param size          Size of the range (must be page-aligned).
- * @param type          Type of the range. */
-static void memory_range_insert(phys_ptr_t start, phys_size_t size, uint8_t type) {
-    memory_range_t *range, *other, *split;
-    phys_ptr_t range_end, other_end;
-
-    assert(!(start % PAGE_SIZE));
-    assert(!(size % PAGE_SIZE));
-    assert(size);
-
-    range = malloc(sizeof(*range));
-    list_init(&range->header);
-    range->start = start;
-    range->size = size;
-    range->type = type;
-
-    range_end = start + size - 1;
-
-    /* Try to find where to insert the region in the list. */
-    list_foreach(&memory_ranges, iter) {
-        other = list_entry(iter, memory_range_t, header);
-        if (start <= other->start) {
-            list_add_before(&other->header, &range->header);
-            break;
-        }
-    }
-
-    /* Not before any existing range, goes at the end of the list. */
-    if (list_empty(&range->header))
-        list_append(&memory_ranges, &range->header);
-
-    /* Check if the new range has overlapped part of the previous range. */
-    if (range != list_first(&memory_ranges, memory_range_t, header)) {
-        other = list_prev(range, header);
-        other_end = other->start + other->size - 1;
-
-        if (range->start <= other_end) {
-            if (other_end > range_end) {
-                /* Must split the range. */
-                split = malloc(sizeof(*split));
-                list_init(&split->header);
-                split->start = range_end + 1;
-                split->size = other_end - range_end;
-                split->type = other->type;
-                list_add_after(&range->header, &split->header);
-            }
-
-            other->size = range->start - other->start;
-        }
-    }
-
-    /* Swallow up any following ranges that the new range overlaps. */
-    list_foreach_safe(&range->header, iter) {
-        if (iter == &memory_ranges)
-            break;
-
-        other = list_entry(iter, memory_range_t, header);
-        other_end = other->start + other->size - 1;
-
-        if (other->start > range_end) {
-            break;
-        } else if (other_end > range_end) {
-            /* Resize the range and finish. */
-            other->start = range_end + 1;
-            other->size = other_end - range_end;
-            break;
-        } else {
-            /* Completely remove the range. */
-            list_remove(&other->header);
-            free(other);
-        }
-    }
-
-    /* Finally, merge the region with adjacent ranges of the same type. */
-    memory_range_merge(range);
-}
 
 /** Check whether a range can satisfy an allocation.
  * @param range         Range to check.
@@ -412,7 +423,7 @@ void *memory_alloc(
 
         if (is_suitable_range(range, size, align, min_addr, max_addr, flags, &start)) {
             /* Insert a new range over the top of the allocation. */
-            memory_range_insert(start, size, type);
+            memory_map_insert(&memory_ranges, start, size, type);
 
             dprintf(
                 "memory: allocated 0x%" PRIxPHYS "-0x%" PRIxPHYS " (align: 0x%" PRIxPHYS ", type: %u)\n",
@@ -448,7 +459,7 @@ void memory_free(void *addr, phys_size_t size) {
 
         if (range->type != MEMORY_TYPE_FREE) {
             if (phys >= range->start && (phys + size - 1) <= (range->start + range->size - 1)) {
-                memory_range_insert(phys, size, MEMORY_TYPE_FREE);
+                memory_map_insert(&memory_ranges, phys, size, MEMORY_TYPE_FREE);
                 return;
             }
         }
@@ -462,7 +473,7 @@ void memory_free(void *addr, phys_size_t size) {
  * @param size          Size of the range (must be page-aligned).
  * @param type          Type of the range. */
 void memory_add(phys_ptr_t start, phys_size_t size, uint8_t type) {
-    memory_range_insert(start, size, type);
+    memory_map_insert(&memory_ranges, start, size, type);
 }
 
 /**
@@ -492,7 +503,7 @@ void memory_protect(phys_ptr_t start, phys_size_t size) {
         if (match_end <= match_start)
             continue;
 
-        memory_range_insert(match_start, match_end - match_start + 1, MEMORY_TYPE_INTERNAL);
+        memory_map_insert(&memory_ranges, match_start, match_end - match_start + 1, MEMORY_TYPE_INTERNAL);
     }
 }
 
@@ -509,7 +520,7 @@ void memory_init(void) {
     memory_protect(start, end - start);
 
     dprintf("memory: initial memory map:\n");
-    memory_dump(&memory_ranges);
+    memory_map_dump(&memory_ranges);
 }
 
 /**
@@ -519,9 +530,9 @@ void memory_init(void) {
  * marks all internal memory ranges as free and returns the final memory map
  * to be passed to the OS.
  *
- * @param memory_map    Head of list to place the memory map into.
+ * @param map           Head of list to place the memory map into.
  */
-void memory_finalize(list_t *memory_map) {
+void memory_finalize(list_t *map) {
     memory_range_t *range;
 
     /* Reclaim all internal memory ranges. */
@@ -530,15 +541,12 @@ void memory_finalize(list_t *memory_map) {
 
         if (range->type == MEMORY_TYPE_INTERNAL) {
             range->type = MEMORY_TYPE_FREE;
-            memory_range_merge(range);
+            merge_ranges(&memory_ranges, range);
         }
     }
 
-    /* Dump the memory map to the debug console. */
-    dprintf("memory: final memory map:\n");
-    memory_dump(&memory_ranges);
-
-    *memory_map = memory_ranges;
+    list_init(map);
+    list_splice_before(map, &memory_ranges);
 }
 
 #endif /* TARGET_HAS_MM */
