@@ -121,6 +121,7 @@ extern void value_init(value_t *value, value_type_t type);
 extern void value_destroy(value_t *value);
 extern void value_copy(const value_t *source, value_t *dest);
 extern void value_move(value_t *source, value_t *dest);
+extern bool value_equals(const value_t *value, const value_t *other);
 
 extern void value_list_destroy(value_list_t *list);
 extern value_list_t *value_list_copy(const value_list_t *source);

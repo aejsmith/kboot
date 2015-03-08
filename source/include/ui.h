@@ -124,7 +124,7 @@ extern ui_entry_t *ui_entry_create(const char *label, value_t *value);
 extern ui_entry_t *ui_checkbox_create(const char *label, value_t *value);
 extern ui_entry_t *ui_textbox_create(const char *label, value_t *value);
 extern ui_entry_t *ui_chooser_create(const char *label, value_t *value);
-extern void ui_chooser_insert(ui_entry_t *entry, const char *label, const value_t *value);
+extern void ui_chooser_insert(ui_entry_t *entry, const value_t *value, char *label);
 
 extern void ui_window_destroy(ui_window_t *window);
 extern void ui_entry_destroy(ui_entry_t *entry);

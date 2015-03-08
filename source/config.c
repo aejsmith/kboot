@@ -295,7 +295,7 @@ value_list_t *value_list_copy(const value_list_t *source) {
 
 /** Copy the contents of one value to another.
  * @param source        Source value.
- * @param dest          Destination value. */
+ * @param dest          Destination value (should be uninitialized). */
 void value_copy(const value_t *source, value_t *dest) {
     dest->type = source->type;
 
@@ -322,7 +322,7 @@ void value_copy(const value_t *source, value_t *dest) {
 /** Move the contents of one value to another.
  * @param source        Source value (will be invalidated, do not use except
  *                      for passing to value_destroy()).
- * @param dest          Destination value. */
+ * @param dest          Destination value (should be uninitialized). */
 void value_move(value_t *source, value_t *dest) {
     dest->type = source->type;
 
@@ -347,6 +347,30 @@ void value_move(value_t *source, value_t *dest) {
         source->cmds = NULL;
         break;
     }
+}
+
+/** Check if two values are equal.
+ * @param value         First value.
+ * @param other         Second value.
+ * @return              Whether the values are equal. */
+bool value_equals(const value_t *value, const value_t *other) {
+    if (value->type == other->type) {
+        switch (value->type) {
+        case VALUE_TYPE_INTEGER:
+            return value->integer == other->integer;
+        case VALUE_TYPE_BOOLEAN:
+            return value->boolean == other->boolean;
+            break;
+        case VALUE_TYPE_STRING:
+        case VALUE_TYPE_REFERENCE:
+            return strcmp(value->string, other->string) == 0;
+        default:
+            assert(0 && "Comparison not implemented for lists");
+            break;
+        }
+    }
+
+    return false;
 }
 
 /**

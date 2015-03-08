@@ -73,6 +73,25 @@ typedef struct ui_textbox_editor {
     bool update;                        /**< Whether to update textbox when the window closes. */
 } ui_textbox_editor_t;
 
+/** Structure containing a chooser. */
+typedef struct ui_chooser {
+    ui_entry_t entry;                   /**< Entry header. */
+
+    const char *label;                  /**< Label for the choice. */
+    struct ui_choice *selected;         /**< Selected item. */
+    value_t *value;                     /**< Value modified by the chooser. */
+    ui_window_t *list;                  /**< List implementing the chooser. */
+} ui_chooser_t;
+
+/** Structure containing an choice. */
+typedef struct ui_choice {
+    ui_entry_t entry;                   /**< Entry header. */
+
+    ui_chooser_t *chooser;              /**< Chooser that the entry is for. */
+    char *label;                        /**< Label for the choice. */
+    value_t value;                      /**< Value of the choice. */
+} ui_choice_t;
+
 /** Properties of the UI console. */
 static uint16_t ui_console_width;
 static uint16_t ui_console_height;
@@ -865,6 +884,211 @@ ui_entry_t *ui_textbox_create(const char *label, value_t *value) {
     box->label = label;
     box->value = value;
     return &box->entry;
+}
+
+/** Destroy a chooser.
+ * @param entry         Entry to destroy. */
+static void ui_chooser_destroy(ui_entry_t *entry) {
+    ui_chooser_t *chooser = (ui_chooser_t *)entry;
+
+    ui_window_destroy(chooser->list);
+}
+
+/** Render a chooser.
+ * @param entry         Entry to render. */
+static void ui_chooser_render(ui_entry_t *entry) {
+    ui_chooser_t *chooser = (ui_chooser_t *)entry;
+    char buf[32];
+    size_t avail, len;
+
+    assert(chooser->selected);
+
+    ui_printf("%s", chooser->label);
+
+    if (chooser->selected->label) {
+        snprintf(buf, sizeof(buf), "%s", chooser->selected->label);
+    } else {
+        switch (chooser->value->type) {
+        case VALUE_TYPE_INTEGER:
+            snprintf(buf, sizeof(buf), "%" PRIu64, chooser->value->integer);
+            break;
+        case VALUE_TYPE_BOOLEAN:
+            snprintf(buf, sizeof(buf), (chooser->value->boolean) ? "True" : "False");
+            break;
+        case VALUE_TYPE_STRING:
+            snprintf(buf, sizeof(buf), "%s", chooser->value->string);
+            break;
+        default:
+            unreachable();
+        }
+    }
+
+    /* Work out the length available to put the string in. */
+    avail = CONTENT_WIDTH - strlen(chooser->label) - 3;
+    len = strlen(buf);
+    if (len > avail) {
+        ui_printf(" [");
+        for (size_t i = 0; i < avail - 3; i++)
+            console_putc(ui_console, buf[i]);
+        ui_printf("...]");
+    } else {
+        console_set_cursor(ui_console, 0 - len - 2, 0, false);
+        ui_printf("[%s]", buf);
+    }
+}
+
+/** Write the help text for a chooser.
+ * @param entry         Entry to write for. */
+static void ui_chooser_help(ui_entry_t *entry) {
+    ui_print_action('\n', "Change");
+}
+
+/** Handle input on a chooser.
+ * @param entry         Entry input was performed on.
+ * @param key           Key that was pressed.
+ * @return              Input handling result. */
+static input_result_t ui_chooser_input(ui_entry_t *entry, uint16_t key) {
+    ui_chooser_t *chooser = (ui_chooser_t *)entry;
+
+    if (key == '\n') {
+        ui_display(chooser->list, ui_console, 0);
+        return INPUT_RENDER_WINDOW;
+    } else {
+        return INPUT_HANDLED;
+    }
+}
+
+/** Chooser entry type. */
+static ui_entry_type_t ui_chooser_entry_type = {
+    .destroy = ui_chooser_destroy,
+    .render = ui_chooser_render,
+    .help = ui_chooser_help,
+    .input = ui_chooser_input,
+};
+
+/**
+ * Create a chooser entry.
+ *
+ * Creates an entry that presents a list of values to choose from, and sets a
+ * value to the chosen value. The value given to this function is the value
+ * that should be modified by the entry. All entries added to the chooser should
+ * match the type of this value. The caller should ensure that its current
+ * value is a valid choice.
+ *
+ * @param label         Label for the choice.
+ * @param value         Value that the chooser will modify.
+ *
+ * @return              Pointer to created entry.
+ */
+ui_entry_t *ui_chooser_create(const char *label, value_t *value) {
+    ui_chooser_t *chooser;
+
+    switch (value->type) {
+    case VALUE_TYPE_INTEGER:
+    case VALUE_TYPE_BOOLEAN:
+    case VALUE_TYPE_STRING:
+        break;
+    default:
+        assert(0 && "Choice not implemented for this type");
+        break;
+    }
+
+    chooser = malloc(sizeof(*chooser));
+    chooser->entry.type = &ui_chooser_entry_type;
+    chooser->label = label;
+    chooser->selected = NULL;
+    chooser->value = value;
+    chooser->list = ui_list_create(label, true);
+    return &chooser->entry;
+}
+
+/** Destroy a choice.
+ * @param entry         Entry to destroy. */
+static void ui_choice_destroy(ui_entry_t *entry) {
+    ui_choice_t *choice = (ui_choice_t *)entry;
+
+    value_destroy(&choice->value);
+    free(choice->label);
+}
+
+/** Render a choice.
+ * @param entry         Entry to render. */
+static void ui_choice_render(ui_entry_t *entry) {
+    ui_choice_t *choice = (ui_choice_t *)entry;
+
+    if (choice->label) {
+        ui_printf("%s", choice->label);
+    } else {
+        switch (choice->value.type) {
+        case VALUE_TYPE_INTEGER:
+            ui_printf("%" PRIu64, choice->value.integer);
+            break;
+        case VALUE_TYPE_BOOLEAN:
+            ui_printf((choice->value.boolean) ? "True" : "False");
+            break;
+        case VALUE_TYPE_STRING:
+            ui_printf("%s", choice->value.string);
+            break;
+        default:
+            unreachable();
+        }
+    }
+}
+
+/** Write the help text for a choice.
+ * @param entry         Entry to write for. */
+static void ui_choice_help(ui_entry_t *entry) {
+    ui_print_action('\n', "Select");
+}
+
+/** Handle input on a choice.
+ * @param entry         Entry input was performed on.
+ * @param key           Key that was pressed.
+ * @return              Input handling result. */
+static input_result_t ui_choice_input(ui_entry_t *entry, uint16_t key) {
+    ui_choice_t *choice = (ui_choice_t *)entry;
+
+    if (key == '\n') {
+        choice->chooser->selected = choice;
+        value_destroy(choice->chooser->value);
+        value_copy(&choice->value, choice->chooser->value);
+        return INPUT_CLOSE;
+    } else {
+        return INPUT_HANDLED;
+    }
+}
+
+/** Choice entry type. */
+static ui_entry_type_t ui_choice_entry_type = {
+    .destroy = ui_choice_destroy,
+    .render = ui_choice_render,
+    .help = ui_choice_help,
+    .input = ui_choice_input,
+};
+
+/** Add a choice to a chooser.
+ * @param entry         Chooser to add to.
+ * @param value         Value for this choice (will be copied).
+ * @param label         If not NULL, a string containing a label for the entry,
+ *                      which will be freed along with the chooser. If NULL, the
+ *                      entry's label will be derived from the value. */
+void ui_chooser_insert(ui_entry_t *entry, const value_t *value, char *label) {
+    ui_chooser_t *chooser = (ui_chooser_t *)entry;
+    ui_choice_t *choice;
+
+    assert(value->type == chooser->value->type);
+
+    choice = malloc(sizeof(*choice));
+    choice->entry.type = &ui_choice_entry_type;
+    choice->chooser = chooser;
+    choice->label = label;
+    value_copy(value, &choice->value);
+
+    /* Mark as selected if it matches the current value. */
+    if (!chooser->selected && value_equals(chooser->value, &choice->value))
+        chooser->selected = choice;
+
+    ui_list_insert(chooser->list, &choice->entry, chooser->selected == choice);
 }
 
 /** Destroy a window.
