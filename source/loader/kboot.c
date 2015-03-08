@@ -270,7 +270,7 @@ static void load_modules(kboot_loader_t *loader) {
         kboot_module_t *module = list_entry(iter, kboot_module_t, header);
         void *dest;
         phys_ptr_t phys;
-        size_t size, name_len;
+        size_t size, name_size;
         kboot_tag_module_t *tag;
         status_t ret;
 
@@ -286,14 +286,14 @@ static void load_modules(kboot_loader_t *loader) {
         if (ret != STATUS_SUCCESS)
             boot_error("Error %d reading module '%s'", ret, module->name);
 
-        name_len = strlen(module->name) + 1;
+        name_size = strlen(module->name) + 1;
 
-        tag = kboot_alloc_tag(loader, KBOOT_TAG_MODULE, round_up(sizeof(*tag), 8) + name_len);
+        tag = kboot_alloc_tag(loader, KBOOT_TAG_MODULE, round_up(sizeof(*tag), 8) + name_size);
         tag->addr = phys;
         tag->size = module->handle->size;
-        tag->name_len = name_len;
+        tag->name_size = name_size;
 
-        memcpy((char *)tag + round_up(sizeof(*tag), 8), module->name, name_len);
+        memcpy((char *)tag + round_up(sizeof(*tag), 8), module->name, name_size);
     }
 }
 
@@ -348,7 +348,7 @@ static void add_option_tags(kboot_loader_t *loader) {
         char *name = (char *)option + sizeof(*option);
         value_t *value;
         void *data;
-        size_t name_len, data_len, size;
+        size_t name_size, data_size, size;
         kboot_tag_option_t *tag;
 
         /* All options are added to the environment by config_cmd_kboot(). */
@@ -360,60 +360,51 @@ static void add_option_tags(kboot_loader_t *loader) {
             assert(value->type == VALUE_TYPE_BOOLEAN);
 
             data = &value->boolean;
-            data_len = sizeof(value->boolean);
+            data_size = sizeof(value->boolean);
             break;
         case KBOOT_OPTION_STRING:
             assert(value->type == VALUE_TYPE_STRING);
 
             data = value->string;
-            data_len = strlen(value->string) + 1;
+            data_size = strlen(value->string) + 1;
             break;
         case KBOOT_OPTION_INTEGER:
             assert(value->type == VALUE_TYPE_STRING);
 
             data = &value->integer;
-            data_len = sizeof(value->integer);
+            data_size = sizeof(value->integer);
             break;
         default:
             unreachable();
         }
 
-        name_len = strlen(name) + 1;
-        size = round_up(sizeof(*tag), 8) + round_up(name_len, 8) + data_len;
+        name_size = strlen(name) + 1;
+        size = round_up(sizeof(*tag), 8) + round_up(name_size, 8) + data_size;
 
         tag = kboot_alloc_tag(loader, KBOOT_TAG_OPTION, size);
         tag->type = option->type;
-        tag->name_len = name_len;
-        tag->value_len = data_len;
+        tag->name_size = name_size;
+        tag->value_size = data_size;
 
-        memcpy((char *)tag + round_up(sizeof(*tag), 8), name, name_len);
-        memcpy((char *)tag + round_up(sizeof(*tag), 8) + round_up(name_len, 8), data, data_len);
+        memcpy((char *)tag + round_up(sizeof(*tag), 8), name, name_size);
+        memcpy((char *)tag + round_up(sizeof(*tag), 8) + round_up(name_size, 8), data, data_size);
     }
 }
 
-/** Add an empty boot device tag.
- * @param loader        Loader internal data. */
-static void add_none_bootdev_tag(kboot_loader_t *loader) {
-    kboot_tag_bootdev_t *tag;
-
-    tag = kboot_alloc_tag(loader, KBOOT_TAG_BOOTDEV, sizeof(*tag));
-    tag->type = KBOOT_BOOTDEV_NONE;
-}
-
-/** Add a disk boot device tag from a UUID.
+/** Add a file system boot device tag.
  * @param loader        Loader internal data.
  * @param uuid          UUID string. */
-static void add_uuid_bootdev_tag(kboot_loader_t *loader, const char *uuid) {
+static void add_fs_bootdev_tag(kboot_loader_t *loader, const char *uuid) {
     kboot_tag_bootdev_t *tag = kboot_alloc_tag(loader, KBOOT_TAG_BOOTDEV, sizeof(*tag));
 
-    tag->type = KBOOT_BOOTDEV_DISK;
-    tag->disk.flags = 0;
+    tag->type = KBOOT_BOOTDEV_FS;
+    tag->fs.flags = 0;
 
     if (uuid) {
-        strncpy((char *)tag->disk.uuid, uuid, sizeof(tag->disk.uuid));
-        tag->disk.uuid[sizeof(tag->disk.uuid) - 1] = 0;
+        strncpy((char *)tag->fs.uuid, uuid, sizeof(tag->fs.uuid));
+        tag->fs.uuid[sizeof(tag->fs.uuid) - 1] = 0;
     } else {
-        tag->disk.uuid[0] = 0;
+        tag->fs.uuid[0] = 0;
     }
 }
 
@@ -428,7 +419,7 @@ static void add_other_bootdev_tag(kboot_loader_t *loader, const char *str) {
 
     tag = kboot_alloc_tag(loader, KBOOT_TAG_BOOTDEV, sizeof(*tag));
     tag->type = KBOOT_BOOTDEV_OTHER;
-    tag->other.str_len = len;
+    tag->other.str_size = len;
 
     memcpy((char *)tag + round_up(sizeof(*tag), 8), str, len);
 }
@@ -438,6 +429,7 @@ static void add_other_bootdev_tag(kboot_loader_t *loader, const char *str) {
 static void add_bootdev_tag(kboot_loader_t *loader) {
     device_t *device;
     const value_t *value;
+    kboot_tag_bootdev_t *tag;
 
     value = environ_lookup(current_environ, "root_device");
     if (value) {
@@ -447,7 +439,7 @@ static void add_bootdev_tag(kboot_loader_t *loader) {
             add_other_bootdev_tag(loader, &value->string[6]);
             return;
         } else if (strncmp(value->string, "uuid:", 5) == 0) {
-            add_uuid_bootdev_tag(loader, &value->string[5]);
+            add_fs_bootdev_tag(loader, &value->string[5]);
             return;
         }
 
@@ -457,13 +449,14 @@ static void add_bootdev_tag(kboot_loader_t *loader) {
         device = loader->handle->mount->device;
     }
 
-    if (device->type == DEVICE_TYPE_DISK && device->mount && device->mount->uuid) {
-        add_uuid_bootdev_tag(loader, device->mount->uuid);
+    if (device->mount && device->mount->uuid) {
+        add_fs_bootdev_tag(loader, device->mount->uuid);
         return;
     }
 
     /* Nothing usable. TODO: network */
-    add_none_bootdev_tag(loader);
+    tag = kboot_alloc_tag(loader, KBOOT_TAG_BOOTDEV, sizeof(*tag));
+    tag->type = KBOOT_BOOTDEV_NONE;
 }
 
 /** Add physical memory information to the tag list.
@@ -609,7 +602,7 @@ static ui_window_t *kboot_loader_configure(void *_loader, const char *title) {
     /* Add entries for each option. */
     kboot_itag_foreach(loader, KBOOT_ITAG_OPTION, kboot_itag_option_t, option) {
         char *name = (char *)option + sizeof(*option);
-        char *desc = (char *)option + sizeof(*option) + option->name_len;
+        char *desc = (char *)option + sizeof(*option) + option->name_size;
         value_t *value;
         ui_entry_t *entry;
 
@@ -725,7 +718,7 @@ static bool add_image_tag(kboot_loader_t *loader, elf_note_t *note, void *desc) 
 static bool add_options(kboot_loader_t *loader) {
     kboot_itag_foreach(loader, KBOOT_ITAG_OPTION, kboot_itag_option_t, option) {
         char *name = (char *)option + sizeof(*option);
-        void *initial = (char *)option + sizeof(*option) + option->name_len + option->desc_len;
+        void *initial = (char *)option + sizeof(*option) + option->name_size + option->desc_size;
         const value_t *exist;
         value_t value;
 

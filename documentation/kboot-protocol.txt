@@ -142,12 +142,12 @@ display a configuration menu.
 
     typedef struct kboot_itag_option {
         uint8_t  type;
-        uint32_t name_len;
-        uint32_t desc_len;
-        uint32_t default_len;
+        uint32_t name_size;
+        uint32_t desc_size;
+        uint32_t default_size;
     } kboot_itag_option_t;
 
-This structure is followed by 3 variable length fields: `name`, `desc` and
+This structure is followed by 3 variable-length fields: `name`, `desc` and
 `default`.
 
 Fields:
@@ -155,12 +155,12 @@ Fields:
  * `type`: Type of the option. What is in the `default` field depends on the
    option type. The following option types are defined:
    - `KBOOT_OPTION_BOOLEAN` (0): Boolean, 1 byte, 0 or 1.
-   - `KBOOT_OPTION_STRING` (1): String, variable length, null-terminated string
-     (length includes null terminator).
+   - `KBOOT_OPTION_STRING` (1): String, variable-length, null-terminated string
+     (size includes null terminator).
    - `KBOOT_OPTION_INTEGER` (2): Integer, 8 bytes, 64-bit integer.
- * `name_len`: Length of the `name` field, including null terminator.
- * `desc_len`: Length of the `desc` field, including null terminator.
- * `default_len`: Length of the `default` field. Dependent on `type`, see above.
+ * `name_size`: Size of the `name` field, including null terminator.
+ * `desc_size`: Size of the `desc` field, including null terminator.
+ * `default_size`: Size of the `default` field. Dependent on `type`, see above.
  * `name`: String name of the option. Must not contain spaces, or any of the
    following characters: `" '`. Names of the format `option_name` are
    recommended.
@@ -248,13 +248,12 @@ space (see below). The following procedure is used to build the address space:
    as necessary to satisfy any alignment requirements.
 
 A map of the virtual address space is provided in the tag list, see
-`KBOOT_TAG_VMEM`. Note that the address space set up by the boot loader is
-intended to only be temporary. The kernel should build its own address space
-using the information provided by KBoot as soon as possible. The physical
+`KBOOT_TAG_VMEM`. Note that the page tables set up by the boot loader are
+intended to only be temporary. The kernel should build its own page tables using
+the information provided by the boot loader as soon as possible. The physical
 memory used by the page tables created by boot loader is marked as
-`KBOOT_MEMORY_PAGETABLES` in the memory map, allowing it to be identified so
-that it can be made free for use once the kernel has switched to its own page
-tables.
+`KBOOT_MEMORY_PAGETABLES` in the memory map, allowing it to be identified and
+made free for use once the kernel has switched to its own page tables.
 
 On all architectures, the kernel will be entered with a valid stack set up,
 mapped in the virtual address space. Details of the stack mapping are contained
@@ -485,17 +484,17 @@ give the option value.
         kboot_tag_t header;
     
         uint8_t     type;
-        uint32_t    name_len;
-        uint32_t    value_len;
+        uint32_t    name_size;
+        uint32_t    value_size;
     } kboot_tag_option_t;
 
-This structure is followed by 2 variable length fields, `name` and `value`.
+This structure is followed by 2 variable-length fields, `name` and `value`.
 
 Fields:
 
  * `type`: Type of the option (see `KBOOT_ITAG_OPTION`).
- * `name_len`: Length of the name string, including null terminator.
- * `value_len`: Size of the option value, in bytes.
+ * `name_size`: Size of the name string, including null terminator.
+ * `value_size`: Size of the option value, in bytes.
  * `name`: Name of the option. The start of this field is the end of the tag
    structure, aligned up to an 8 byte boundary.
  * `value`: Value of the option, dependent on the type (see `KBOOT_ITAG_OPTION`).
@@ -583,10 +582,10 @@ been loaded.
     
         kboot_paddr_t addr;
         uint32_t      size;
-        uint32_t      name_len;
+        uint32_t      name_size;
     } kboot_tag_module_t;
 
-This structure is followed by a variable length `name` field.
+This structure is followed by a variable-length `name` field.
 
 Fields:
 
@@ -594,7 +593,7 @@ Fields:
    page size. The data is not mapped into the virtual address space. The memory
    containing module data is marked as `KBOOT_MEMORY_MODULES`.
  * `size`: Size of the module data, in bytes.
- * `name_len`: Length of the name string, including null terminator.
+ * `name_size`: Size of the name string, including null terminator.
  * `name`: Name of the module. This is the base name of the file that the module
    was loaded from.
 
@@ -693,7 +692,7 @@ Fields (`KBOOT_VIDEO_LFB`);
    red, green and blue components.
  * `palette_size`: For `KBOOT_LFB_INDEXED`, the number of colours in the given
    palette.
- * `palette`: For `KBOOT_LFB_INDEXED`, a variable length colour palette that
+ * `palette`: For `KBOOT_LFB_INDEXED`, a variable-length colour palette that
    has been set up by the boot loader.
 
 ### `KBOOT_TAG_BOOTDEV` (`8`)
@@ -722,7 +721,7 @@ in network byte order.
             struct {
                 uint32_t         flags;
                 uint8_t          uuid[64];
-            } disk;
+            } fs;
     
             struct {
                 uint32_t         flags;
@@ -732,11 +731,11 @@ in network byte order.
                 kboot_ip_addr_t  client_ip;
                 kboot_mac_addr_t client_mac;
                 uint8_t          hw_type;
-                uint8_t          hw_addr_len;
+                uint8_t          hw_addr_size;
             } net;
 
             struct {
-                uint32_t         str_len;
+                uint32_t         str_size;
             } other;
         };
     } kboot_tag_bootdev_t;
@@ -747,20 +746,18 @@ Fields:
    currently defined:
     - `KBOOT_BOOTDEV_NONE` (0): No boot device. This is the case when booted
       from a boot image.
-    - `KBOOT_BOOTDEV_DISK` (1): Booted from a disk device.
+    - `KBOOT_BOOTDEV_FS` (1): Booted from a local file system.
     - `KBOOT_BOOTDEV_NET` (2): Booted from the network.
     - `KBOOT_BOOTDEV_OTHER` (3): Booted from some other device, specified by a
       string, the meaning of which is OS-defined.
    
    The remainder of the structure is dependent on the device type.
 
-Fields (`KBOOT_BOOTDEV_DISK`):
+Fields (`KBOOT_BOOTDEV_FS`):
 
  * `flags`: Behaviour flags. No flags are currently defined.
- * `uuid`: If not zero-length, the UUID of the boot filesystem. The UUID is
-   given as a string. It is recommended that this is used if present to identify
-   the boot FS, as it is the most reliable method. See the section
-   _Filesystem UUIDs_ for more information about this field.
+ * `uuid`: The UUID of the boot filesystem. The UUID is given as a string. See
+   the section _Filesystem UUIDs_ for more information about this field.
 
 Fields (`KBOOT_BOOTDEV_NET`):
 
@@ -775,11 +772,11 @@ Fields (`KBOOT_BOOTDEV_NET`):
  * `client_mac`: MAC address of the boot network interface.
  * `hw_type`: Type of the network interface, as specified by the _Hardware Type_
    section of RFC 1700.
- * `hw_addr_len`: Length of the client MAC address.
+ * `hw_addr_size`: Size of the client MAC address.
 
 Fields (`KBOOT_BOOTDEV_OTHER`):
 
- * `str_len`: Length of the device specifier string following the structure,
+ * `str_size`: Size of the device specifier string following the structure,
    including null terminator.
 
 ### `KBOOT_TAG_LOG` (`9`)
@@ -895,7 +892,7 @@ Fields:
 Platform Specifics
 ------------------
 
-### PC
+### PC BIOS
 
 If a video mode image tag is not included, VGA text mode will be used. If both
 `KBOOT_VIDEO_LFB` and `KBOOT_VIDEO_VGA` are set, the boot loader will attempt
@@ -903,32 +900,82 @@ to set a framebuffer mode and fall back on VGA. It is recommended that a
 kernel supports VGA text mode rather than exclusively using an LFB mode, as it
 may not always be possible to set a LFB mode.
 
-There are some information tags that are specific to the PC platform. These are
-detailed below.
+There are some information tags which are specific to the PC BIOS platform.
+These are detailed below.
 
-#### `KBOOT_TAG_E820` (`11`)
+#### `KBOOT_TAG_BIOS_E820` (`11`)
 
 The PC BIOS provides more memory information than is included in the KBoot
 physical memory map. Some of this information is required to support ACPI,
-therefore KBoot will provide an unmodified copy of the BIOS E820 memory map
-to the kernel. The tag list will contain an E820 tag for each address range
-descriptor returned by INT 15h function E820h. All E820 tags will be placed in
-the tag list in the order in which they were returned by the BIOS. Each tag's
-data will contain the tag header and then the data returned by the BIOS. The
-format of each descriptor as of ACPI 5.0 is as follows:
+therefore the boot loader will provide an unmodified copy of the BIOS E820
+memory map to the kernel. A single tag will be provided containing all entries
+returned by the BIOS, in the order in which they were returned.
 
-    typedef struct kboot_tag_e820 {
+    typedef struct kboot_tag_bios_e820 {
         kboot_tag_t header;
+    
+        uint32_t    num_entries;
+        uint32_t    entry_size;
+    
+        uint8_t     entries[0];
+    } kboot_tag_bios_e820_t;
 
-        uint64_t    start;
-        uint64_t    length;
-        uint32_t    type;
-        uint32_t    attr;
-    } kboot_tag_e820_t;
+Fields:
 
-The `start`, `length` and `type` fields are guaranteed to be present, however
-any fields following them may not be present. The kernel should check the tag
-size before accessing them.
+ * `num_entries`: The number of entries present.
+ * `entry_size`: The size of each entry in the array.
+ * `entries`: Array of entries, each `entry_size` bytes long.
+
+### EFI
+
+EFI firmwares provide two sets of services, Boot Services and Runtime Services.
+When the system is executing in Boot Services mode, the firmware is in control
+of the system memory map and hardware. Before entering the kernel, the boot
+loader must call `ExitBootServices`. Any ranges in the EFI memory map marked
+as types `EfiBootServicesCode` or `EfiBootServicesData` should be made free in
+the main KBoot memory map.
+
+Runtime Services must be called with all ranges in the EFI memory map marked
+with the `EFI_MEMORY_RUNTIME` attribute identity mapped, until a call to
+`SetVirtualAddressMap` is made. Even though the boot loader sets up a virtual
+address space for the kernel, it will _not_ map runtime services sections or
+call `SetVirtualAddressMap`, it is left up to the kernel to do so. This is done
+because `SetVirtualAddressMap` is a one-shot operation, it cannot be called
+multiple times, so it is left to the kernel to give it maximum flexibility in
+mapping things how it wants.
+
+There are some information tags which are specific to EFI-based platforms. These
+are detailed below.
+
+#### `KBOOT_TAG_EFI` (`12`)
+
+This tag provides the information needed to access EFI runtime services, as well
+as a copy of the EFI memory map at the time of the call to `ExitBootServices`.
+
+    typedef struct kboot_tag_efi {
+        kboot_tag_t   header;
+    
+        kboot_paddr_t system_table;
+
+        uint8_t       type;
+    
+        uint32_t      num_memory_descs;
+        uint32_t      memory_desc_size;
+        uint32_t      memory_desc_version;
+    
+        uint8_t       memory_map[0];
+    } kboot_tag_efi_t;
+
+Fields:
+
+ * `system_table`: Physical address of the EFI system table.
+ * `type`: Type of the EFI firmware, one of:
+    - `KBOOT_EFI_32` (0): Firmware is 32-bit.
+    - `KBOOT_EFI_64` (1): Firmware is 64-bit.
+ * `num_memory_descs`: Number of memory descriptors.
+ * `memory_desc_size`: Size of each descriptor in the memory map.
+ * `memory_desc_version`: Memory map descriptor version.
+ * `memory_map`: Array of memory descriptors, each `memory_desc_size` bytes long.
 
 Filesystem UUIDs
 ----------------

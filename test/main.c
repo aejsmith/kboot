@@ -48,13 +48,13 @@ static void dump_option_tag(kboot_tag_option_t *tag) {
 
     printf("KBOOT_TAG_OPTION:\n");
     printf("  type       = %" PRIu8 "\n", tag->type);
-    printf("  name_len   = %" PRIu32 "\n", tag->name_len);
-    printf("  value_len  = %" PRIu32 "\n", tag->value_len);
+    printf("  name_size  = %" PRIu32 "\n", tag->name_size);
+    printf("  value_size = %" PRIu32 "\n", tag->value_size);
 
     name = (const char *)round_up((ptr_t)tag + sizeof(kboot_tag_option_t), 8);
     printf("  name       = `%s'\n", name);
 
-    value = (void *)round_up((ptr_t)name + tag->name_len, 8);
+    value = (void *)round_up((ptr_t)name + tag->name_size, 8);
     switch (tag->type) {
     case KBOOT_OPTION_BOOLEAN:
         printf("  value      = boolean: %d\n", *(bool *)value);
@@ -130,7 +130,7 @@ static void dump_module_tag(kboot_tag_module_t *tag) {
     printf("KBOOT_TAG_MODULE:\n");
     printf("  addr      = 0x%" PRIx64 "\n", tag->addr);
     printf("  size      = %" PRIu32 "\n", tag->size);
-    printf("  name_len  = %" PRIu32 "\n", tag->name_len);
+    printf("  name_size = %" PRIu32 "\n", tag->name_size);
 
     name = (const char *)round_up((ptr_t)tag + sizeof(kboot_tag_module_t), 8);
     printf("  name      = `%s'\n", name);
@@ -212,26 +212,26 @@ static void dump_bootdev_tag(kboot_tag_bootdev_t *tag) {
     case KBOOT_BOOTDEV_NONE:
         printf("  type = %" PRIu32 " (KBOOT_BOOTDEV_NONE)\n", tag->type);
         break;
-    case KBOOT_BOOTDEV_DISK:
-        printf("  type  = %" PRIu32 " (KBOOT_BOOTDEV_DISK)\n", tag->type);
-        printf("  flags = 0x%" PRIx32 "\n", tag->disk.flags);
-        printf("  uuid  = `%s'\n", tag->disk.uuid);
+    case KBOOT_BOOTDEV_FS:
+        printf("  type  = %" PRIu32 " (KBOOT_BOOTDEV_FS)\n", tag->type);
+        printf("  flags = 0x%" PRIx32 "\n", tag->fs.flags);
+        printf("  uuid  = `%s'\n", tag->fs.uuid);
         break;
     case KBOOT_BOOTDEV_NET:
-        printf("  type        = %" PRIu32 " (KBOOT_BOOTDEV_NET)\n", tag->type);
-        printf("  flags       = 0x%" PRIx32 "\n", tag->net.flags);
+        printf("  type         = %" PRIu32 " (KBOOT_BOOTDEV_NET)\n", tag->type);
+        printf("  flags        = 0x%" PRIx32 "\n", tag->net.flags);
         if (tag->net.flags & KBOOT_NET_IPV6)
             printf("    KBOOT_NET_IPV6\n");
-        printf("  server_ip   = "); print_ip_addr(&tag->net.server_ip, tag->net.flags);
-        printf("  server_port = %" PRIu16 "\n", tag->net.server_port);
-        printf("  gateway_ip  = "); print_ip_addr(&tag->net.gateway_ip, tag->net.flags);
-        printf("  client_ip   = "); print_ip_addr(&tag->net.client_ip, tag->net.flags);
-        printf("  client_mac  = %02x:%02x:%02x:%02x:%02x:%02x\n",
+        printf("  server_ip    = "); print_ip_addr(&tag->net.server_ip, tag->net.flags);
+        printf("  server_port  = %" PRIu16 "\n", tag->net.server_port);
+        printf("  gateway_ip   = "); print_ip_addr(&tag->net.gateway_ip, tag->net.flags);
+        printf("  client_ip    = "); print_ip_addr(&tag->net.client_ip, tag->net.flags);
+        printf("  client_mac   = %02x:%02x:%02x:%02x:%02x:%02x\n",
             tag->net.client_mac[0], tag->net.client_mac[1],
             tag->net.client_mac[2], tag->net.client_mac[3],
             tag->net.client_mac[4], tag->net.client_mac[5]);
-        printf("  hw_addr_len = %u\n", tag->net.hw_addr_len);
-        printf("  hw_type     = %u\n", tag->net.hw_type);
+        printf("  hw_addr_size = %u\n", tag->net.hw_addr_size);
+        printf("  hw_type      = %u\n", tag->net.hw_type);
         break;
     default:
         printf("  type = %" PRIu32 " (unknown)\n", tag->type);
@@ -257,7 +257,7 @@ static void dump_log_tag(kboot_tag_log_t *tag) {
 /** Get a section by index.
  * @param tag           Tag to get from.
  * @param index         Index to get. */
-static elf_shdr_t *find_elf_section(kboot_tag_sections_t *tag, uint32_t index) {
+static elf_shdr_t *get_elf_section(kboot_tag_sections_t *tag, uint32_t index) {
     return (elf_shdr_t *)&tag->sections[index * tag->entsize];
 }
 
@@ -271,12 +271,12 @@ static void dump_sections_tag(kboot_tag_sections_t *tag) {
     printf("  entsize  = %" PRIu32 "\n", tag->entsize);
     printf("  shstrndx = %" PRIu32 "\n", tag->shstrndx);
 
-    shdr = find_elf_section(tag, tag->shstrndx);
+    shdr = get_elf_section(tag, tag->shstrndx);
     strtab = (const char *)phys_to_virt(shdr->sh_addr);
     printf("  shstrtab = 0x%lx (%p)\n", shdr->sh_addr, strtab);
 
     for (uint32_t i = 0; i < tag->num; i++) {
-        shdr = find_elf_section(tag, i);
+        shdr = get_elf_section(tag, i);
 
         printf("  section %u (`%s'):\n", i, (shdr->sh_name) ? strtab + shdr->sh_name : "");
         printf("    sh_type  = %" PRIu32 "\n", shdr->sh_type);
@@ -286,32 +286,107 @@ static void dump_sections_tag(kboot_tag_sections_t *tag) {
     }
 }
 
-/** Get an E820 tag type. */
-static const char *e820_tag_type(uint32_t type) {
-    switch (type) {
-    case 1:
-        return "Free";
-    case 2:
-        return "Reserved";
-    case 3:
-        return "ACPI reclaimable";
-    case 4:
-        return "ACPI NVS";
-    case 5:
-        return "Bad";
-    case 6:
-        return "Disabled";
-    default:
-        return "???";
+/** E820 memory types. */
+static const char *e820_memory_types[] = {
+    "???",
+    "Free",
+    "Reserved",
+    "ACPI Reclaimable",
+    "ACPI NVS",
+    "Bad",
+    "Disabled",
+};
+
+/** E820 entry structure. */
+typedef struct e820_entry {
+    uint64_t start;
+    uint64_t length;
+    uint32_t type;
+} __packed e820_entry_t;
+
+/** Dump an E820 tag. */
+static void dump_bios_e820_tag(kboot_tag_bios_e820_t *tag) {
+    printf("KBOOT_TAG_BIOS_E820:\n");
+    printf("  num_entries = %" PRIu32 "\n", tag->num_entries);
+    printf("  entry_size  = %" PRIu32 "\n", tag->entry_size);
+
+    for (uint32_t i = 0; i < tag->num_entries; i++) {
+        e820_entry_t *entry = (e820_entry_t *)&tag->entries[i * tag->entry_size];
+        const char *name;
+
+        name = (entry->type < array_size(e820_memory_types))
+            ? e820_memory_types[entry->type]
+            : e820_memory_types[0];
+
+        printf("  entry %u:\n", i);
+        printf("    start  = 0x%" PRIx64 "\n", entry->start);
+        printf("    length = 0x%" PRIx64 "\n", entry->length);
+        printf("    type   = %" PRIu32 " (%s)\n", entry->type, name);
     }
 }
 
-/** Dump an E820 tag. */
-static void dump_e820_tag(kboot_tag_e820_t *tag) {
-    printf("KBOOT_TAG_E820:\n");
-    printf("  start  = 0x%" PRIx64 "\n", tag->start);
-    printf("  length = 0x%" PRIx64 "\n", tag->length);
-    printf("  type   = %" PRIu32 " (%s)\n", tag->type, e820_tag_type(tag->type));
+/** EFI memory type strings.. */
+static const char *efi_memory_types[] = {
+    "Reserved",
+    "Loader Code",
+    "Loader Data",
+    "Boot Services Code",
+    "Boot Services Data",
+    "Runtime Services Code",
+    "Runtime Services Data",
+    "Free",
+    "Unusable",
+    "ACPI Reclaimable",
+    "ACPI NVS",
+    "MMIO",
+    "MMIO Port Space",
+    "PAL Code",
+};
+
+/** Memory range descriptor. */
+typedef struct efi_memory_descriptor {
+    uint32_t type;
+    uint64_t physical_start;
+    uint64_t virtual_start;
+    uint64_t num_pages;
+    uint64_t attribute;
+} efi_memory_descriptor_t;
+
+/** Dump an EFI tag. */
+static void dump_efi_tag(kboot_tag_efi_t *tag) {
+    const char *name;
+
+    switch (tag->type) {
+    case KBOOT_EFI_64:
+        name = "KBOOT_EFI_64";
+        break;
+    case KBOOT_EFI_32:
+        name = "KBOOT_EFI_32";
+        break;
+    default:
+        name = "???";
+        break;
+    }
+
+    printf("KBOOT_TAG_EFI:\n");
+    printf("  type                = %" PRIu8 " (%s)\n", tag->type, name);
+    printf("  system_table        = 0x%" PRIx64 "\n", tag->system_table);
+    printf("  num_memory_descs    = %" PRIu32 "\n", tag->num_memory_descs);
+    printf("  memory_desc_size    = %" PRIu32 "\n", tag->memory_desc_size);
+    printf("  memory_desc_version = %" PRIu32 "\n", tag->memory_desc_version);
+
+    for (uint32_t i = 0; i < tag->num_memory_descs; i++) {
+        efi_memory_descriptor_t *desc = (efi_memory_descriptor_t *)&tag->memory_map[i * tag->memory_desc_size];
+
+        name = (desc->type < array_size(efi_memory_types)) ? efi_memory_types[desc->type] : "???";
+
+        printf("  descriptor %u:\n", i);
+        printf("    type           = %" PRIu32 " (%s)\n", desc->type, name);
+        printf("    physical_start = 0x%" PRIx64 "\n", desc->physical_start);
+        printf("    virtual_start  = 0x%" PRIx64 "\n", desc->virtual_start);
+        printf("    num_pages      = %" PRIu64 " (0x%" PRIx64 ")\n", desc->num_pages, desc->num_pages * 0x1000);
+        printf("    attribute      = 0x%" PRIx64 "\n", desc->attribute);
+    }
 }
 
 /** Entry point of the test kernel.
@@ -360,8 +435,11 @@ void kmain(uint32_t magic, kboot_tag_t *tags) {
         case KBOOT_TAG_SECTIONS:
             dump_sections_tag((kboot_tag_sections_t *)tags);
             break;
-        case KBOOT_TAG_E820:
-            dump_e820_tag((kboot_tag_e820_t *)tags);
+        case KBOOT_TAG_BIOS_E820:
+            dump_bios_e820_tag((kboot_tag_bios_e820_t *)tags);
+            break;
+        case KBOOT_TAG_EFI:
+            dump_efi_tag((kboot_tag_efi_t *)tags);
             break;
         }
 

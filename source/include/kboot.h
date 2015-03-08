@@ -60,7 +60,8 @@ typedef struct kboot_tag {
 #define KBOOT_TAG_BOOTDEV           8       /**< Boot device information. */
 #define KBOOT_TAG_LOG               9       /**< Kernel log buffer. */
 #define KBOOT_TAG_SECTIONS          10      /**< ELF section information. */
-#define KBOOT_TAG_E820              11      /**< BIOS address range descriptor (PC-specific). */
+#define KBOOT_TAG_BIOS_E820         11      /**< BIOS address range descriptor (BIOS-specific). */
+#define KBOOT_TAG_EFI               12      /**< EFI firmware information. */
 
 /** Tag containing core information for the kernel. */
 typedef struct kboot_tag_core {
@@ -82,8 +83,8 @@ typedef struct kboot_tag_option {
     kboot_tag_t header;                     /**< Tag header. */
 
     uint8_t type;                           /**< Type of the option. */
-    uint32_t name_len;                      /**< Length of name string, including null terminator. */
-    uint32_t value_len;                     /**< Size of the option value, in bytes. */
+    uint32_t name_size;                     /**< Size of name string, including null terminator. */
+    uint32_t value_size;                    /**< Size of the option value, in bytes. */
 } kboot_tag_option_t;
 
 /** Possible option types. */
@@ -123,7 +124,7 @@ typedef struct kboot_tag_module {
 
     kboot_paddr_t addr;                     /**< Address of the module. */
     uint32_t size;                          /**< Size of the module. */
-    uint32_t name_len;                      /**< Length of name string, including null terminator. */
+    uint32_t name_size;                     /**< Size of name string, including null terminator. */
 } kboot_tag_module_t;
 
 /** Structure describing an RGB colour. */
@@ -170,7 +171,7 @@ typedef struct kboot_tag_video {
             uint8_t green_pos;              /**< Bit position of the green component of each pixel. */
             uint8_t blue_size;              /**< Size of blue component of each pixel. */
             uint8_t blue_pos;               /**< Bit position of the blue component of each pixel. */
-            uint16_t palette_size;          /**< For indexed modes, size of the colour palette. */
+            uint16_t palette_size;          /**< For indexed modes, length of the colour palette. */
 
             /** For indexed modes, the colour palette set by the loader. */
             kboot_colour_t palette[0];
@@ -208,48 +209,34 @@ typedef struct kboot_tag_bootdev {
     uint32_t type;                          /**< Boot device type. */
 
     union {
-        /** Disk device information. */
+        /** Local file system information. */
         struct {
             uint32_t flags;                 /**< Behaviour flags. */
             uint8_t uuid[64];               /**< UUID of the boot filesystem. */
-        } disk;
+        } fs;
 
         /** Network boot information. */
         struct {
             uint32_t flags;                 /**< Behaviour flags. */
-
-            /** Server IP address. */
-            kboot_ip_addr_t server_ip;
-
-            /** UDP port number of TFTP server. */
-            uint16_t server_port;
-
-            /** Gateway IP address. */
-            kboot_ip_addr_t gateway_ip;
-
-            /** IP used on this machine when communicating with server. */
-            kboot_ip_addr_t client_ip;
-
-            /** MAC address of the boot network interface. */
-            kboot_mac_addr_t client_mac;
-
-            /** Network interface type. */
-            uint8_t hw_type;
-
-            /** Hardware address length. */
-            uint8_t hw_addr_len;
+            kboot_ip_addr_t server_ip;      /**< Server IP address. */
+            uint16_t server_port;           /**< UDP port number of TFTP server. */
+            kboot_ip_addr_t gateway_ip;     /**< Gateway IP address. */
+            kboot_ip_addr_t client_ip;      /**< IP used on this machine when communicating with server. */
+            kboot_mac_addr_t client_mac;    /**< MAC address of the boot network interface. */
+            uint8_t hw_type;                /**< Network interface type. */
+            uint8_t hw_addr_size;           /**< Hardware address length. */
         } net;
 
         /** Other device information. */
         struct {
-            uint32_t str_len;               /**< Length of device identification string. */
+            uint32_t str_size;              /**< Size of device string (including null terminator). */
         } other;
     };
 } kboot_tag_bootdev_t;
 
 /** Boot device types. */
 #define KBOOT_BOOTDEV_NONE          0       /**< No boot device (e.g. boot image). */
-#define KBOOT_BOOTDEV_DISK          1       /**< Booted from a disk device. */
+#define KBOOT_BOOTDEV_FS            1       /**< Booted from a local file system. */
 #define KBOOT_BOOTDEV_NET           2       /**< Booted from the network. */
 #define KBOOT_BOOTDEV_OTHER         3       /**< Other device (specified by string). */
 
@@ -293,16 +280,6 @@ typedef struct kboot_tag_sections {
     uint8_t sections[0];                    /**< Section data. */
 } kboot_tag_sections_t;
 
-/** Tag containing an E820 address range descriptor (PC-specific). */
-typedef struct kboot_tag_e820 {
-    kboot_tag_t header;                     /**< Tag header. */
-
-    uint64_t start;
-    uint64_t length;
-    uint32_t type;
-    uint32_t attr;
-} kboot_tag_e820_t;
-
 /** Tag containing page table information (IA32). */
 typedef struct kboot_tag_pagetables_ia32 {
     kboot_tag_t header;                     /**< Tag header. */
@@ -335,6 +312,35 @@ typedef struct kboot_tag_pagetables_arm {
 #elif defined(__arm__)
     typedef kboot_tag_pagetables_arm_t kboot_tag_pagetables_t;
 #endif
+
+/** Tag containing the E820 memory map (BIOS-specific). */
+typedef struct kboot_tag_bios_e820 {
+    kboot_tag_t header;                     /**< Tag header. */
+
+    uint32_t num_entries;                   /**< Number of entries. */
+    uint32_t entry_size;                    /**< Size of each entry. */
+
+    uint8_t entries[0];                     /**< Array of entries. */
+} kboot_tag_bios_e820_t;
+
+/** Tag containing EFI firmware information (EFI-specific). */
+typedef struct kboot_tag_efi {
+    kboot_tag_t header;                     /**< Tag header. */
+
+    kboot_paddr_t system_table;             /**< Physical address of system table. */
+
+    uint8_t type;                           /**< Type of the firmware. */
+
+    uint32_t num_memory_descs;              /**< Number of memory descriptors. */
+    uint32_t memory_desc_size;              /**< Size of each memory descriptor. */
+    uint32_t memory_desc_version;           /**< Memory descriptor version. */
+
+    uint8_t memory_map[0];                  /**< Firmware memory map. */
+} kboot_tag_efi_t;
+
+/** EFI firmware types. */
+#define KBOOT_EFI_32                0       /**< Firmware is 32-bit. */
+#define KBOOT_EFI_64                1       /**< Firmware is 64-bit. */
 
 /**
  * Image tags.
@@ -415,9 +421,9 @@ typedef struct kboot_itag_load {
 /** Image tag containing an option description. */
 typedef struct kboot_itag_option {
     uint8_t type;                           /**< Type of the option. */
-    uint32_t name_len;                      /**< Length of the option name. */
-    uint32_t desc_len;                      /**< Length of the option description. */
-    uint32_t default_len;                   /**< Length of the default value. */
+    uint32_t name_size;                     /**< Size of the option name. */
+    uint32_t desc_size;                     /**< Size of the option description. */
+    uint32_t default_size;                  /**< Size of the default value. */
 } kboot_itag_option_t;
 
 /** Macro to declare a boolean option itag. */
