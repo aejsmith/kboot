@@ -21,6 +21,7 @@ from util import FeatureSources
 
 sources = FeatureSources(config, [
     'loader/efi.c',
+    'loader/kboot.c',
 
     'console.c',
     'disk.c',

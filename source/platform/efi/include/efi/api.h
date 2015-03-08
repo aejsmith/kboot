@@ -511,6 +511,7 @@ typedef enum efi_memory_type {
 /** Memory range descriptor. */
 typedef struct efi_memory_descriptor {
     efi_uint32_t type;
+    efi_uint32_t _pad;
     efi_physical_address_t physical_start;
     efi_virtual_address_t virtual_start;
     efi_uint64_t num_pages;

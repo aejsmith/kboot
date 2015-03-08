@@ -346,6 +346,7 @@ static const char *efi_memory_types[] = {
 /** Memory range descriptor. */
 typedef struct efi_memory_descriptor {
     uint32_t type;
+    uint32_t _pad;
     uint64_t physical_start;
     uint64_t virtual_start;
     uint64_t num_pages;
