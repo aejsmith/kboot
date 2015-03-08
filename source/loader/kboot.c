@@ -832,15 +832,16 @@ static bool add_options(kboot_loader_t *loader) {
 /** Initialize video settings.
  * @param loader        Loader internal data. */
 static void init_video(kboot_loader_t *loader) {
-    kboot_itag_video_t *video = kboot_find_itag(loader, KBOOT_ITAG_VIDEO);
+    kboot_itag_video_t *video;
     uint32_t types;
-    video_mode_t *def = NULL;
+    video_mode_t *def;
 
+    video = kboot_find_itag(loader, KBOOT_ITAG_VIDEO);
     if (video) {
         types = video->types;
 
         /* If the kernel specifies a preferred mode, try to find it. */
-        if (types & KBOOT_VIDEO_LFB && video->width && video->height) {
+        if (types & KBOOT_VIDEO_LFB) {
             def = video_find_mode(VIDEO_MODE_LFB, video->width, video->height, video->bpp);
         } else {
             def = NULL;
