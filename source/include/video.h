@@ -28,11 +28,12 @@
 #include <types.h>
 
 struct console_out_ops;
+struct environ;
 
-/** Video mode types. */
+/** Video mode types (defined to match KBoot types). */
 typedef enum video_mode_type {
-    VIDEO_MODE_VGA,                     /**< VGA. */
-    VIDEO_MODE_LFB,                     /**< Linear framebuffer. */
+    VIDEO_MODE_VGA = (1<<0),            /**< VGA. */
+    VIDEO_MODE_LFB = (1<<1),            /**< Linear framebuffer. */
 } video_mode_type_t;
 
 /** Tag containing video mode information. */
@@ -90,14 +91,14 @@ extern video_mode_t *video_find_mode(video_mode_type_t type, uint32_t width, uin
 extern video_mode_t *video_parse_and_find_mode(const char *str);
 extern video_mode_t *video_current_mode(void);
 
+extern void video_env_init(struct environ *env, const char *name, uint32_t types, video_mode_t *def);
+extern video_mode_t *video_env_set(struct environ *env, const char *name);
+
+#ifdef CONFIG_TARGET_HAS_UI
+extern struct ui_entry *video_env_chooser(struct environ *env, const char *name, uint32_t types);
+#endif
+
 extern void video_mode_register(video_mode_t *mode, bool current);
-
-#else /* CONFIG_TARGET_HAS_VIDEO */
-
-static inline status_t video_set_mode(video_mode_t *) { return STATUS_NOT_SUPPORTED; }
-static inline video_mode_t *video_find_mode(video_mode_type_t, uint32_t, uint32_t, uint32_t) { return NULL; }
-static inline video_mode_t *video_parse_and_find_mode(const char *) { return NULL; }
-static inline video_mode_t *video_current_mode(void) { return NULL; }
 
 #endif /* CONFIG_TARGET_HAS_VIDEO */
 

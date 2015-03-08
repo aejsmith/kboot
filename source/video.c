@@ -28,6 +28,7 @@
 #include <config.h>
 #include <loader.h>
 #include <memory.h>
+#include <ui.h>
 #include <video.h>
 
 /** Preferred/fallback video modes. */
@@ -184,6 +185,109 @@ video_mode_t *video_current_mode(void) {
     return current_video_mode;
 }
 
+/** Format a video mode string.
+ * @param mode          Video mode to generate string from.
+ * @param buf           Buffer to write into.
+ * @param size          Size of buffer. */
+static void format_mode_string(video_mode_t *mode, char *buf, size_t size) {
+    switch (mode->type) {
+    case VIDEO_MODE_VGA:
+        snprintf(buf, size, "vga:%ux%u", mode->width, mode->height);
+        break;
+    case VIDEO_MODE_LFB:
+        snprintf(buf, size, "lfb:%ux%ux%u", mode->width, mode->height, mode->bpp);
+        break;
+    default:
+        unreachable();
+    }
+}
+
+/** Initialize a video mode environment variable.
+ * @param env           Environment to use.
+ * @param name          Name of the variable.
+ * @param types         Bitmask of allowed mode types.
+ * @param def           Default mode to set, or NULL to pick. */
+void video_env_init(environ_t *env, const char *name, uint32_t types, video_mode_t *def) {
+    value_t *exist, value;
+    char buf[20];
+
+    /* Check if the value exists and is valid. */
+    exist = environ_lookup(env, name);
+    if (exist && exist->type == VALUE_TYPE_STRING) {
+        video_mode_t *mode = video_parse_and_find_mode(exist->string);
+
+        if (mode && types & mode->type)
+            return;
+    }
+
+    if (!def) {
+        assert(current_video_mode);
+        def = current_video_mode;
+    }
+
+    /* Not valid, create an entry referring to the default mode. */
+    format_mode_string(def, buf, sizeof(buf));
+    value.type = VALUE_TYPE_STRING;
+    value.string = buf;
+    environ_insert(env, name, &value);
+}
+
+/** Set the video mode from the environment.
+ * @param env           Environment to use.
+ * @param name          Name of the variable.
+ * @return              Pointer to mode set, or NULL if non-existant. */
+video_mode_t *video_env_set(environ_t *env, const char *name) {
+    value_t *value;
+    video_mode_t *mode;
+
+    value = environ_lookup(env, name);
+    if (!value)
+        return NULL;
+
+    assert(value->type == VALUE_TYPE_STRING);
+
+    mode = video_parse_and_find_mode(value->string);
+    assert(mode);
+
+    video_set_mode(mode);
+    return mode;
+}
+
+#ifdef CONFIG_TARGET_HAS_UI
+
+/** Create a video mode chooser.
+ * @param env           Environment to use.
+ * @param name          Name of the value to modify.
+ * @param types         Bitmask of allowed mode types. */
+ui_entry_t *video_env_chooser(environ_t *env, const char *name, uint32_t types) {
+    value_t *value;
+    ui_entry_t *chooser;
+
+    value = environ_lookup(env, name);
+    assert(value && value->type == VALUE_TYPE_STRING);
+
+    chooser = ui_chooser_create("Video mode", value);
+
+    list_foreach(&video_modes, iter) {
+        video_mode_t *mode = list_entry(iter, video_mode_t, header);
+
+        if (types & mode->type) {
+            char buf[20];
+            value_t entry;
+
+            format_mode_string(mode, buf, sizeof(buf));
+            entry.type = VALUE_TYPE_STRING;
+            entry.string = buf;
+
+            ui_chooser_insert(chooser, &entry, NULL);
+        }
+    }
+
+    return chooser;
+}
+
+#endif /* CONFIG_TARGET_HAS_UI */
+
 /** Register a video mode.
  * @param mode          Mode to register.
  * @param current       Whether the mode is the current mode. */
@@ -196,6 +300,10 @@ void video_mode_register(video_mode_t *mode, bool current) {
     if (current)
         set_current_mode(mode);
 }
+
+/**
+ * Shell commands.
+ */
 
 /** Print a list of video modes.
  * @param args          Argument list.

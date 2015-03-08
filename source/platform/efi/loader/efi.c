@@ -120,7 +120,7 @@ static ui_window_t *efi_loader_configure(void *_loader, const char *title) {
     ui_entry_t *entry;
 
     window = ui_list_create(title, true);
-    entry = ui_entry_create("Command Line", &loader->cmdline);
+    entry = ui_entry_create("Command line", &loader->cmdline);
     ui_list_insert(window, entry, false);
     return window;
 }
