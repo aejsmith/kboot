@@ -339,6 +339,10 @@ static void setup_trampoline(kboot_loader_t *loader) {
     loader_phys = virt_to_phys(loader_start);
     mmu_map(loader->trampoline_mmu, loader_start, loader_phys, loader_size);
     mmu_map(loader->trampoline_mmu, loader->trampoline_virt, loader->trampoline_phys, PAGE_SIZE);
+
+    dprintf(
+        "kboot: trampoline at physical 0x%" PRIxPHYS ", virtual 0x%" PRIxLOAD "\n",
+        loader->trampoline_phys, loader->trampoline_virt);
 }
 
 /** Pass options to the kernel.
@@ -576,14 +580,18 @@ static __noreturn void kboot_loader_load(void *_loader) {
     add_memory_tags(loader);
     add_vmem_tags(loader);
 
+    dprintf(
+        "kboot: entry point at 0x%" PRIxLOAD ", stack at 0x%" PRIx64 "\n",
+        loader->entry, loader->core->stack_base);
+
+    /* Perform platform setup. This has to be done late, and we cannot perform
+     * any I/O afterwards, as for EFI we call ExitBootServices() here. */
+    kboot_platform_setup(loader);
+
     /* End the tag list. */
     kboot_alloc_tag(loader, KBOOT_TAG_NONE, sizeof(kboot_tag_t));
 
     /* Start the kernel. */
-    dprintf(
-        "kboot: entering kernel at 0x%" PRIx64 " (trampoline_phys: 0x%" PRIxPHYS ", trampoline_virt: 0x%" PRIx64 ")\n",
-        loader->entry, loader->trampoline_phys, loader->trampoline_virt);
-
     kboot_arch_enter(loader);
 }
 

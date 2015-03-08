@@ -97,4 +97,6 @@ extern void kboot_arch_check_load_params(kboot_loader_t *loader, kboot_itag_load
 extern void kboot_arch_setup(kboot_loader_t *loader);
 extern void kboot_arch_enter(kboot_loader_t *loader) __noreturn;
 
+extern void kboot_platform_setup(kboot_loader_t *loader);
+
 #endif /* __LOADER_KBOOT_H */

@@ -20,6 +20,7 @@ from util import FeatureSources
 sources = FeatureSources(config, [
     'loader/chain.c',
     'loader/chain_enter.S',
+    'loader/kboot.c',
 
     'bios.S',
     'console.c',
