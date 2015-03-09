@@ -19,6 +19,7 @@
  * @brief               Boot error handling functions.
  */
 
+#include <lib/backtrace.h>
 #include <lib/printf.h>
 
 #include <console.h>
@@ -54,6 +55,17 @@ static int error_printf(const char *fmt, ...) {
     return ret;
 }
 
+/** Backtrace callback for internal_error().
+ * @param private       Unused.
+ * @param addr          Backtrace address. */
+static void internal_error_backtrace_cb(void *private, ptr_t addr) {
+    #ifdef __PIC__
+        error_printf(" %p (%p)\n", addr, addr - (ptr_t)__start);
+    #else
+        error_printf(" %p\n", addr);
+    #endif
+}
+
 /** Raise an internal error.
  * @param fmt           Error format string.
  * @param ...           Values to substitute into format. */
@@ -71,12 +83,13 @@ void __noreturn internal_error(const char *fmt, ...) {
 
     error_printf("\n\n");
     error_printf("Please report this error to http://kiwi.alex-smith.me.uk/\n");
+
     #ifdef __PIC__
         error_printf("Backtrace (base = %p):\n", __start);
     #else
         error_printf("Backtrace:\n");
     #endif
-    backtrace(error_printf);
+    backtrace(internal_error_backtrace_cb, NULL);
 
     target_halt();
 }
