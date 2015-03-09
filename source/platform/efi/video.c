@@ -47,24 +47,19 @@ static efi_graphics_output_protocol_t *graphics_output;
 static uint32_t original_mode;
 
 /** Set an EFI video mode.
- * @param _mode         Mode to set.
- * @return              Status code describing the result of the operation. */
-static status_t efi_video_set_mode(video_mode_t *_mode) {
+ * @param _mode         Mode to set. */
+static void efi_video_set_mode(video_mode_t *_mode) {
     efi_video_mode_t *mode = (efi_video_mode_t *)_mode;
     efi_status_t ret;
 
     ret = efi_call(graphics_output->set_mode, graphics_output, mode->num);
-    if (ret != EFI_SUCCESS) {
-        dprintf("efi: failed to set video mode %u with status 0x%zx\n", mode->num, ret);
-        return efi_convert_status(ret);
-    }
+    if (ret != EFI_SUCCESS)
+        internal_error("Failed to set video mode %u (0x%zx)", mode->num, ret);
 
     /* Get the framebuffer information. */
     mode->mode.mem_phys = graphics_output->mode->frame_buffer_base;
     mode->mode.mem_virt = graphics_output->mode->frame_buffer_base;
     mode->mode.mem_size = graphics_output->mode->frame_buffer_size;
-
-    return STATUS_SUCCESS;
 }
 
 /** EFI video operations. */
@@ -191,13 +186,13 @@ void efi_video_init(void) {
         video_mode_register(&mode->mode, false);
     }
 
-    video_set_mode(best);
+    video_set_mode(best, true);
 }
 
 /** Reset video mode to original state. */
 void efi_video_reset(void) {
     if (graphics_output) {
-        video_set_mode(NULL);
+        video_set_mode(NULL, false);
         efi_call(graphics_output->set_mode, graphics_output, original_mode);
     }
 }

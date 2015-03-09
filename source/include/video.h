@@ -80,12 +80,11 @@ typedef struct video_ops {
     const struct console_out_ops *console;
 
     /** Set the mode.
-     * @param mode          Mode to set.
-     * @return              Status code describing the result of the operation. */
-    status_t (*set_mode)(video_mode_t *mode);
+     * @param mode          Mode to set. */
+    void (*set_mode)(video_mode_t *mode);
 } video_ops_t;
 
-extern status_t video_set_mode(video_mode_t *mode);
+extern void video_set_mode(video_mode_t *mode, bool set_console);
 
 extern video_mode_t *video_find_mode(video_mode_type_t type, uint32_t width, uint32_t height, uint32_t bpp);
 extern video_mode_t *video_parse_and_find_mode(const char *str);

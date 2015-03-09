@@ -43,9 +43,8 @@ typedef struct bios_video_mode {
 #define VGA_ROWS        25
 
 /** Set a BIOS video mode.
- * @param _mode         Mode to set.
- * @return              Status code describing the result of the operation. */
-static status_t bios_video_set_mode(video_mode_t *_mode) {
+ * @param _mode         Mode to set. */
+static void bios_video_set_mode(video_mode_t *_mode) {
     bios_video_mode_t *mode = (bios_video_mode_t *)_mode;
     bios_regs_t regs;
 
@@ -53,12 +52,8 @@ static status_t bios_video_set_mode(video_mode_t *_mode) {
     regs.eax = VBE_FUNCTION_SET_MODE;
     regs.ebx = mode->num;
     bios_call(0x10, &regs);
-    if ((regs.ax & 0xff00) != 0) {
-        dprintf("bios: failed to set VBE mode 0x%" PRIx16 " (0x%" PRIx16 ")\n", mode->num, regs.ax);
-        return STATUS_SYSTEM_ERROR;
-    }
-
-    return STATUS_SUCCESS;
+    if ((regs.ax & 0xff00) != 0)
+        internal_error("Failed to set VBE mode 0x%" PRIx16 " (0x%" PRIx16 ")", mode->num, regs.ax);
 }
 
 /** BIOS VBE video operations. */
