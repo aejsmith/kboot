@@ -26,6 +26,7 @@ sources = FeatureSources(config, [
 
     'lib/allocator.c',
     'lib/charset.c',
+    'lib/line_editor.c',
     'lib/printf.c',
     'lib/qsort.c',
     'lib/string.c',

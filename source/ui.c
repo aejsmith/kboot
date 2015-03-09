@@ -20,6 +20,7 @@
  */
 
 #include <lib/ctype.h>
+#include <lib/line_editor.h>
 #include <lib/string.h>
 #include <lib/utility.h>
 
@@ -65,11 +66,9 @@ typedef struct ui_textbox {
 
 /** Structure for a textbox editor window. */
 typedef struct ui_textbox_editor {
-    ui_window_t window;
+    ui_window_t window;                 /**< Window header. */
 
-    char *buf;                          /**< String being edited. */
-    size_t len;                         /**< Current string length. */
-    size_t offset;                      /**< Current string offset. */
+    line_editor_t editor;               /**< Line editor. */
     bool update;                        /**< Whether to update textbox when the window closes. */
 } ui_textbox_editor_t;
 
@@ -102,9 +101,6 @@ console_t *ui_console;
 /** Dimensions of the content area. */
 #define CONTENT_WIDTH               (ui_console_width - 4)
 #define CONTENT_HEIGHT              (ui_console_height - 6)
-
-/** Size of a chunk to allocate in the textbox editor window. */
-#define TEXTBOX_EDITOR_CHUNK_SIZE   128
 
 /** Print an action (for help text).
  * @param key           Key for the action.
@@ -639,17 +635,9 @@ ui_entry_t *ui_checkbox_create(const char *label, value_t *value) {
  * @param window        Window to render. */
 static void ui_textbox_editor_render(ui_window_t *window) {
     ui_textbox_editor_t *editor = (ui_textbox_editor_t *)window;
-    uint16_t x, y;
 
-    for (size_t i = 0; i <= editor->len; i++) {
-        if (i == editor->offset)
-            console_get_cursor(ui_console, &x, &y, NULL);
-
-        if (i < editor->len)
-            console_putc(ui_console, editor->buf[i]);
-    }
-
-    console_set_cursor(ui_console, x, y, true);
+    console_set_cursor(ui_console, 0, 0, true);
+    line_editor_output(&editor->editor);
 }
 
 /** Write the help text for a textbox editor window.
@@ -659,72 +647,6 @@ static void ui_textbox_editor_help(ui_window_t *window) {
     ui_print_action('\e', "Cancel");
 }
 
-/** Insert a character to the buffer at the current position.
- * @param editor        Editor being operated on.
- * @param ch            Character to insert. */
-static void insert_textbox_char(ui_textbox_editor_t *editor, char ch) {
-    /* Resize the buffer if this will go over a chunk boundary. We allocate in
-     * chunks to avoid reallocating on every modification. */
-    if (!(editor->len % TEXTBOX_EDITOR_CHUNK_SIZE))
-        editor->buf = realloc(editor->buf, editor->len + TEXTBOX_EDITOR_CHUNK_SIZE);
-
-    console_putc(ui_console, ch);
-
-    if (editor->offset == editor->len) {
-        editor->buf[editor->len++] = ch;
-        editor->offset++;
-    } else {
-        size_t i;
-
-        memmove(&editor->buf[editor->offset + 1], &editor->buf[editor->offset], editor->len - editor->offset);
-        editor->buf[editor->offset++] = ch;
-        editor->len++;
-
-        /* Reprint the character plus everything after, maintaining the
-         * current cursor position. */
-        for (i = 0; i < editor->len - editor->offset; i++)
-            console_putc(ui_console, editor->buf[editor->offset + i]);
-        while (i--)
-            console_putc(ui_console, '\b');
-    }
-}
-
-/** Erase a character from the current position.
- * @param editor        Editor being operated on.
- * @param forward       If true, will erase the character at the current cursor
- *                      position, else will erase the previous one. */
-static void erase_textbox_char(ui_textbox_editor_t *editor, bool forward) {
-    size_t i;
-
-    if (forward) {
-        if (editor->offset == editor->len)
-            return;
-    } else {
-        if (!editor->offset) {
-            return;
-        } else {
-            /* Decrement position and fall through. */
-            editor->offset--;
-            console_putc(ui_console, '\b');
-        }
-    }
-
-    editor->len--;
-    memmove(&editor->buf[editor->offset], &editor->buf[editor->offset + 1], editor->len - editor->offset);
-
-    /* If we're now on a chunk boundary, we can resize the buffer down a chunk. */
-    if (!(editor->len % TEXTBOX_EDITOR_CHUNK_SIZE))
-        editor->buf = realloc(editor->buf, editor->len);
-
-    /* Reprint everything, maintaining cursor position. */
-    for (i = 0; i < editor->len - editor->offset; i++)
-        console_putc(ui_console, editor->buf[editor->offset + i]);
-    console_putc(ui_console, ' ');
-    i++;
-    while (i--)
-        console_putc(ui_console, '\b');
-}
-
 /** Handle input on a textbox editor window.
  * @param window        Window input was performed on.
  * @param key           Key that was pressed.
@@ -732,55 +654,15 @@ static void erase_textbox_char(ui_textbox_editor_t *editor, bool forward) {
 static input_result_t ui_textbox_editor_input(ui_window_t *window, uint16_t key) {
     ui_textbox_editor_t *editor = (ui_textbox_editor_t *)window;
 
-    /* TODO: Common line editing code, this is all pretty much the same as the
-     * shell's editing code. */
     switch (key) {
     case '\n':
         editor->update = true;
     case '\e':
         return INPUT_CLOSE;
-    case CONSOLE_KEY_LEFT:
-        if (editor->offset) {
-            console_putc(ui_console, '\b');
-            editor->offset--;
-        }
-
-        break;
-    case CONSOLE_KEY_RIGHT:
-        if (editor->offset != editor->len) {
-            console_putc(ui_console, editor->buf[editor->offset]);
-            editor->offset++;
-        }
-
-        break;
-    case CONSOLE_KEY_HOME:
-        while (editor->offset) {
-            console_putc(ui_console, '\b');
-            editor->offset--;
-        }
-
-        break;
-    case CONSOLE_KEY_END:
-        while (editor->offset < editor->len) {
-            console_putc(ui_console, editor->buf[editor->offset]);
-            editor->offset++;
-        }
-
-        break;
-    case '\b':
-        erase_textbox_char(editor, false);
-        break;
-    case 0x7f:
-        erase_textbox_char(editor, true);
-        break;
     default:
-        if (isprint(key))
-            insert_textbox_char(editor, key);
-
-        break;
+        line_editor_input(&editor->editor, key);
+        return INPUT_HANDLED;
     }
-
-    return INPUT_HANDLED;
 }
 
 /** Text box editor window type. */
@@ -837,24 +719,16 @@ static input_result_t ui_textbox_input(ui_entry_t *entry, uint16_t key) {
 
         editor.window.type = &ui_textbox_editor_window_type;
         editor.window.title = title;
-        editor.len = strlen(box->value->string);
-        editor.offset = editor.len;
         editor.update = false;
-
-        if (editor.len) {
-            editor.buf = malloc(round_up(editor.len, TEXTBOX_EDITOR_CHUNK_SIZE));
-            memcpy(editor.buf, box->value->string, editor.len);
-        } else {
-            editor.buf = NULL;
-        }
+        line_editor_init(&editor.editor, ui_console, box->value->string);
 
         ui_display(&editor.window, ui_console, 0);
 
         if (editor.update) {
-            /* Resize buffer down to exact size. */
             free(box->value->string);
-            box->value->string = realloc(editor.buf, editor.len + 1);
-            box->value->string[editor.len] = 0;
+            box->value->string = line_editor_finish(&editor.editor, NULL);
+        } else {
+            line_editor_destroy(&editor.editor);
         }
 
         return INPUT_RENDER_WINDOW;
