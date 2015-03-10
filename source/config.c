@@ -100,8 +100,14 @@ static command_list_t *parse_command_list(void);
 static char temp_buf[TEMP_BUF_LEN];
 static size_t temp_buf_idx;
 
+/** Current error handler function. */
+static config_error_handler_t current_error_handler;
+
 /** Current read helper function. */
 static config_read_helper_t current_helper;
+
+/** Name of the currently executing command. */
+static const char *current_command;
 
 /** Current parser state. */
 static const char *current_path;        /**< Current configuration file path. */
@@ -118,10 +124,10 @@ static size_t current_file_size;        /**< Size of the current file. */
 /** Configuration file paths to try. */
 static const char *config_file_paths[] = {
     #ifdef CONFIG_PLATFORM_EFI
-        "/efi/boot/kboot.cfg",
+        "efi/boot/kboot.cfg",
     #endif
-    "/boot/kboot.cfg",
-    "/kboot.cfg",
+    "boot/kboot.cfg",
+    "kboot.cfg",
 };
 
 /** Reserved environment variable names. */
@@ -157,19 +163,41 @@ environ_t *current_environ;
  */
 void config_error(const char *fmt, ...) {
     va_list args;
+    const char *cmd;
 
     va_start(args, fmt);
 
-    if (shell_running) {
-        console_vprintf(config_console, fmt, args);
-        console_putc(config_console, '\n');
+    /* Set current_command to NULL so that it will not be set if the handler
+     * calls boot_error() and then the user goes into the shell. */
+    cmd = current_command;
+    current_command = NULL;
+
+    if (current_error_handler) {
+        current_error_handler(cmd, fmt, args);
     } else {
         vsnprintf(temp_buf, TEMP_BUF_LEN, fmt, args);
-        boot_error("Error in configuration file %s:\n%s", current_path, temp_buf);
+
+        if (cmd) {
+            boot_error("%s: %s", cmd, temp_buf);
+        } else {
+            boot_error("%s", temp_buf);
+        }
     }
 
     va_end(args);
 }
+
+/** Set the configuration error handler.
+ * @param handler       Handler function.
+ * @return              Previous handler. */
+config_error_handler_t config_set_error_handler(config_error_handler_t handler) {
+    swap(current_error_handler, handler);
+    return handler;
+}
+
+/**
+ * Value functions.
+ */
 
 /** Initialize a value to a default (empty) value.
  * @param value         Value to initialize.
@@ -201,35 +229,6 @@ void value_init(value_t *value, value_type_t type) {
     }
 }
 
-/** Destroy a command list.
- * @param list          List to destroy. */
-void command_list_destroy(command_list_t *list) {
-    list_foreach_safe(list, iter) {
-        command_list_entry_t *command = list_entry(iter, command_list_entry_t, header);
-
-        list_remove(&command->header);
-
-        /* Can be NULL on the cleanup path from parse_command_list(). */
-        if (command->args)
-            value_list_destroy(command->args);
-
-        free(command->name);
-        free(command);
-    }
-
-    free(list);
-}
-
-/** Destroy an argument list.
- * @param list          List to destroy. */
-void value_list_destroy(value_list_t *list) {
-    for (size_t i = 0; i < list->count; i++)
-        value_destroy(&list->values[i]);
-
-    free(list->values);
-    free(list);
-}
-
 /** Destroy a value.
  * @param value         Value to destroy. */
 void value_destroy(value_t *value) {
@@ -250,47 +249,6 @@ void value_destroy(value_t *value) {
     default:
         break;
     }
-}
-
-/** Copy a command list.
- * @param source        Source list.
- * @return              Pointer to destination list. */
-command_list_t *command_list_copy(const command_list_t *source) {
-    command_list_t *dest = malloc(sizeof(*dest));
-
-    list_init(dest);
-
-    list_foreach(source, iter) {
-        command_list_entry_t *entry = list_entry(iter, command_list_entry_t, header);
-        command_list_entry_t *copy = malloc(sizeof(*copy));
-
-        list_init(&copy->header);
-        copy->name = strdup(entry->name);
-        copy->args = value_list_copy(entry->args);
-
-        list_append(dest, &copy->header);
-    }
-
-    return dest;
-}
-
-/** Copy a value list.
- * @param source        Source list.
- * @return              Pointer to destination list. */
-value_list_t *value_list_copy(const value_list_t *source) {
-    value_list_t *dest = malloc(sizeof(*dest));
-
-    dest->count = source->count;
-
-    if (source->count) {
-        dest->values = malloc(sizeof(*dest->values) * source->count);
-        for (size_t i = 0; i < source->count; i++)
-            value_copy(&source->values[i], &dest->values[i]);
-    } else {
-        dest->values = NULL;
-    }
-
-    return dest;
 }
 
 /** Copy the contents of one value to another.
@@ -374,7 +332,254 @@ bool value_equals(const value_t *value, const value_t *other) {
 }
 
 /**
- * Command execution/environment management.
+ * Value list functions.
+ */
+
+/** Destroy an argument list.
+ * @param list          List to destroy. */
+void value_list_destroy(value_list_t *list) {
+    for (size_t i = 0; i < list->count; i++)
+        value_destroy(&list->values[i]);
+
+    free(list->values);
+    free(list);
+}
+
+/** Copy a value list.
+ * @param source        Source list.
+ * @return              Pointer to destination list. */
+value_list_t *value_list_copy(const value_list_t *source) {
+    value_list_t *dest = malloc(sizeof(*dest));
+
+    dest->count = source->count;
+
+    if (source->count) {
+        dest->values = malloc(sizeof(*dest->values) * source->count);
+        for (size_t i = 0; i < source->count; i++)
+            value_copy(&source->values[i], &dest->values[i]);
+    } else {
+        dest->values = NULL;
+    }
+
+    return dest;
+}
+
+/**
+ * Command list functions.
+ */
+
+/** Destroy a command list.
+ * @param list          List to destroy. */
+void command_list_destroy(command_list_t *list) {
+    list_foreach_safe(list, iter) {
+        command_list_entry_t *command = list_entry(iter, command_list_entry_t, header);
+
+        list_remove(&command->header);
+
+        /* Can be NULL on the cleanup path from parse_command_list(). */
+        if (command->args)
+            value_list_destroy(command->args);
+
+        free(command->name);
+        free(command);
+    }
+
+    free(list);
+}
+
+/** Copy a command list.
+ * @param source        Source list.
+ * @return              Pointer to destination list. */
+command_list_t *command_list_copy(const command_list_t *source) {
+    command_list_t *dest = malloc(sizeof(*dest));
+
+    list_init(dest);
+
+    list_foreach(source, iter) {
+        command_list_entry_t *entry = list_entry(iter, command_list_entry_t, header);
+        command_list_entry_t *copy = malloc(sizeof(*copy));
+
+        list_init(&copy->header);
+        copy->name = strdup(entry->name);
+        copy->args = value_list_copy(entry->args);
+
+        list_append(dest, &copy->header);
+    }
+
+    return dest;
+}
+
+/** Substitute variable references in a value.
+ * @param value         Value to substitute in.
+ * @return              Whether variable substitution succeeded. */
+static bool substitute_variables(value_t *value) {
+    const value_t *target;
+    size_t i, start;
+
+    switch (value->type) {
+    case VALUE_TYPE_REFERENCE:
+        /* Non-string variable reference, replace the whole value. */
+        target = environ_lookup(current_environ, value->string);
+        if (!target) {
+            config_error("Variable '%s' not found", value->string);
+            return false;
+        }
+
+        free(value->string);
+        value_copy(target, value);
+        break;
+    case VALUE_TYPE_STRING:
+        /* Search for in-string variable references, which we substitute in the
+         * string for a string representation of the variable. */
+        i = 0;
+        start = 0;
+        while (value->string[i]) {
+            if (start) {
+                if (isalnum(value->string[i]) || value->string[i] == '_') {
+                    i++;
+                } else if (value->string[i] == '}') {
+                    const char *name;
+                    char *str;
+                    size_t prefix_len, var_len, len;
+
+                    value->string[start - 2] = 0;
+                    value->string[i] = 0;
+
+                    /* We have a whole reference. */
+                    name = &value->string[start];
+                    target = environ_lookup(current_environ, name);
+                    if (!target) {
+                        config_error("Variable '%s' not found", name);
+                        return false;
+                    }
+
+                    /* Stringify the target into the temporary buffer. */
+                    switch (target->type) {
+                    case VALUE_TYPE_INTEGER:
+                        snprintf(temp_buf, TEMP_BUF_LEN, "%llu", target->integer);
+                        break;
+                    case VALUE_TYPE_BOOLEAN:
+                        snprintf(temp_buf, TEMP_BUF_LEN, (target->boolean) ? "true" : "false");
+                        break;
+                    case VALUE_TYPE_STRING:
+                        snprintf(temp_buf, TEMP_BUF_LEN, "%s", target->string);
+                        break;
+                    default:
+                        config_error("Variable '%s' cannot be converted to string", name);
+                        return false;
+                    }
+
+                    /* Now allocate a new string. The start and end characters
+                     * of the reference have been replaced with null terminators
+                     * effectively splitting up the string into 3 parts. */
+                    prefix_len = strlen(value->string);
+                    var_len = strlen(temp_buf);
+                    len = prefix_len + var_len + strlen(&value->string[i + 1]) + 1;
+                    str = malloc(len);
+                    snprintf(str, len, "%s%s%s", value->string, temp_buf, &value->string[i + 1]);
+
+                    /* Replace the string and continue after the substituted
+                     * portion. */
+                    free(value->string);
+                    value->string = str;
+                    i = prefix_len + var_len;
+                    start = 0;
+                } else {
+                    start = 0;
+                    i++;
+                }
+            } else {
+                if (value->string[i] == '$' && value->string[i + 1] == '{') {
+                    i += 2;
+                    start = i;
+                } else {
+                    i++;
+                }
+            }
+        }
+
+        break;
+    case VALUE_TYPE_LIST:
+        for (i = 0; i < value->list->count; i++) {
+            if (!substitute_variables(&value->list->values[i]))
+                return false;
+        }
+
+        break;
+    default:
+        break;
+    }
+
+    return true;
+}
+
+/** Execute a single command from a command list.
+ * @param entry         Entry to execute.
+ * @return              Whether successful. */
+static bool command_exec(command_list_entry_t *entry) {
+    value_t args;
+
+    /* Recursively substitute variable references in the argument list. */
+    args.type = VALUE_TYPE_LIST;
+    args.list = entry->args;
+    if (!substitute_variables(&args))
+        return false;
+
+    builtin_foreach(BUILTIN_TYPE_COMMAND, command_t, command) {
+        if (strcmp(command->name, entry->name) == 0) {
+            const char *prev = current_command;
+            bool ret;
+
+            current_command = command->name;
+            ret = command->func(entry->args);
+            current_command = prev;
+            return ret;
+        }
+    }
+
+    config_error("Unknown command '%s'", entry->name);
+    return false;
+}
+
+/** Execute a command list.
+ * @param list          List of commands.
+ * @param env           Environment to execute commands under.
+ * @return              Whether all of the commands completed successfully. */
+bool command_list_exec(command_list_t *list, environ_t *env) {
+    environ_t *prev;
+
+    /* Set the environment as the current. */
+    prev = current_environ;
+    current_environ = env;
+
+    /* Execute each command. */
+    list_foreach(list, iter) {
+        command_list_entry_t *entry = list_entry(iter, command_list_entry_t, header);
+
+        /* Loader command must be the last command in the list, prevent any
+         * other commands from being run if we have a loader set. */
+        if (current_environ->loader) {
+            config_error("Loader command must be final command");
+            return false;
+        }
+
+        if (!command_exec(entry)) {
+            current_environ = prev;
+            return false;
+        }
+    }
+
+    /* Restore the previous environment if not NULL. This has the effect of
+     * keeping current_environ set to the root environment when we finish
+     * executing the top level configuration. */
+    if (prev)
+        current_environ = prev;
+
+    return true;
+}
+
+/**
+ * Environment management.
  */
 
 /** Create a new environment.
@@ -516,168 +721,6 @@ void environ_boot(environ_t *env) {
     env->loader->load(env->loader_private);
 }
 
-/** Substitute variable references in a value.
- * @param value         Value to substitute in.
- * @return              Whether variable substitution succeeded. */
-static bool substitute_variables(value_t *value) {
-    const value_t *target;
-    size_t i, start;
-
-    switch (value->type) {
-    case VALUE_TYPE_REFERENCE:
-        /* Non-string variable reference, replace the whole value. */
-        target = environ_lookup(current_environ, value->string);
-        if (!target) {
-            config_error("Variable '%s' not found", value->string);
-            return false;
-        }
-
-        free(value->string);
-        value_copy(target, value);
-        break;
-    case VALUE_TYPE_STRING:
-        /* Search for in-string variable references, which we substitute in the
-         * string for a string representation of the variable. */
-        i = 0;
-        start = 0;
-        while (value->string[i]) {
-            if (start) {
-                if (isalnum(value->string[i]) || value->string[i] == '_') {
-                    i++;
-                } else if (value->string[i] == '}') {
-                    const char *name;
-                    char *str;
-                    size_t prefix_len, var_len, len;
-
-                    value->string[start - 2] = 0;
-                    value->string[i] = 0;
-
-                    /* We have a whole reference. */
-                    name = &value->string[start];
-                    target = environ_lookup(current_environ, name);
-                    if (!target) {
-                        config_error("Variable '%s' not found", name);
-                        return false;
-                    }
-
-                    /* Stringify the target into the temporary buffer. */
-                    switch (target->type) {
-                    case VALUE_TYPE_INTEGER:
-                        snprintf(temp_buf, TEMP_BUF_LEN, "%llu", target->integer);
-                        break;
-                    case VALUE_TYPE_BOOLEAN:
-                        snprintf(temp_buf, TEMP_BUF_LEN, (target->boolean) ? "true" : "false");
-                        break;
-                    case VALUE_TYPE_STRING:
-                        snprintf(temp_buf, TEMP_BUF_LEN, "%s", target->string);
-                        break;
-                    default:
-                        config_error("Variable '%s' cannot be converted to string", name);
-                        return false;
-                    }
-
-                    /* Now allocate a new string. The start and end characters
-                     * of the reference have been replaced with null terminators
-                     * effectively splitting up the string into 3 parts. */
-                    prefix_len = strlen(value->string);
-                    var_len = strlen(temp_buf);
-                    len = prefix_len + var_len + strlen(&value->string[i + 1]) + 1;
-                    str = malloc(len);
-                    snprintf(str, len, "%s%s%s", value->string, temp_buf, &value->string[i + 1]);
-
-                    /* Replace the string and continue after the substituted
-                     * portion. */
-                    free(value->string);
-                    value->string = str;
-                    i = prefix_len + var_len;
-                    start = 0;
-                } else {
-                    start = 0;
-                    i++;
-                }
-            } else {
-                if (value->string[i] == '$' && value->string[i + 1] == '{') {
-                    i += 2;
-                    start = i;
-                } else {
-                    i++;
-                }
-            }
-        }
-
-        break;
-    case VALUE_TYPE_LIST:
-        for (i = 0; i < value->list->count; i++) {
-            if (!substitute_variables(&value->list->values[i]))
-                return false;
-        }
-
-        break;
-    default:
-        break;
-    }
-
-    return true;
-}
-
-/** Execute a single command from a command list.
- * @param entry         Entry to execute.
- * @return              Whether successful. */
-static bool command_exec(command_list_entry_t *entry) {
-    value_t args;
-
-    /* Recursively substitute variable references in the argument list. */
-    args.type = VALUE_TYPE_LIST;
-    args.list = entry->args;
-    if (!substitute_variables(&args))
-        return false;
-
-    builtin_foreach(BUILTIN_TYPE_COMMAND, command_t, command) {
-        if (strcmp(command->name, entry->name) == 0)
-            return command->func(entry->args);
-    }
-
-    config_error("Unknown command '%s'", entry->name);
-    return false;
-}
-
-/** Execute a command list.
- * @param list          List of commands.
- * @param env           Environment to execute commands under.
- * @return              Whether all of the commands completed successfully. */
-bool command_list_exec(command_list_t *list, environ_t *env) {
-    environ_t *prev;
-
-    /* Set the environment as the current. */
-    prev = current_environ;
-    current_environ = env;
-
-    /* Execute each command. */
-    list_foreach(list, iter) {
-        command_list_entry_t *entry = list_entry(iter, command_list_entry_t, header);
-
-        /* Loader command must be the last command in the list, prevent any
-         * other commands from being run if we have a loader set. */
-        if (current_environ->loader) {
-            config_error("Loader command must be final command");
-            return false;
-        }
-
-        if (!command_exec(entry)) {
-            current_environ = prev;
-            return false;
-        }
-    }
-
-    /* Restore the previous environment if not NULL. This has the effect of
-     * keeping current_environ set to the root environment when we finish
-     * executing the top level configuration. */
-    if (prev)
-        current_environ = prev;
-
-    return true;
-}
-
 /**
  * Configuration parser.
  */
@@ -723,8 +766,9 @@ static void return_char(int ch) {
 /** Error due to an unexpected character.
  * @param ch            Character that was unexpected. */
 static void unexpected_char(int ch) {
-    config_error("Line %d, column %d: Unexpected %s",
-        current_line, current_col, (ch == EOF) ? "end of file" : "character");
+    config_error(
+        "%s:%d:%d: Unexpected %s",
+        current_path, current_line, current_col, (ch == EOF) ? "end of file" : "character");
 }
 
 /** Consume a character and check that it is the expected character.
@@ -1012,7 +1056,7 @@ command_list_t *config_parse(const char *path, config_read_helper_t helper) {
  * @return              Whether successful. */
 static bool config_cmd_env(value_list_t *args) {
     if (args->count != 0) {
-        config_error("env: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 
@@ -1066,13 +1110,12 @@ static bool config_cmd_env(value_list_t *args) {
 BUILTIN_COMMAND("env", config_cmd_env);
 
 /** Check if a variable name is valid.
- * @param cmd           Command name used in error messages.
  * @param name          Name of environment variable.
  * @return              Whether the name was valid. */
-static bool variable_name_valid(const char *cmd, const char *name) {
+static bool variable_name_valid(const char *name) {
     for (size_t i = 0; name[i]; i++) {
         if (!isalnum(name[i]) && name[i] != '_') {
-            config_error("%s: Invalid variable name '%s'", cmd, name);
+            config_error("Invalid variable name '%s'", name);
             return false;
         }
     }
@@ -1080,7 +1123,7 @@ static bool variable_name_valid(const char *cmd, const char *name) {
     /* Check that the name is not reserved. */
     for (size_t i = 0; i < array_size(reserved_environ_names); i++) {
         if (strcmp(name, reserved_environ_names[i]) == 0) {
-            config_error("%s: Variable name '%s' is reserved", cmd, name);
+            config_error("Variable name '%s' is reserved", name);
             return false;
         }
     }
@@ -1095,13 +1138,13 @@ static bool config_cmd_set(value_list_t *args) {
     const char *name;
 
     if (args->count != 2 || args->values[0].type != VALUE_TYPE_STRING) {
-        config_error("set: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 
     /* Check whether the name is valid. */
     name = args->values[0].string;
-    if (!variable_name_valid("set", name))
+    if (!variable_name_valid(name))
         return false;
 
     environ_insert(current_environ, name, &args->values[1]);
@@ -1117,13 +1160,13 @@ static bool config_cmd_unset(value_list_t *args) {
     const char *name;
 
     if (args->count != 1 || args->values[0].type != VALUE_TYPE_STRING) {
-        config_error("unset: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 
     /* Check whether the name is valid. */
     name = args->values[0].string;
-    if (!variable_name_valid("unset", name))
+    if (!variable_name_valid(name))
         return false;
 
     environ_remove(current_environ, name);
@@ -1137,7 +1180,7 @@ BUILTIN_COMMAND("unset", config_cmd_unset);
  * @return              Whether successful. */
 static bool config_cmd_reboot(value_list_t *args) {
     if (args->count != 0) {
-        config_error("reboot: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 
@@ -1151,7 +1194,7 @@ BUILTIN_COMMAND("reboot", config_cmd_reboot);
  * @return              Whether successful. */
 static bool config_cmd_exit(value_list_t *args) {
     if (args->count != 0) {
-        config_error("exit: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 
@@ -1195,11 +1238,13 @@ static bool load_config_file(const char *path) {
     if (ret != STATUS_SUCCESS || handle->directory)
         return false;
 
+    dprintf("config: loading configuration file '%s'\n", path);
+
     current_file = malloc(handle->size + 1);
 
     ret = fs_read(handle, current_file, handle->size, 0);
     if (ret != STATUS_SUCCESS)
-        boot_error("Failed to read configuration %s (%d)", path, ret);
+        boot_error("Error %d reading configuration file '%s'", ret, path);
 
     current_file[handle->size] = 0;
 

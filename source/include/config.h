@@ -99,6 +99,12 @@ typedef struct command {
 /** Character returned from config_input_helper_t for end-of-file. */
 #define EOF                 -1
 
+/** Configuration error handler function.
+ * @param cmd           Name of the command that caused the error (can be NULL).
+ * @param fmt           Error format string.
+ * @param args          Arguments to substitute into format. */
+typedef void (*config_error_handler_t)(const char *cmd, const char *fmt, va_list args);
+
 /** Configuration reading helper function type.
  * @param nest          Nesting count, indicates whether the parser is currently
  *                      within a block that requires an end character. This is
@@ -116,6 +122,7 @@ extern environ_t *current_environ;
 #define config_printf(fmt...) console_printf(config_console, fmt)
 
 extern void config_error(const char *fmt, ...) __printf(1, 2);
+extern config_error_handler_t config_set_error_handler(config_error_handler_t handler);
 
 extern void value_init(value_t *value, value_type_t type);
 extern void value_destroy(value_t *value);
@@ -126,6 +133,10 @@ extern bool value_equals(const value_t *value, const value_t *other);
 extern void value_list_destroy(value_list_t *list);
 extern value_list_t *value_list_copy(const value_list_t *source);
 
+extern void command_list_destroy(command_list_t *list);
+extern command_list_t *command_list_copy(const command_list_t *source);
+extern bool command_list_exec(command_list_t *list, environ_t *env);
+
 extern environ_t *environ_create(environ_t *parent);
 extern void environ_destroy(environ_t *env);
 extern value_t *environ_lookup(environ_t *env, const char *name);
@@ -133,10 +144,6 @@ extern value_t *environ_insert(environ_t *env, const char *name, const value_t *
 extern void environ_remove(environ_t *env, const char *name);
 extern void environ_set_loader(environ_t *env, struct loader_ops *ops, void *private);
 extern void environ_boot(environ_t *env) __noreturn;
-
-extern void command_list_destroy(command_list_t *list);
-extern command_list_t *command_list_copy(const command_list_t *source);
-extern bool command_list_exec(command_list_t *list, environ_t *env);
 
 extern command_list_t *config_parse(const char *path, config_read_helper_t helper);
 

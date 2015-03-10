@@ -22,6 +22,7 @@
 #include <lib/list.h>
 #include <lib/string.h>
 
+#include <assert.h>
 #include <config.h>
 #include <loader.h>
 #include <memory.h>
@@ -37,13 +38,17 @@ typedef struct menu_entry {
     list_t header;                      /**< Link to menu entries list. */
     char *name;                         /**< Name of the entry. */
     environ_t *env;                     /**< Environment for the entry. */
+    char *error;                        /**< If an error occurred, the error string. */
 } menu_entry_t;
 
 /** List of menu entries. */
 static LIST_DECLARE(menu_entries);
 
+/** Currently executing menu entry. */
+static menu_entry_t *executing_menu_entry;
+
 /** Selected menu entry. */
-static menu_entry_t *selected_menu_entry = NULL;
+static menu_entry_t *selected_menu_entry;
 
 /** Render a menu entry.
  * @param _entry        Entry to render. */
@@ -60,7 +65,7 @@ static void menu_entry_help(ui_entry_t *_entry) {
 
     ui_print_action('\n', "Select");
 
-    if (entry->env->loader->configure)
+    if (!entry->error && entry->env->loader->configure)
         ui_print_action(CONSOLE_KEY_F1, "Configure");
 
     ui_print_action(CONSOLE_KEY_F2, "Shell");
@@ -78,7 +83,7 @@ static input_result_t menu_entry_input(ui_entry_t *_entry, uint16_t key) {
         selected_menu_entry = entry;
         return INPUT_CLOSE;
     case CONSOLE_KEY_F1:
-        if (entry->env->loader->configure) {
+        if (!entry->error && entry->env->loader->configure) {
             size_t len;
             char *title __cleanup_free;
             ui_window_t *window;
@@ -195,11 +200,33 @@ environ_t *menu_display(void) {
 
     if (selected_menu_entry) {
         dprintf("menu: booting menu entry '%s'\n", selected_menu_entry->name);
-        return selected_menu_entry->env;
+
+        if (selected_menu_entry->error) {
+            boot_error("%s", selected_menu_entry->error);
+        } else {
+            return selected_menu_entry->env;
+        }
     } else {
         shell_main();
         target_reboot();
     }
+}
+
+/** Handler for configuration errors in a menu entry.
+ * @param cmd           Name of the command that caused the error.
+ * @param fmt           Error format string.
+ * @param args          Arguments to substitute into format. */
+static void entry_error_handler(const char *cmd, const char *fmt, va_list args) {
+    char *buf = malloc(256);
+    size_t count = 0;
+
+    if (cmd)
+        count = snprintf(buf + count, 256 - count, "%s: ", cmd);
+
+    vsnprintf(buf + count, 256 - count, fmt, args);
+
+    assert(!executing_menu_entry->error);
+    executing_menu_entry->error = buf;
 }
 
 /** Add a new menu entry.
@@ -207,17 +234,18 @@ environ_t *menu_display(void) {
  * @return              Whether successful. */
 static bool config_cmd_entry(value_list_t *args) {
     menu_entry_t *entry;
+    config_error_handler_t prev_handler;
 
     if (args->count != 2
         || args->values[0].type != VALUE_TYPE_STRING
         || args->values[1].type != VALUE_TYPE_COMMAND_LIST)
     {
-        config_error("entry: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 
     if (current_environ != root_environ) {
-        config_error("entry: Nested entries not allowed");
+        config_error("Nested entries not allowed");
         return false;
     }
 
@@ -226,24 +254,25 @@ static bool config_cmd_entry(value_list_t *args) {
     entry->name = args->values[0].string;
     args->values[0].string = NULL;
     entry->env = environ_create(current_environ);
+    entry->error = NULL;
+
+    executing_menu_entry = entry;
+    prev_handler = config_set_error_handler(entry_error_handler);
 
     /* Execute the command list. */
     if (!command_list_exec(args->values[1].cmds, entry->env)) {
-        goto err;
+        /* We don't return an error here. We store the error string, and will
+         * display it when the user attempts to boot the failed entry. */
+        assert(entry->error);
     } else if (!entry->env->loader) {
-        config_error("entry: Entry '%s' does not have a loader", entry->name);
-        goto err;
+        config_error("No operating system loader set");
     }
+
+    config_set_error_handler(prev_handler);
 
     list_init(&entry->header);
     list_append(&menu_entries, &entry->header);
     return true;
-
-err:
-    environ_destroy(entry->env);
-    free(entry->name);
-    free(entry);
-    return false;
 }
 
 BUILTIN_COMMAND("entry", config_cmd_entry);

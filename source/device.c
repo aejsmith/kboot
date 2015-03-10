@@ -117,13 +117,13 @@ static bool config_cmd_device(value_list_t *args) {
     value_t value;
 
     if (args->count != 1 || args->values[0].type != VALUE_TYPE_STRING) {
-        config_error("device: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 
     device = device_lookup(args->values[0].string);
     if (!device) {
-        config_error("device: Device '%s' not found", args->values[0].string);
+        config_error("Device '%s' not found", args->values[0].string);
         return false;
     }
 
@@ -191,7 +191,7 @@ static bool config_cmd_lsdev(value_list_t *args) {
 
         device = device_lookup(args->values[0].string);
         if (!device) {
-            config_error("lsdev: Device '%s' not found", args->values[0].string);
+            config_error("Device '%s' not found", args->values[0].string);
             return false;
         }
 
@@ -218,7 +218,7 @@ static bool config_cmd_lsdev(value_list_t *args) {
 
         return true;
     } else {
-        config_error("lsdev: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 }

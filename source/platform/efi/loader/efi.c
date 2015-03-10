@@ -151,7 +151,7 @@ static efi_device_path_t *convert_file_path(fs_handle_t *handle, const char *pat
         assert(*path == '/');
     } else if (*path != '/') {
         if (current_environ->directory && current_environ->directory != handle->mount->root) {
-            config_error("efi: File path must be absolute or relative to root");
+            config_error("File path must be absolute or relative to root");
             return NULL;
         }
     }
@@ -207,7 +207,7 @@ static bool config_cmd_efi(value_list_t *args) {
         || args->values[0].type != VALUE_TYPE_STRING
         || (args->count == 2 && args->values[1].type != VALUE_TYPE_STRING))
     {
-        config_error("efi: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 
@@ -216,10 +216,10 @@ static bool config_cmd_efi(value_list_t *args) {
     path = args->values[0].string;
     ret = fs_open(path, NULL, &loader->handle);
     if (ret != STATUS_SUCCESS) {
-        config_error("efi: Error %d opening '%s'", ret, path);
+        config_error("Error %d opening '%s'", ret, path);
         goto err_free;
     } else if (loader->handle->directory) {
-        config_error("efi: '%s' is a directory", path);
+        config_error("'%s' is a directory", path);
         goto err_close;
     }
 

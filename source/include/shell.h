@@ -25,7 +25,6 @@
 #include <types.h>
 
 extern bool shell_enabled;
-extern bool shell_running;
 
 extern void shell_main(void);
 

@@ -303,7 +303,7 @@ static bool config_cmd_cd(value_list_t *args) {
     status_t ret;
 
     if (args->count != 1 || args->values[0].type != VALUE_TYPE_STRING) {
-        config_error("cd: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 
@@ -312,17 +312,17 @@ static bool config_cmd_cd(value_list_t *args) {
     ret = fs_open(path, NULL, &handle);
     if (ret != STATUS_SUCCESS) {
         if (ret == STATUS_NOT_FOUND) {
-            config_error("cd: Directory '%s' not found", path);
+            config_error("Directory '%s' not found", path);
         } else {
-            config_error("cd: Error %d opening directory '%s'", ret, path);
+            config_error("Error %d opening directory '%s'", ret, path);
         }
 
         return false;
     } else if (!handle->directory) {
-        config_error("cd: '%s' is not a directory", path);
+        config_error("'%s' is not a directory", path);
         return false;
     } else if (handle->mount->device != current_environ->device) {
-        config_error("cd: '%s' is on a different device", path);
+        config_error("'%s' is on a different device", path);
         return false;
     }
 
@@ -363,21 +363,21 @@ static bool config_cmd_ls(value_list_t *args) {
     } else if (args->count == 1 && args->values[0].type == VALUE_TYPE_STRING) {
         path = args->values[0].string;
     } else {
-        config_error("ls: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 
     ret = fs_open(path, NULL, &handle);
     if (ret != STATUS_SUCCESS) {
         if (ret == STATUS_NOT_FOUND) {
-            config_error("ls: Directory '%s' not found", path);
+            config_error("Directory '%s' not found", path);
         } else {
-            config_error("ls: Error %d opening directory '%s'", ret, path);
+            config_error("Error %d opening directory '%s'", ret, path);
         }
 
         return false;
     } else if (!handle->directory) {
-        config_error("ls: '%s' is not a directory", path);
+        config_error("'%s' is not a directory", path);
         return false;
     }
 
@@ -386,7 +386,7 @@ static bool config_cmd_ls(value_list_t *args) {
 
     ret = fs_iterate(handle, config_cmd_ls_cb, NULL);
     if (ret != STATUS_SUCCESS) {
-        config_error("ls: Error %d iterating directory '%s'", ret, path);
+        config_error("Error %d iterating directory '%s'", ret, path);
         return false;
     }
 
@@ -405,7 +405,7 @@ static bool config_cmd_cat(value_list_t *args) {
     char *buf __cleanup_free = NULL;
 
     if (!args->count) {
-        config_error("cat: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 
@@ -418,7 +418,7 @@ static bool config_cmd_cat(value_list_t *args) {
         status_t ret;
 
         if (args->values[i].type != VALUE_TYPE_STRING) {
-            config_error("cat: Invalid arguments");
+            config_error("Invalid arguments");
             return false;
         }
 
@@ -426,14 +426,14 @@ static bool config_cmd_cat(value_list_t *args) {
         ret = fs_open(path, NULL, &handle);
         if (ret != STATUS_SUCCESS) {
             if (ret == STATUS_NOT_FOUND) {
-                config_error("cat: File '%s' not found", path);
+                config_error("File '%s' not found", path);
             } else {
-                config_error("cat: Error %d opening file '%s'", ret, path);
+                config_error("Error %d opening file '%s'", ret, path);
             }
 
             return false;
         } else if (handle->directory) {
-            config_error("cat: '%s' is a directory", path);
+            config_error("'%s' is a directory", path);
             return false;
         }
 
@@ -443,7 +443,7 @@ static bool config_cmd_cat(value_list_t *args) {
 
             ret = fs_read(handle, buf, size, offset);
             if (ret != STATUS_SUCCESS) {
-                config_error("cat: Error %d reading file '%s'", ret, path);
+                config_error("Error %d reading file '%s'", ret, path);
                 return false;
             }
 

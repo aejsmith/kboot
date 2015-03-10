@@ -99,17 +99,17 @@ static bool config_cmd_chain(value_list_t *args) {
     device_t *device;
 
     if (args->count > 1 || (args->count == 1 && args->values[0].type != VALUE_TYPE_STRING)) {
-        config_error("chain: Invalid arguments");
+        config_error("Invalid arguments");
         return false;
     }
 
     if (args->count == 1) {
         status_t ret = fs_open(args->values[0].string, NULL, &handle);
         if (ret != STATUS_SUCCESS) {
-            config_error("chain: Error %d opening '%s'", ret, args->values[0].string);
+            config_error("Error %d opening '%s'", ret, args->values[0].string);
             return false;
         } else if (handle->directory) {
-            config_error("chain: '%s' is a directory", args->values[0].string);
+            config_error("'%s' is a directory", args->values[0].string);
             fs_close(handle);
             return false;
         }
@@ -117,7 +117,7 @@ static bool config_cmd_chain(value_list_t *args) {
         device = handle->mount->device;
     } else {
         if (!current_environ->device) {
-            config_error("chain: No current device");
+            config_error("No current device");
             return false;
         }
 
@@ -125,7 +125,7 @@ static bool config_cmd_chain(value_list_t *args) {
     }
 
     if (device->type != DEVICE_TYPE_DISK) {
-        config_error("chain: Device '%s' is not a disk", device->name);
+        config_error("Device '%s' is not a disk", device->name);
 
         if (handle)
             fs_close(handle);
