@@ -36,7 +36,7 @@
 #include "kboot_elf.h"
 
 /** Size to use for tag list area. */
-#define KBOOT_TAGS_SIZE     8192
+#define KBOOT_TAGS_SIZE     12288
 
 /**
  * Helper functions.
