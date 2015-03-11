@@ -27,10 +27,10 @@
 #include <platform/loader.h>
 
 #ifdef __LP64__
-#   define PHYS_MAP_BASE        0xffffffff00000000
-#   define PHYS_MAP_SIZE        0x80000000
-#   define VIRT_MAP_BASE        0xffffffff80000000
-#   define VIRT_MAP_SIZE        0x80000000
+#   define PHYS_MAP_BASE        0xfffffffe00000000
+#   define PHYS_MAP_SIZE        0x100000000
+#   define VIRT_MAP_BASE        0xffffffff00000000
+#   define VIRT_MAP_SIZE        0x100000000
 #else
 #   define PHYS_MAP_BASE        0x40000000
 #   define PHYS_MAP_SIZE        0x80000000

@@ -36,7 +36,7 @@ void backtrace(backtrace_cb_t cb, void *private) {
     stack_frame_t *frame;
 
     frame = (stack_frame_t *)x86_read_bp();
-    while (frame) {
+    while (frame && frame->addr) {
         cb(private, frame->addr);
         frame = frame->next;
     }
