@@ -330,3 +330,29 @@ static bool config_cmd_lsvideo(value_list_t *args) {
 }
 
 BUILTIN_COMMAND("lsvideo", config_cmd_lsvideo);
+
+/** Set a video mode on the main console.
+ * @param args          Argument list.
+ * @return              Whether successful. */
+static bool config_cmd_video(value_list_t *args) {
+    video_mode_t *mode;
+
+    if (args->count != 1 || args->values[0].type != VALUE_TYPE_STRING) {
+        config_error("Invalid arguments");
+        return false;
+    }
+
+    mode = video_parse_and_find_mode(args->values[0].string);
+    if (!mode) {
+        config_error("Mode '%s' not found", args->values[0].string);
+        return false;
+    } else if (!mode->ops->console) {
+        config_error("Mode '%s' does not support console output", args->values[0].string);
+        return false;
+    }
+
+    video_set_mode(mode, true);
+    return true;
+}
+
+BUILTIN_COMMAND("video", config_cmd_video);
