@@ -149,6 +149,6 @@ static inline __noreturn void target_exit(void) { target_reboot(); }
 extern void boot_error(const char *fmt, ...) __printf(1, 2) __noreturn;
 extern void internal_error(const char *fmt, ...) __printf(1, 2) __noreturn;
 
-extern void loader_main(void);
+extern void loader_main(void) __noreturn;
 
 #endif /* __LOADER_H */

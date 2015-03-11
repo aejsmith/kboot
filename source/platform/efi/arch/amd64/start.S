@@ -87,28 +87,7 @@ FUNCTION_START(loader_entry)
     /* Call the main function. */
     popq    %rsi
     popq    %rdi
-    call    efi_main
-
-    /* Switch back to the EFI GDT/IDT. */
-    leaq    efi_gdtp(%rip), %rax
-    lgdt    (%rax)
-    leaq    efi_cs(%rip), %rax
-    movzxw  (%rax), %rax
-    push    %rax
-    leaq    3f(%rip), %rax
-    push    %rax
-    lretq
-3:  leaq    efi_idtp(%rip), %rax
-    lidt    (%rax)
-
-    /* Re-enable interrupts. */
-    sti
-
-    /* Restore registers, and return. */
-    pop     %rsi
-    pop     %rdi
-    pop     %rbp
-    ret
+    jmp     efi_main
 FUNCTION_END(loader_entry)
 
 /*

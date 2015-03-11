@@ -43,9 +43,8 @@ efi_boot_services_t *efi_boot_services;
 
 /** Main function of the EFI loader.
  * @param image_handle  Handle to the loader image.
- * @param system_table  Pointer to EFI system table.
- * @return              EFI status code. */
-efi_status_t efi_main(efi_handle_t image_handle, efi_system_table_t *system_table) {
+ * @param system_table  Pointer to EFI system table. */
+__noreturn void efi_main(efi_handle_t image_handle, efi_system_table_t *system_table) {
     efi_status_t ret;
 
     efi_image_handle = image_handle;
@@ -69,7 +68,6 @@ efi_status_t efi_main(efi_handle_t image_handle, efi_system_table_t *system_tabl
         internal_error("Failed to get loaded image protocol (0x%x)", ret);
 
     loader_main();
-    return EFI_SUCCESS;
 }
 
 /** Detect and register all devices. */

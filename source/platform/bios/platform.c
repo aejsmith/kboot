@@ -33,7 +33,7 @@
 #include <time.h>
 
 /** Main function of the BIOS loader. */
-void bios_main(void) {
+__noreturn void bios_main(void) {
     bios_console_init();
     bios_video_init();
 
