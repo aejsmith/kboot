@@ -111,6 +111,9 @@ extern console_t *ui_console;
 #define ui_vprintf(fmt, args) console_vprintf(ui_console, fmt, args)
 #define ui_printf(fmt...) console_printf(ui_console, fmt)
 
+extern void ui_window_destroy(ui_window_t *window);
+extern void ui_entry_destroy(ui_entry_t *entry);
+
 extern void ui_print_action(uint16_t key, const char *name);
 
 extern void ui_display(ui_window_t *window, console_t *console, unsigned timeout);
@@ -125,9 +128,6 @@ extern ui_entry_t *ui_checkbox_create(const char *label, value_t *value);
 extern ui_entry_t *ui_textbox_create(const char *label, value_t *value);
 extern ui_entry_t *ui_chooser_create(const char *label, value_t *value);
 extern void ui_chooser_insert(ui_entry_t *entry, const value_t *value, char *label);
-
-extern void ui_window_destroy(ui_window_t *window);
-extern void ui_entry_destroy(ui_entry_t *entry);
 
 #endif /* CONFIG_TARGET_HAS_UI */
 #endif /* __UI_H */

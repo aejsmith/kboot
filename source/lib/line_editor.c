@@ -200,15 +200,19 @@ void line_editor_input(line_editor_t *editor, uint16_t key) {
     }
 }
 
-/** Finish editing and return updated string.
+/**
+ * Finish editing and return updated string.
+ *
+ * Returns a pointer to the new, null-terminated string. Since the editor works
+ * with larger memory chunks internally, this function resizes the string down
+ * to the correct size. This function will always return non-NULL, even if the
+ * buffer is empty.
+ *
  * @param editor        Line editor state.
- * @param _len          Where to store string length.
- * @return              Pointer to new string. Will always be non-NULL, even if
- *                      line is empty. */
-char *line_editor_finish(line_editor_t *editor, size_t *_len) {
-    if (_len)
-        *_len = editor->len;
-
+ *
+ * @return              Pointer to new string.
+ */
+char *line_editor_finish(line_editor_t *editor) {
     if (editor->len) {
         char *str;
 

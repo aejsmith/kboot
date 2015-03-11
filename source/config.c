@@ -178,9 +178,9 @@ void config_error(const char *fmt, ...) {
         vsnprintf(temp_buf, TEMP_BUF_LEN, fmt, args);
 
         if (cmd) {
-            boot_error("%s: %s", cmd, temp_buf);
+            boot_error("Error in command '%s':\n%s", cmd, temp_buf);
         } else {
-            boot_error("%s", temp_buf);
+            boot_error("Error in configuration file '%s':\n%s", current_path, temp_buf);
         }
     }
 
@@ -332,6 +332,128 @@ bool value_equals(const value_t *value, const value_t *other) {
 }
 
 /**
+ * Substitute variable references in a value.
+ *
+ * Substitutes variable references in a value (entirely replaces reference
+ * values, and substitutes variables within strings). If the value is a list,
+ * will recurse onto the values contained within the list. If an error occurs
+ * while substituting variables, the error will be raised with config_error()
+ * and the function will return false. For strings/references, if an error
+ * occurs, the value will not be changed.
+ *
+ * @param value         Value to substitute in.
+ * @param env           Environment to take variables from.
+ *
+ * @return              Whether variables were successfully substituted.
+ */
+bool value_substitute(value_t *value, environ_t *env) {
+    const value_t *target;
+    char *str;
+    size_t i, start;
+
+    switch (value->type) {
+    case VALUE_TYPE_REFERENCE:
+        /* Non-string variable reference, replace the whole value. */
+        target = environ_lookup(env, value->string);
+        if (!target) {
+            config_error("Variable '%s' not found", value->string);
+            return false;
+        }
+
+        free(value->string);
+        value_copy(target, value);
+        break;
+    case VALUE_TYPE_STRING:
+        /* Search for in-string variable references, which we substitute in the
+         * string for a string representation of the variable. */
+        str = strdup(value->string);
+        i = 0;
+        start = 0;
+        while (str[i]) {
+            if (start) {
+                if (isalnum(str[i]) || str[i] == '_') {
+                    i++;
+                } else if (str[i] == '}') {
+                    const char *name;
+                    char *subst;
+                    size_t prefix_len, var_len, len;
+
+                    str[start - 2] = 0;
+                    str[i] = 0;
+
+                    /* We have a whole reference. */
+                    name = &str[start];
+                    target = environ_lookup(env, name);
+                    if (!target) {
+                        config_error("Variable '%s' not found", name);
+                        free(str);
+                        return false;
+                    }
+
+                    /* Stringify the target into the temporary buffer. */
+                    switch (target->type) {
+                    case VALUE_TYPE_INTEGER:
+                        snprintf(temp_buf, TEMP_BUF_LEN, "%llu", target->integer);
+                        break;
+                    case VALUE_TYPE_BOOLEAN:
+                        snprintf(temp_buf, TEMP_BUF_LEN, (target->boolean) ? "true" : "false");
+                        break;
+                    case VALUE_TYPE_STRING:
+                        snprintf(temp_buf, TEMP_BUF_LEN, "%s", target->string);
+                        break;
+                    default:
+                        config_error("Variable '%s' cannot be converted to string", name);
+                        free(str);
+                        return false;
+                    }
+
+                    /* Now allocate a new string. The start and end characters
+                     * of the reference have been replaced with null terminators
+                     * effectively splitting up the string into 3 parts. */
+                    prefix_len = strlen(str);
+                    var_len = strlen(temp_buf);
+                    len = prefix_len + var_len + strlen(&str[i + 1]) + 1;
+                    subst = malloc(len);
+                    snprintf(subst, len, "%s%s%s", str, temp_buf, &str[i + 1]);
+
+                    /* Replace the string and continue after the substituted
+                     * portion. */
+                    free(str);
+                    str = subst;
+                    i = prefix_len + var_len;
+                    start = 0;
+                } else {
+                    start = 0;
+                    i++;
+                }
+            } else {
+                if (str[i] == '$' && str[i + 1] == '{') {
+                    i += 2;
+                    start = i;
+                } else {
+                    i++;
+                }
+            }
+        }
+
+        free(value->string);
+        value->string = str;
+        break;
+    case VALUE_TYPE_LIST:
+        for (i = 0; i < value->list->count; i++) {
+            if (!value_substitute(&value->list->values[i], env))
+                return false;
+        }
+
+        break;
+    default:
+        break;
+    }
+
+    return true;
+}
+
+/**
  * Value list functions.
  */
 
@@ -409,110 +531,6 @@ command_list_t *command_list_copy(const command_list_t *source) {
     return dest;
 }
 
-/** Substitute variable references in a value.
- * @param value         Value to substitute in.
- * @return              Whether variable substitution succeeded. */
-static bool substitute_variables(value_t *value) {
-    const value_t *target;
-    size_t i, start;
-
-    switch (value->type) {
-    case VALUE_TYPE_REFERENCE:
-        /* Non-string variable reference, replace the whole value. */
-        target = environ_lookup(current_environ, value->string);
-        if (!target) {
-            config_error("Variable '%s' not found", value->string);
-            return false;
-        }
-
-        free(value->string);
-        value_copy(target, value);
-        break;
-    case VALUE_TYPE_STRING:
-        /* Search for in-string variable references, which we substitute in the
-         * string for a string representation of the variable. */
-        i = 0;
-        start = 0;
-        while (value->string[i]) {
-            if (start) {
-                if (isalnum(value->string[i]) || value->string[i] == '_') {
-                    i++;
-                } else if (value->string[i] == '}') {
-                    const char *name;
-                    char *str;
-                    size_t prefix_len, var_len, len;
-
-                    value->string[start - 2] = 0;
-                    value->string[i] = 0;
-
-                    /* We have a whole reference. */
-                    name = &value->string[start];
-                    target = environ_lookup(current_environ, name);
-                    if (!target) {
-                        config_error("Variable '%s' not found", name);
-                        return false;
-                    }
-
-                    /* Stringify the target into the temporary buffer. */
-                    switch (target->type) {
-                    case VALUE_TYPE_INTEGER:
-                        snprintf(temp_buf, TEMP_BUF_LEN, "%llu", target->integer);
-                        break;
-                    case VALUE_TYPE_BOOLEAN:
-                        snprintf(temp_buf, TEMP_BUF_LEN, (target->boolean) ? "true" : "false");
-                        break;
-                    case VALUE_TYPE_STRING:
-                        snprintf(temp_buf, TEMP_BUF_LEN, "%s", target->string);
-                        break;
-                    default:
-                        config_error("Variable '%s' cannot be converted to string", name);
-                        return false;
-                    }
-
-                    /* Now allocate a new string. The start and end characters
-                     * of the reference have been replaced with null terminators
-                     * effectively splitting up the string into 3 parts. */
-                    prefix_len = strlen(value->string);
-                    var_len = strlen(temp_buf);
-                    len = prefix_len + var_len + strlen(&value->string[i + 1]) + 1;
-                    str = malloc(len);
-                    snprintf(str, len, "%s%s%s", value->string, temp_buf, &value->string[i + 1]);
-
-                    /* Replace the string and continue after the substituted
-                     * portion. */
-                    free(value->string);
-                    value->string = str;
-                    i = prefix_len + var_len;
-                    start = 0;
-                } else {
-                    start = 0;
-                    i++;
-                }
-            } else {
-                if (value->string[i] == '$' && value->string[i + 1] == '{') {
-                    i += 2;
-                    start = i;
-                } else {
-                    i++;
-                }
-            }
-        }
-
-        break;
-    case VALUE_TYPE_LIST:
-        for (i = 0; i < value->list->count; i++) {
-            if (!substitute_variables(&value->list->values[i]))
-                return false;
-        }
-
-        break;
-    default:
-        break;
-    }
-
-    return true;
-}
-
 /** Execute a single command from a command list.
  * @param entry         Entry to execute.
  * @return              Whether successful. */
@@ -522,7 +540,7 @@ static bool command_exec(command_list_entry_t *entry) {
     /* Recursively substitute variable references in the argument list. */
     args.type = VALUE_TYPE_LIST;
     args.list = entry->args;
-    if (!substitute_variables(&args))
+    if (!value_substitute(&args, current_environ))
         return false;
 
     builtin_foreach(BUILTIN_TYPE_COMMAND, command_t, command) {
@@ -767,8 +785,8 @@ static void return_char(int ch) {
  * @param ch            Character that was unexpected. */
 static void unexpected_char(int ch) {
     config_error(
-        "%s:%d:%d: Unexpected %s",
-        current_path, current_line, current_col, (ch == EOF) ? "end of file" : "character");
+        "Line %d, column %d: Unexpected %s",
+        current_line, current_col, (ch == EOF) ? "end of file" : "character");
 }
 
 /** Consume a character and check that it is the expected character.

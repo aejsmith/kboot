@@ -30,7 +30,7 @@
 #include <time.h>
 #include <ui.h>
 
-/** Structure representing a list window. */
+/** Structure for a list window. */
 typedef struct ui_list {
     ui_window_t window;                 /**< Window header. */
 
@@ -41,14 +41,14 @@ typedef struct ui_list {
     size_t selected;                    /**< Index of selected entry. */
 } ui_list_t;
 
-/** Structure representing a link. */
+/** Structure for a link. */
 typedef struct ui_link {
     ui_entry_t entry;                   /**< Entry header. */
 
     ui_window_t *window;                /**< Window that this links to. */
 } ui_link_t;
 
-/** Structure representing a checkbox. */
+/** Structure for a checkbox. */
 typedef struct ui_checkbox {
     ui_entry_t entry;                   /**< Entry header. */
 
@@ -56,7 +56,7 @@ typedef struct ui_checkbox {
     value_t *value;                     /**< Value modified by the checkbox. */
 } ui_checkbox_t;
 
-/** Structure representing a textbox. */
+/** Structure for a textbox. */
 typedef struct ui_textbox {
     ui_entry_t entry;                   /**< Entry header. */
 
@@ -68,8 +68,8 @@ typedef struct ui_textbox {
 typedef struct ui_textbox_editor {
     ui_window_t window;                 /**< Window header. */
 
+    ui_textbox_t *box;                  /**< Textbox being edited. */
     line_editor_t editor;               /**< Line editor. */
-    bool update;                        /**< Whether to update textbox when the window closes. */
 } ui_textbox_editor_t;
 
 /** Structure containing a chooser. */
@@ -101,6 +101,24 @@ console_t *ui_console;
 /** Dimensions of the content area. */
 #define CONTENT_WIDTH               (ui_console_width - 4)
 #define CONTENT_HEIGHT              (ui_console_height - 6)
+
+/** Destroy a window.
+ * @param window        Window to destroy. */
+void ui_window_destroy(ui_window_t *window) {
+    if (window->type->destroy)
+        window->type->destroy(window);
+
+    free(window);
+}
+
+/** Destroy a list entry.
+ * @param entry         Entry to destroy. */
+void ui_entry_destroy(ui_entry_t *entry) {
+    if (entry->type->destroy)
+        entry->type->destroy(entry);
+
+    free(entry);
+}
 
 /** Print an action (for help text).
  * @param key           Key for the action.
@@ -168,6 +186,20 @@ static inline void set_help_region(void) {
 
     console_set_region(ui_console, &region);
     console_set_colour(ui_console, COLOUR_WHITE, COLOUR_BLACK);
+}
+
+/** Set the draw region to the error region. */
+static inline void set_error_region(void) {
+    draw_region_t region;
+
+    region.x = 2;
+    region.y = ui_console_height - 4;
+    region.width = ui_console_width - 4;
+    region.height = 1;
+    region.scrollable = false;
+
+    console_set_region(ui_console, &region);
+    console_set_colour(ui_console, COLOUR_YELLOW, COLOUR_BLACK);
 }
 
 /** Set the draw region to the content region. */
@@ -647,17 +679,63 @@ static void ui_textbox_editor_help(ui_window_t *window) {
     ui_print_action('\e', "Cancel");
 }
 
+/** Variable substitution error handler.
+ * @param cmd           Name of the command that caused the error.
+ * @param fmt           Error format string.
+ * @param args          Arguments to substitute into format. */
+static void ui_textbox_editor_error_handler(const char *cmd, const char *fmt, va_list args) {
+    uint16_t x, y;
+
+    console_get_cursor(ui_console, &x, &y, NULL);
+    set_error_region();
+    console_clear(ui_console, 0, 0, 0, 0);
+
+    ui_vprintf(fmt, args);
+
+    set_content_region();
+    console_set_cursor(ui_console, x, y, true);
+}
+
 /** Handle input on a textbox editor window.
  * @param window        Window input was performed on.
  * @param key           Key that was pressed.
  * @return              Input handling result. */
 static input_result_t ui_textbox_editor_input(ui_window_t *window, uint16_t key) {
     ui_textbox_editor_t *editor = (ui_textbox_editor_t *)window;
+    value_t *value;
+    char *prev;
+    config_error_handler_t prev_handler;
+    input_result_t ret;
 
     switch (key) {
     case '\n':
-        editor->update = true;
+        value = editor->box->value;
+
+        prev = value->string;
+        value->string = line_editor_finish(&editor->editor);
+
+        /* Handle errors that occur during variable substitution. */
+        prev_handler = config_set_error_handler(ui_textbox_editor_error_handler);
+
+        if (value_substitute(value, current_environ)) {
+            free(prev);
+            ret = INPUT_CLOSE;
+        } else {
+            size_t offset = editor->editor.offset;
+
+            line_editor_init(&editor->editor, ui_console, value->string);
+            editor->editor.offset = offset;
+
+            free(value->string);
+            value->string = prev;
+
+            ret = INPUT_HANDLED;
+        }
+
+        config_set_error_handler(prev_handler);
+        return ret;
     case '\e':
+        line_editor_destroy(&editor->editor);
         return INPUT_CLOSE;
     default:
         line_editor_input(&editor->editor, key);
@@ -719,18 +797,10 @@ static input_result_t ui_textbox_input(ui_entry_t *entry, uint16_t key) {
 
         editor.window.type = &ui_textbox_editor_window_type;
         editor.window.title = title;
-        editor.update = false;
+        editor.box = box;
         line_editor_init(&editor.editor, ui_console, box->value->string);
 
         ui_display(&editor.window, ui_console, 0);
-
-        if (editor.update) {
-            free(box->value->string);
-            box->value->string = line_editor_finish(&editor.editor, NULL);
-        } else {
-            line_editor_destroy(&editor.editor);
-        }
-
         return INPUT_RENDER_WINDOW;
     } else {
         return INPUT_HANDLED;
@@ -963,22 +1033,4 @@ void ui_chooser_insert(ui_entry_t *entry, const value_t *value, char *label) {
         chooser->selected = choice;
 
     ui_list_insert(chooser->list, &choice->entry, chooser->selected == choice);
-}
-
-/** Destroy a window.
- * @param window        Window to destroy. */
-void ui_window_destroy(ui_window_t *window) {
-    if (window->type->destroy)
-        window->type->destroy(window);
-
-    free(window);
-}
-
-/** Destroy a list entry.
- * @param entry         Entry to destroy. */
-void ui_entry_destroy(ui_entry_t *entry) {
-    if (entry->type->destroy)
-        entry->type->destroy(entry);
-
-    free(entry);
 }

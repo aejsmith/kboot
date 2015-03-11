@@ -87,7 +87,8 @@ static int shell_input_helper(unsigned nest) {
 
         if (key == '\n') {
             assert(!shell_line);
-            shell_line = line_editor_finish(&shell_line_editor, &shell_line_len);
+            shell_line_len = shell_line_editor.len;
+            shell_line = line_editor_finish(&shell_line_editor);
             return shell_line[shell_line_offset++];
         }
     }
