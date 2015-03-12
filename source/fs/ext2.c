@@ -330,7 +330,7 @@ static status_t open_inode(ext2_mount_t *mount, uint32_t id, ext2_handle_t *owne
     }
 
     type = le16_to_cpu(handle->inode.i_mode) & EXT2_S_IFMT;
-    handle->handle.directory = type == EXT2_S_IFDIR;
+    handle->handle.type = (type == EXT2_S_IFDIR) ? FILE_TYPE_DIR : FILE_TYPE_REGULAR;
     handle->handle.size = le32_to_cpu(handle->inode.i_size);
     if (type == EXT2_S_IFREG)
         handle->handle.size |= (offset_t)le32_to_cpu(handle->inode.i_size_high) << 32;
@@ -359,7 +359,7 @@ static status_t open_inode(ext2_mount_t *mount, uint32_t id, ext2_handle_t *owne
         if (mount->symlink_count++ >= EXT2_SYMLINK_LIMIT)
             return STATUS_SYMLINK_LIMIT;
 
-        ret = fs_open(dest, &owner->handle, _handle);
+        ret = fs_open(dest, &owner->handle, FILE_TYPE_NONE, _handle);
         mount->symlink_count--;
         return ret;
     } else if (type != EXT2_S_IFDIR && type != EXT2_S_IFREG) {

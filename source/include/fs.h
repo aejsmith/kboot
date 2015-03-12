@@ -110,10 +110,17 @@ typedef struct fs_mount {
     char *uuid;                         /**< UUID of the filesystem. */
 } fs_mount_t;
 
+/** File type enumeration. */
+typedef enum file_type {
+    FILE_TYPE_NONE,                     /**< No type (invalid in handle, used by fs_open()). */
+    FILE_TYPE_REGULAR,                  /**< Regular file. */
+    FILE_TYPE_DIR,                      /**< Directory. */
+} file_type_t;
+
 /** Structure representing a handle to a filesystem entry. */
 typedef struct fs_handle {
     fs_mount_t *mount;                  /**< Mount the entry is on. */
-    bool directory;                     /**< Whether the entry is a directory. */
+    file_type_t type;                   /**< Type of the entry. */
     offset_t size;                      /**< Size of the file. */
     unsigned count;                     /**< Reference count. */
 } fs_handle_t;
@@ -132,8 +139,8 @@ static inline void fs_retain(fs_handle_t *handle) {
     handle->count++;
 }
 
-extern status_t fs_open_entry(const fs_entry_t *entry, fs_handle_t **_handle);
-extern status_t fs_open(const char *path, fs_handle_t *from, fs_handle_t **_handle);
+extern status_t fs_open_entry(const fs_entry_t *entry, file_type_t type, fs_handle_t **_handle);
+extern status_t fs_open(const char *path, fs_handle_t *from, file_type_t type, fs_handle_t **_handle);
 extern void fs_close(fs_handle_t *handle);
 
 extern status_t fs_read(fs_handle_t *handle, void *buf, size_t count, offset_t offset);

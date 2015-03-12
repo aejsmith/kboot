@@ -104,13 +104,9 @@ static bool config_cmd_chain(value_list_t *args) {
     }
 
     if (args->count == 1) {
-        status_t ret = fs_open(args->values[0].string, NULL, &handle);
+        status_t ret = fs_open(args->values[0].string, NULL, FILE_TYPE_REGULAR, &handle);
         if (ret != STATUS_SUCCESS) {
             config_error("Error %d opening '%s'", ret, args->values[0].string);
-            return false;
-        } else if (handle->directory) {
-            config_error("'%s' is a directory", args->values[0].string);
-            fs_close(handle);
             return false;
         }
 

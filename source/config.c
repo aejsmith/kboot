@@ -1252,8 +1252,8 @@ static bool load_config_file(const char *path) {
     command_list_t *list;
     status_t ret;
 
-    ret = fs_open(path, NULL, &handle);
-    if (ret != STATUS_SUCCESS || handle->directory)
+    ret = fs_open(path, NULL, FILE_TYPE_REGULAR, &handle);
+    if (ret != STATUS_SUCCESS)
         return false;
 
     dprintf("config: loading configuration file '%s'\n", path);

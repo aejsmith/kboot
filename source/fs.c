@@ -70,11 +70,12 @@ fs_mount_t *fs_probe(device_t *device) {
  * information needed to open the file.
  *
  * @param entry         Entry to open.
+ * @param type          Required type of the entry, or FILE_TYPE_NONE for any.
  * @param _handle       Where to store pointer to opened handle.
  *
  * @return              Status code describing the result of the operation.
  */
-status_t fs_open_entry(const fs_entry_t *entry, fs_handle_t **_handle) {
+status_t fs_open_entry(const fs_entry_t *entry, file_type_t type, fs_handle_t **_handle) {
     fs_handle_t *handle;
     status_t ret;
 
@@ -93,6 +94,11 @@ status_t fs_open_entry(const fs_entry_t *entry, fs_handle_t **_handle) {
         return ret;
 
     handle->count = 1;
+
+    if (type != FILE_TYPE_NONE && handle->type != type) {
+        fs_close(handle);
+        return (type == FILE_TYPE_DIR) ? STATUS_NOT_DIR : STATUS_NOT_FILE;
+    }
 
     *_handle = handle;
     return STATUS_SUCCESS;
@@ -118,7 +124,7 @@ static bool fs_open_cb(const fs_entry_t *entry, void *_data) {
         : strcmp(entry->name, data->name);
 
     if (!result) {
-        data->ret = fs_open_entry(entry, &data->handle);
+        data->ret = fs_open_entry(entry, FILE_TYPE_NONE, &data->handle);
         return false;
     } else {
         return true;
@@ -140,10 +146,12 @@ static bool fs_open_cb(const fs_entry_t *entry, void *_data) {
  *
  * @param path          Path to entry to open.
  * @param from          If not NULL, a directory to look up relative to.
+ * @param type          Required type of the entry, or FILE_TYPE_NONE for any.
+ * @param _handle       Where to store pointer to handle.
  *
- * @return              Pointer to handle on success, NULL on failure.
+ * @return              Status code describing the result of the operation.
  */
-status_t fs_open(const char *path, fs_handle_t *from, fs_handle_t **_handle) {
+status_t fs_open(const char *path, fs_handle_t *from, file_type_t type, fs_handle_t **_handle) {
     char *orig __cleanup_free;
     char *dup, *tok;
     device_t *device;
@@ -211,7 +219,7 @@ status_t fs_open(const char *path, fs_handle_t *from, fs_handle_t **_handle) {
                 /* The last token was the last element of the path string,
                  * return the handle we're currently on. */
                 break;
-            } else if (!handle->directory) {
+            } else if (handle->type != FILE_TYPE_DIR) {
                 /* The previous node was not a directory: this means the path
                  * string is trying to treat a non-directory as a directory.
                  * Reject this. */
@@ -236,6 +244,11 @@ status_t fs_open(const char *path, fs_handle_t *from, fs_handle_t **_handle) {
 
             handle = data.handle;
         }
+    }
+
+    if (type != FILE_TYPE_NONE && handle->type != type) {
+        fs_close(handle);
+        return (type == FILE_TYPE_DIR) ? STATUS_NOT_DIR : STATUS_NOT_FILE;
     }
 
     *_handle = handle;
@@ -263,7 +276,7 @@ void fs_close(fs_handle_t *handle) {
  * @param offset        Offset into the file.
  * @return              Status code describing the result of the operation. */
 status_t fs_read(fs_handle_t *handle, void *buf, size_t count, offset_t offset) {
-    if (handle->directory)
+    if (handle->type != FILE_TYPE_REGULAR)
         return STATUS_NOT_FILE;
 
     if (offset + count > handle->size)
@@ -281,7 +294,7 @@ status_t fs_read(fs_handle_t *handle, void *buf, size_t count, offset_t offset) 
  * @param arg           Data to pass to callback.
  * @return              Status code describing the result of the operation. */
 status_t fs_iterate(fs_handle_t *handle, fs_iterate_cb_t cb, void *arg) {
-    if (!handle->directory) {
+    if (handle->type != FILE_TYPE_DIR) {
         return STATUS_NOT_DIR;
     } else if (!handle->mount->ops->iterate) {
         return STATUS_NOT_SUPPORTED;
@@ -309,7 +322,7 @@ static bool config_cmd_cd(value_list_t *args) {
 
     path = args->values[0].string;
 
-    ret = fs_open(path, NULL, &handle);
+    ret = fs_open(path, NULL, FILE_TYPE_DIR, &handle);
     if (ret != STATUS_SUCCESS) {
         if (ret == STATUS_NOT_FOUND) {
             config_error("Directory '%s' not found", path);
@@ -317,9 +330,6 @@ static bool config_cmd_cd(value_list_t *args) {
             config_error("Error %d opening directory '%s'", ret, path);
         }
 
-        return false;
-    } else if (!handle->directory) {
-        config_error("'%s' is not a directory", path);
         return false;
     } else if (handle->mount->device != current_environ->device) {
         config_error("'%s' is on a different device", path);
@@ -340,13 +350,16 @@ static bool config_cmd_ls_cb(const fs_entry_t *entry, void *arg) {
     fs_handle_t *handle __cleanup_close = NULL;
     status_t ret;
 
-    ret = fs_open_entry(entry, &handle);
+    ret = fs_open_entry(entry, FILE_TYPE_NONE, &handle);
     if (ret != STATUS_SUCCESS) {
         config_printf("ls: warning: Failed to open entry '%s'\n", entry->name);
         return true;
     }
 
-    config_printf("%-5s %-10" PRIu64 " %s\n", (handle->directory) ? "Dir" : "File", handle->size, entry->name);
+    config_printf(
+        "%-5s %-10" PRIu64 " %s\n",
+        (handle->type == FILE_TYPE_DIR) ? "Dir" : "File", handle->size, entry->name);
+
     return true;
 }
 
@@ -367,7 +380,7 @@ static bool config_cmd_ls(value_list_t *args) {
         return false;
     }
 
-    ret = fs_open(path, NULL, &handle);
+    ret = fs_open(path, NULL, FILE_TYPE_DIR, &handle);
     if (ret != STATUS_SUCCESS) {
         if (ret == STATUS_NOT_FOUND) {
             config_error("Directory '%s' not found", path);
@@ -375,9 +388,6 @@ static bool config_cmd_ls(value_list_t *args) {
             config_error("Error %d opening directory '%s'", ret, path);
         }
 
-        return false;
-    } else if (!handle->directory) {
-        config_error("'%s' is not a directory", path);
         return false;
     }
 
@@ -423,7 +433,7 @@ static bool config_cmd_cat(value_list_t *args) {
         }
 
         path = args->values[i].string;
-        ret = fs_open(path, NULL, &handle);
+        ret = fs_open(path, NULL, FILE_TYPE_REGULAR, &handle);
         if (ret != STATUS_SUCCESS) {
             if (ret == STATUS_NOT_FOUND) {
                 config_error("File '%s' not found", path);
@@ -431,9 +441,6 @@ static bool config_cmd_cat(value_list_t *args) {
                 config_error("Error %d opening file '%s'", ret, path);
             }
 
-            return false;
-        } else if (handle->directory) {
-            config_error("'%s' is a directory", path);
             return false;
         }
 

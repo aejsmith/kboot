@@ -95,7 +95,7 @@ static status_t fat_read(fs_handle_t *_handle, void *buf, size_t count, offset_t
 
     /* Special case for root directory on FAT12/16. */
     if (!handle->cluster) {
-        assert(handle->handle.directory);
+        assert(handle->handle.type == FILE_TYPE_DIR);
         return device_read(mount->mount.device, buf, count, mount->root_offset + offset);
     }
 
@@ -190,10 +190,11 @@ static status_t fat_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle) 
 
     handle = malloc(sizeof(*handle));
     handle->handle.mount = _entry->owner->mount;
-    handle->handle.directory = state->entry.attributes & FAT_ATTRIBUTE_DIRECTORY;
+    handle->handle.type =
+        (state->entry.attributes & FAT_ATTRIBUTE_DIRECTORY) ? FILE_TYPE_DIR : FILE_TYPE_REGULAR;
     handle->handle.size = le32_to_cpu(state->entry.file_size);
-    handle->cluster = (le16_to_cpu(state->entry.first_cluster_high) << 16)
-        | le16_to_cpu(state->entry.first_cluster_low);
+    handle->cluster =
+        (le16_to_cpu(state->entry.first_cluster_high) << 16) | le16_to_cpu(state->entry.first_cluster_low);
 
     *_handle = &handle->handle;
     return STATUS_SUCCESS;
@@ -545,7 +546,7 @@ static status_t fat_mount(device_t *device, fs_mount_t **_mount) {
      * it to 0 which fat_read() takes to refer to the root directory. */
     root = malloc(sizeof(*root));
     root->handle.mount = &mount->mount;
-    root->handle.directory = true;
+    root->handle.type = FILE_TYPE_DIR;
     root->handle.size = root_sectors * sector_size;
     root->cluster = (mount->fat_type == 32) ? le32_to_cpu(bpb.fat32.root_cluster) : 0;
     mount->mount.root = &root->handle;

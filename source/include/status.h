@@ -30,8 +30,8 @@ typedef enum status {
     STATUS_INVALID_ARG,             /**< Invalid argument. */
     STATUS_TIMED_OUT,               /**< Timed out while waiting. */
     STATUS_NO_MEMORY,               /**< Out of memory. */
-    STATUS_NOT_DIR,                 /**< Path component is not a directory. */
-    STATUS_NOT_FILE,                /**< Path does not refer to a regular file. */
+    STATUS_NOT_DIR,                 /**< Not a directory. */
+    STATUS_NOT_FILE,                /**< Not a regular file. */
     STATUS_NOT_FOUND,               /**< Requested object could not be found. */
     STATUS_UNKNOWN_FS,              /**< Filesystem on device is unknown. */
     STATUS_CORRUPT_FS,              /**< Corruption detected on the filesystem. */

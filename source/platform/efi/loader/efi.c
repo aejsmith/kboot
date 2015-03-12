@@ -214,13 +214,10 @@ static bool config_cmd_efi(value_list_t *args) {
     loader = malloc(sizeof(*loader));
 
     path = args->values[0].string;
-    ret = fs_open(path, NULL, &loader->handle);
+    ret = fs_open(path, NULL, FILE_TYPE_REGULAR, &loader->handle);
     if (ret != STATUS_SUCCESS) {
         config_error("Error %d opening '%s'", ret, path);
         goto err_free;
-    } else if (loader->handle->directory) {
-        config_error("'%s' is a directory", path);
-        goto err_close;
     }
 
     loader->path = convert_file_path(loader->handle, path);
