@@ -22,7 +22,7 @@
 #ifndef __X86_MMU_H
 #define __X86_MMU_H
 
-#include <mmu.h>
+#include <loader.h>
 
 /** Definitions of paging structure bits. */
 #define X86_PTE_PRESENT         (1<<0)  /**< Page is present. */

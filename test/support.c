@@ -120,3 +120,21 @@ void *malloc(size_t size) {
 void free(void *addr) {
     /* Nope. */
 }
+
+/** Raise an internal error.
+ * @param fmt           Error format string.
+ * @param ...           Values to substitute into format. */
+void __noreturn internal_error(const char *fmt, ...) {
+    va_list args;
+
+    printf("Internal Error: ");
+
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+
+    printf("\n");
+
+    while (true)
+        arch_pause();
+}

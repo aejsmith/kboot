@@ -22,31 +22,11 @@
 #ifndef __TEST_H
 #define __TEST_H
 
-#include <arch/loader.h>
+#include <arch/page.h>
 
-#include <platform/loader.h>
+#include <lib/utility.h>
 
-#ifdef __LP64__
-#   define PHYS_MAP_BASE        0xfffffffe00000000
-#   define PHYS_MAP_SIZE        0x100000000
-#   define VIRT_MAP_BASE        0xffffffff00000000
-#   define VIRT_MAP_SIZE        0x100000000
-#else
-#   define PHYS_MAP_BASE        0x40000000
-#   define PHYS_MAP_SIZE        0x80000000
-#   define VIRT_MAP_BASE        0xc0000000
-#   define VIRT_MAP_SIZE        0x40000000
-#endif
-
-/* Platform-dependent. */
-#define PHYS_MAP_OFFSET         0
-
-/* Make use of the virt/phys conversion functions in loader.h, but override the
- * arch/platform definitions for the loader and set them to be correct for our
- * address space. */
-#undef TARGET_VIRT_OFFSET
-#define TARGET_VIRT_OFFSET      PHYS_MAP_BASE - PHYS_MAP_OFFSET
-
+#include <assert.h>
 #include <elf.h>
 #include <kboot.h>
 #include <loader.h>
@@ -56,11 +36,33 @@
 #undef dvprintf
 #undef dprintf
 
+/** Address space definitions. */
+#ifdef __LP64__
+#   define PHYS_MAP_BASE    0xfffffffe00000000
+#   define PHYS_MAP_SIZE    0x100000000
+#   define VIRT_MAP_BASE    0xffffffff00000000
+#   define VIRT_MAP_SIZE    0x100000000
+#   define PHYS_MAX         0xffffffffffffffff
+#else
+#   define VIRT_MAP_BASE    0xc0000000
+#   define VIRT_MAP_SIZE    0x40000000
+#   define PHYS_MAX         0xffffffff
+#endif
+
+extern void mmu_map(ptr_t virt, phys_ptr_t phys, size_t size);
+
+extern ptr_t virt_alloc(size_t size);
+
+extern void *phys_map(phys_ptr_t addr, size_t size);
+extern phys_ptr_t phys_alloc(phys_size_t size);
+
 extern int vprintf(const char *fmt, va_list args);
 extern int printf(const char *fmt, ...) __printf(1, 2);
 
 extern void console_init(kboot_tag_t *tags);
 extern void log_init(kboot_tag_t *tags);
+extern void mm_init(kboot_tag_t *tags);
+extern void mmu_init(kboot_tag_t *tags);
 
 extern void kmain(uint32_t magic, kboot_tag_t *tags);
 

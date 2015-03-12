@@ -19,16 +19,12 @@
  * @brief               KBoot test kernel.
  */
 
-#include <lib/utility.h>
-
 #include "test.h"
 
 KBOOT_IMAGE(KBOOT_IMAGE_SECTIONS | KBOOT_IMAGE_LOG);
 KBOOT_VIDEO(KBOOT_VIDEO_LFB | KBOOT_VIDEO_VGA, 0, 0, 0);
 KBOOT_BOOLEAN_OPTION("bool_option", "Boolean option", true);
 KBOOT_STRING_OPTION("string_option", "String option", "Default Value");
-KBOOT_LOAD(0, 0, 0, VIRT_MAP_BASE, VIRT_MAP_SIZE);
-KBOOT_MAPPING(PHYS_MAP_BASE, PHYS_MAP_OFFSET, PHYS_MAP_SIZE);
 
 /** Dump a core tag. */
 static void dump_core_tag(kboot_tag_core_t *tag) {
@@ -272,7 +268,7 @@ static void dump_sections_tag(kboot_tag_sections_t *tag) {
     printf("  shstrndx = %" PRIu32 "\n", tag->shstrndx);
 
     shdr = get_elf_section(tag, tag->shstrndx);
-    strtab = (const char *)phys_to_virt(shdr->sh_addr);
+    strtab = phys_map(shdr->sh_addr, round_up(shdr->sh_size, PAGE_SIZE));
     printf("  shstrtab = 0x%lx (%p)\n", shdr->sh_addr, strtab);
 
     for (uint32_t i = 0; i < tag->num; i++) {
@@ -401,6 +397,7 @@ void kmain(uint32_t magic, kboot_tag_t *tags) {
 
     console_init(tags);
     log_init(tags);
+    mm_init(tags);
 
     printf("Test kernel loaded: magic: 0x%x, tags: %p\n", magic, tags);
 

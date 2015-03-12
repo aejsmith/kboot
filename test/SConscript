@@ -28,6 +28,7 @@ if config['ARCH'] == 'x86':
             'linkflags': ['-m32'],
             'ldscript': 'link-ia32.ld.in',
             'sources': x86_sources + [
+                'mmu-ia32.c',
                 '../source/lib/runtime/i386/udivdi3.S',
                 '../source/lib/runtime/i386/umoddi3.S',
             ],
@@ -37,7 +38,9 @@ if config['ARCH'] == 'x86':
             'asflags': ['-m64'],
             'linkflags': ['-m64'],
             'ldscript': 'link-amd64.ld.in',
-            'sources': x86_sources,
+            'sources': x86_sources + [
+                'mmu-amd64.c',
+            ],
         },
     ]
 else:
@@ -46,6 +49,7 @@ else:
 main_sources = [
     'console.c',
     'main.c',
+    'mm.c',
     'support.c',
     '../source/lib/printf.c',
     '../source/lib/string.c',
