@@ -1082,4 +1082,4 @@ err_free:
     return false;
 }
 
-BUILTIN_COMMAND("kboot", config_cmd_kboot);
+BUILTIN_COMMAND("kboot", "Load a KBoot kernel", config_cmd_kboot);

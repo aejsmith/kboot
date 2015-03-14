@@ -160,8 +160,8 @@ static bool is_suitable_range(
 
 /** Sort comparison function for the EFI memory map. */
 static int forward_sort_compare(const void *a, const void *b) {
-    efi_memory_descriptor_t *first = (efi_memory_descriptor_t *)a;
-    efi_memory_descriptor_t *second = (efi_memory_descriptor_t *)b;
+    const efi_memory_descriptor_t *first = a;
+    const efi_memory_descriptor_t *second = b;
 
     if (first->physical_start > second->physical_start) {
         return 1;
@@ -174,8 +174,8 @@ static int forward_sort_compare(const void *a, const void *b) {
 
 /** Reverse sort comparison function for the EFI memory map. */
 static int reverse_sort_compare(const void *a, const void *b) {
-    efi_memory_descriptor_t *first = (efi_memory_descriptor_t *)a;
-    efi_memory_descriptor_t *second = (efi_memory_descriptor_t *)b;
+    const efi_memory_descriptor_t *first = a;
+    const efi_memory_descriptor_t *second = b;
 
     if (second->physical_start > first->physical_start) {
         return 1;

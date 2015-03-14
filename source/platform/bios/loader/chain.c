@@ -133,4 +133,4 @@ static bool config_cmd_chain(value_list_t *args) {
     return true;
 }
 
-BUILTIN_COMMAND("chain", config_cmd_chain);
+BUILTIN_COMMAND("chain", "Load another boot sector", config_cmd_chain);

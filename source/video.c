@@ -329,7 +329,7 @@ static bool config_cmd_lsvideo(value_list_t *args) {
     return true;
 }
 
-BUILTIN_COMMAND("lsvideo", config_cmd_lsvideo);
+BUILTIN_COMMAND("lsvideo", "List available video modes", config_cmd_lsvideo);
 
 /** Set a video mode on the main console.
  * @param args          Argument list.
@@ -355,4 +355,4 @@ static bool config_cmd_video(value_list_t *args) {
     return true;
 }
 
-BUILTIN_COMMAND("video", config_cmd_video);
+BUILTIN_COMMAND("video", "Set the current video mode", config_cmd_video);

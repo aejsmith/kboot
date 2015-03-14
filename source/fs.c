@@ -340,7 +340,7 @@ static bool config_cmd_cd(value_list_t *args) {
     return true;
 }
 
-BUILTIN_COMMAND("cd", config_cmd_cd);
+BUILTIN_COMMAND("cd", "Set the current directory", config_cmd_cd);
 
 /** Directory list iteration callback.
  * @param entry         Entry that was found.
@@ -403,7 +403,7 @@ static bool config_cmd_ls(value_list_t *args) {
     return true;
 }
 
-BUILTIN_COMMAND("ls", config_cmd_ls);
+BUILTIN_COMMAND("ls", "List the contents of a directory", config_cmd_ls);
 
 /** Size of the read buffer for cat. */
 #define CAT_READ_SIZE       512
@@ -465,4 +465,4 @@ static bool config_cmd_cat(value_list_t *args) {
     return true;
 }
 
-BUILTIN_COMMAND("cat", config_cmd_cat);
+BUILTIN_COMMAND("cat", "Output the contents of one or more files", config_cmd_cat);

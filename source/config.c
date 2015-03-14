@@ -1069,6 +1069,50 @@ command_list_t *config_parse(const char *path, config_read_helper_t helper) {
  * Core commands.
  */
 
+/** Sort comparison function for the command list. */
+static int command_sort_compare(const void *a, const void *b) {
+    const command_t *first = a;
+    const command_t *second = b;
+
+    return strcmp(first->name, second->name);
+}
+
+/** List available commands.
+ * @param args          Argument list.
+ * @return              Whether successful. */
+static bool config_cmd_help(value_list_t *args) {
+    command_t *commands __cleanup_free = NULL;
+    size_t count = 0;
+
+    if (args->count != 0) {
+        config_error("Invalid arguments");
+        return false;
+    }
+
+    /* The builtin command list is not sorted. Build a copy and sort it. */
+    builtin_foreach(BUILTIN_TYPE_COMMAND, command_t, command) {
+        /* NULL description means it should be hidden from help. */
+        if (command->description) {
+            commands = realloc(commands, sizeof(*commands) * (count + 1));
+            commands[count].name = command->name;
+            commands[count].description = command->description;
+            count++;
+        }
+    }
+
+    qsort(commands, count, sizeof(*commands), command_sort_compare);
+
+    config_printf("Command       Description\n");
+    config_printf("-------       -----------\n");
+
+    for (size_t i = 0; i < count; i++)
+        config_printf("%-12s  %s\n", commands[i].name, commands[i].description);
+
+    return true;
+}
+
+BUILTIN_COMMAND("help", "List available commands", config_cmd_help);
+
 /** Print a list of environment variables.
  * @param args          Argument list.
  * @return              Whether successful. */
@@ -1125,7 +1169,7 @@ static bool config_cmd_env(value_list_t *args) {
     return true;
 }
 
-BUILTIN_COMMAND("env", config_cmd_env);
+BUILTIN_COMMAND("env", "List environment variables", config_cmd_env);
 
 /** Check if a variable name is valid.
  * @param name          Name of environment variable.
@@ -1169,7 +1213,7 @@ static bool config_cmd_set(value_list_t *args) {
     return true;
 }
 
-BUILTIN_COMMAND("set", config_cmd_set);
+BUILTIN_COMMAND("set", "Set an environment variable", config_cmd_set);
 
 /** Unset a variable in the environment.
  * @param args          Argument list.
@@ -1191,7 +1235,7 @@ static bool config_cmd_unset(value_list_t *args) {
     return true;
 }
 
-BUILTIN_COMMAND("unset", config_cmd_unset);
+BUILTIN_COMMAND("unset", "Unset an environment variable", config_cmd_unset);
 
 /** Reboot the system.
  * @param args          Argument list.
@@ -1205,9 +1249,9 @@ static bool config_cmd_reboot(value_list_t *args) {
     target_reboot();
 }
 
-BUILTIN_COMMAND("reboot", config_cmd_reboot);
+BUILTIN_COMMAND("reboot", "Reboot the system", config_cmd_reboot);
 
-/** Exit the loader and (if supported) return to the firmware.
+/** Exit the loader and return to firmware.
  * @param args          Argument list.
  * @return              Whether successful. */
 static bool config_cmd_exit(value_list_t *args) {
@@ -1219,7 +1263,7 @@ static bool config_cmd_exit(value_list_t *args) {
     target_exit();
 }
 
-BUILTIN_COMMAND("exit", config_cmd_exit);
+BUILTIN_COMMAND("exit", "Exit the loader and return to firmware", config_cmd_exit);
 
 /**
  * Initialization functions.

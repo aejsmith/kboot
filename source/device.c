@@ -152,7 +152,7 @@ static bool config_cmd_device(value_list_t *args) {
     return true;
 }
 
-BUILTIN_COMMAND("device", config_cmd_device);
+BUILTIN_COMMAND("device", "Set the current device", config_cmd_device);
 
 /** Print a list of devices.
  * @param console       Console to write to.
@@ -223,7 +223,7 @@ static bool config_cmd_lsdev(value_list_t *args) {
     }
 }
 
-BUILTIN_COMMAND("lsdev", config_cmd_lsdev);
+BUILTIN_COMMAND("lsdev", "List available devices", config_cmd_lsdev);
 
 /** Initialize the device manager. */
 void device_init(void) {
