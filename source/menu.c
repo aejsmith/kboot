@@ -109,6 +109,9 @@ static input_result_t menu_entry_input(ui_entry_t *_entry, uint16_t key) {
         /* This is taken to mean the shell should be entered. */
         selected_menu_entry = NULL;
         return INPUT_CLOSE;
+    case CONSOLE_KEY_F10:
+        debug_log_display();
+        return INPUT_RENDER_WINDOW;
     default:
         return INPUT_HANDLED;
     }

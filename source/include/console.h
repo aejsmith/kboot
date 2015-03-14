@@ -183,13 +183,6 @@ typedef struct console {
     void *in_private;                   /**< Private data for input handler. */
 } console_t;
 
-/** Debug log size. */
-#define DEBUG_LOG_SIZE      8192
-
-extern char debug_log[DEBUG_LOG_SIZE];
-extern size_t debug_log_start;
-extern size_t debug_log_length;
-
 extern console_t main_console;
 extern console_t debug_console;
 
@@ -310,4 +303,9 @@ static inline uint16_t console_getc(console_t *console) {
     return console->in->getc(console->in_private);
 }
 
+#ifdef CONFIG_TARGET_HAS_UI
+
+extern void debug_log_display(void);
+
+#endif /* CONFIG_TARGET_HAS_UI */
 #endif /* __CONSOLE_H */

@@ -91,6 +91,23 @@ typedef struct ui_choice {
     value_t value;                      /**< Value of the choice. */
 } ui_choice_t;
 
+/** Details of a line in a text view. */
+typedef struct ui_textview_line {
+    size_t start;                       /**< Start of the line. */
+    size_t len;                         /**< Length of the line. */
+} ui_textview_line_t;
+
+/** Structure containing a text view window. */
+typedef struct ui_textview {
+    ui_window_t window;                 /**< Window header. */
+
+    const char *buf;                    /**< Buffer containing text. */
+    size_t size;                        /**< Size of the buffer. */
+    ui_textview_line_t *lines;          /**< Array of lines. */
+    size_t count;                       /**< Number of lines. */
+    size_t offset;                      /**< First line displayed. */
+} ui_textview_t;
+
 /** Properties of the UI console. */
 static uint16_t ui_console_width;
 static uint16_t ui_console_height;
@@ -499,9 +516,8 @@ static ui_window_type_t ui_list_window_type = {
  * @param exitable      Whether the window can be exited.
  * @return              Pointer to created window. */
 ui_window_t *ui_list_create(const char *title, bool exitable) {
-    ui_list_t *list;
+    ui_list_t *list = malloc(sizeof(*list));
 
-    list = malloc(sizeof(*list));
     list->window.type = &ui_list_window_type;
     list->window.title = title;
     list->exitable = exitable;
@@ -509,6 +525,7 @@ ui_window_t *ui_list_create(const char *title, bool exitable) {
     list->count = 0;
     list->offset = 0;
     list->selected = 0;
+
     return &list->window;
 }
 
@@ -1033,4 +1050,150 @@ void ui_chooser_insert(ui_entry_t *entry, const value_t *value, char *label) {
         chooser->selected = choice;
 
     ui_list_insert(chooser->list, &choice->entry, chooser->selected == choice);
+}
+
+/** Destroy a text view window.
+ * @param window        Window to destroy. */
+static void ui_textview_destroy(ui_window_t *window) {
+    ui_textview_t *textview = (ui_textview_t *)window;
+
+    free(textview->lines);
+}
+
+/** Print a line from a text view.
+ * @param textview      View to render.
+ * @param line          Index of line to print. */
+static void render_textview_line(ui_textview_t *textview, size_t line) {
+    for (size_t i = 0; i < textview->lines[line].len; i++)
+        console_putc(ui_console, textview->buf[(textview->lines[line].start + i) % textview->size]);
+
+    if (textview->lines[line].len < CONTENT_WIDTH)
+        console_putc(ui_console, '\n');
+}
+
+/** Render a text view window.
+ * @param window    Window to render. */
+static void ui_textview_render(ui_window_t *window) {
+    ui_textview_t *textview = (ui_textview_t *)window;
+    size_t end = min(textview->offset + CONTENT_HEIGHT, textview->count);
+
+    for (size_t i = textview->offset; i < end; i++)
+        render_textview_line(textview, i);
+}
+
+/** Write the help text for a text view window.
+ * @param window        Window to write for. */
+static void ui_textview_help(ui_window_t *window) {
+    ui_textview_t *textview = (ui_textview_t *)window;
+
+    if (textview->offset)
+        ui_print_action(CONSOLE_KEY_UP, "Scroll Up");
+
+    if ((textview->count - textview->offset) > CONTENT_HEIGHT)
+        ui_print_action(CONSOLE_KEY_DOWN, "Scroll Down");
+
+    ui_print_action('\e', "Back");
+}
+
+/** Handle input on a text view window.
+ * @param window        Window input was performed on.
+ * @param key           Key that was pressed.
+ * @return              Input handling result. */
+static input_result_t ui_textview_input(ui_window_t *window, uint16_t key) {
+    ui_textview_t *textview = (ui_textview_t *)window;
+
+    switch (key) {
+    case CONSOLE_KEY_UP:
+        if (textview->offset) {
+            console_scroll_up(ui_console);
+            console_set_cursor(ui_console, 0, 0, false);
+            render_textview_line(textview, --textview->offset);
+        }
+
+        return INPUT_HANDLED;
+    case CONSOLE_KEY_DOWN:
+        if ((textview->count - textview->offset) > CONTENT_HEIGHT) {
+            console_scroll_down(ui_console);
+            console_set_cursor(ui_console, 0, -1, false);
+            render_textview_line(textview, textview->offset++ + CONTENT_HEIGHT);
+        }
+
+        return INPUT_HANDLED;
+    case '\e':
+        return INPUT_CLOSE;
+    default:
+        return INPUT_HANDLED;
+    }
+}
+
+/** Text view window type. */
+static ui_window_type_t ui_textview_window_type = {
+    .destroy = ui_textview_destroy,
+    .render = ui_textview_render,
+    .help = ui_textview_help,
+    .input = ui_textview_input,
+};
+
+/** Add a line to a text view.
+ * @param textview      View to add to.
+ * @param start         Start offset of the line.
+ * @param len           Length of line. */
+static void add_textview_line(ui_textview_t *textview, size_t start, size_t len) {
+    /* If the line is larger than the content width, split it. */
+    if (len > CONTENT_WIDTH) {
+        add_textview_line(textview, start, CONTENT_WIDTH);
+        add_textview_line(textview, (start + CONTENT_WIDTH) % textview->size, len - CONTENT_WIDTH);
+    } else {
+        textview->lines = realloc(textview->lines, sizeof(*textview->lines) * (textview->count + 1));
+        textview->lines[textview->count].start = start;
+        textview->lines[textview->count].len = len;
+        textview->count++;
+    }
+}
+
+/**
+ * Create a text view window.
+ *
+ * Creates a window which displays a block of text and allows to scroll through
+ * it. This function is designed to work on a circular buffer, such as the
+ * debug log buffer.
+ *
+ * @param title         Window title.
+ * @param buf           Circular buffer.
+ * @param size          Total size of the buffer.
+ * @param start         Starting offset in the buffer.
+ * @param length        Actual text length.
+ *
+ * @return              Pointer to created window.
+ */
+ui_window_t *ui_textview_create(const char *title, const char *buf, size_t size, size_t start, size_t len) {
+    ui_textview_t *textview;
+    size_t line_start, line_len;
+
+    assert(start < size);
+    assert(len <= size);
+
+    textview = malloc(sizeof(*textview));
+    textview->window.type = &ui_textview_window_type;
+    textview->window.title = title;
+    textview->buf = buf;
+    textview->size = size;
+    textview->lines = NULL;
+    textview->count = 0;
+    textview->offset = 0;
+
+    /* Store details of all the lines in the buffer. */
+    line_start = start;
+    line_len = 0;
+    for (size_t i = 0; i <= len; i++) {
+        if (i == len || buf[(start + i) % size] == '\n') {
+            add_textview_line(textview, line_start, line_len);
+            line_start = (start + i + 1) % size;
+            line_len = 0;
+        } else {
+            line_len++;
+        }
+    }
+
+    return &textview->window;
 }

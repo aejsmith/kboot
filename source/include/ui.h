@@ -129,5 +129,7 @@ extern ui_entry_t *ui_textbox_create(const char *label, value_t *value);
 extern ui_entry_t *ui_chooser_create(const char *label, value_t *value);
 extern void ui_chooser_insert(ui_entry_t *entry, const value_t *value, char *label);
 
+extern ui_window_t *ui_textview_create(const char *title, const char *buf, size_t size, size_t start, size_t len);
+
 #endif /* CONFIG_TARGET_HAS_UI */
 #endif /* __UI_H */

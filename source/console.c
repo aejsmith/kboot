@@ -23,11 +23,15 @@
 
 #include <console.h>
 #include <loader.h>
+#include <ui.h>
+
+/** Debug log size. */
+#define DEBUG_LOG_SIZE      8192
 
 /** Debug output log. */
-char debug_log[DEBUG_LOG_SIZE];
-size_t debug_log_start;
-size_t debug_log_length;
+static char debug_log[DEBUG_LOG_SIZE];
+static size_t debug_log_start;
+static size_t debug_log_length;
 
 /** Main console. */
 console_t main_console;
@@ -81,3 +85,17 @@ int console_printf(console_t *console, const char *fmt, ...) {
 
     return ret;
 }
+
+#ifdef CONFIG_TARGET_HAS_UI
+
+/** Display the debug log. */
+void debug_log_display(void) {
+    ui_window_t *textview = ui_textview_create(
+        "Debug Log", debug_log, DEBUG_LOG_SIZE, debug_log_start,
+        debug_log_length);
+
+    ui_display(textview, ui_console, 0);
+    ui_window_destroy(textview);
+}
+
+#endif /* CONFIG_TARGET_HAS_UI */
