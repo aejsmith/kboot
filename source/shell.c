@@ -45,9 +45,6 @@ bool shell_enabled;
  * @param fmt           Error format string.
  * @param args          Arguments to substitute into format. */
 static void shell_error_handler(const char *cmd, const char *fmt, va_list args) {
-    if (cmd)
-        config_printf("%s: ", cmd);
-
     console_vprintf(config_console, fmt, args);
     console_putc(config_console, '\n');
 }

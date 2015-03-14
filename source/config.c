@@ -156,7 +156,7 @@ environ_t *current_environ;
  * error in a configuration file, or if being executed from the shell. If the
  * error is in the file, the function will display an error UI and not return.
  * If the error occurred in the shell, it will print the error message to the
- * console and not return.
+ * console and return.
  *
  * @param fmt           Format string used to create the error message.
  * @param ...           Arguments to substitute into format.
@@ -176,12 +176,7 @@ void config_error(const char *fmt, ...) {
         current_error_handler(cmd, fmt, args);
     } else {
         vsnprintf(temp_buf, TEMP_BUF_LEN, fmt, args);
-
-        if (cmd) {
-            boot_error("Error in command '%s':\n%s", cmd, temp_buf);
-        } else {
-            boot_error("Error in configuration file '%s':\n%s", current_path, temp_buf);
-        }
+        boot_error("%s", temp_buf);
     }
 
     va_end(args);
@@ -785,8 +780,8 @@ static void return_char(int ch) {
  * @param ch            Character that was unexpected. */
 static void unexpected_char(int ch) {
     config_error(
-        "Line %d, column %d: Unexpected %s",
-        current_line, current_col, (ch == EOF) ? "end of file" : "character");
+        "%s:%d:%d: Unexpected %s",
+        current_path, current_line, current_col, (ch == EOF) ? "end of file" : "character");
 }
 
 /** Consume a character and check that it is the expected character.
