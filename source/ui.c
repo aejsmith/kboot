@@ -1186,7 +1186,7 @@ ui_window_t *ui_textview_create(const char *title, const char *buf, size_t size,
     line_start = start;
     line_len = 0;
     for (size_t i = 0; i <= len; i++) {
-        if (i == len || buf[(start + i) % size] == '\n') {
+        if ((i == len && line_len) || buf[(start + i) % size] == '\n') {
             add_textview_line(textview, line_start, line_len);
             line_start = (start + i + 1) % size;
             line_len = 0;
