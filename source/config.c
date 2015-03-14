@@ -802,20 +802,30 @@ static bool expect_char(int expect) {
  * @param ch            Starting character.
  * @return              Integer parsed. */
 static uint64_t parse_integer(int ch) {
-    while (true) {
-        if (isxdigit(ch) || ch == 'x') {
-            temp_buf[temp_buf_idx++] = ch;
+    uint64_t result = 0, value;
+    unsigned base;
+
+    if (ch == '0') {
+        ch = read_char();
+
+        if (tolower(ch) == 'x') {
+            ch = read_char();
+            base = 16;
         } else {
-            /* This is not part of the digit, the caller should see this. */
-            return_char(ch);
-
-            temp_buf[temp_buf_idx] = 0;
-            temp_buf_idx = 0;
-            return strtoull(temp_buf, NULL, 0);
+            base = 8;
         }
+    } else {
+        base = 10;
+    }
 
+    while (isxdigit(ch) && (value = (isdigit(ch)) ? ch - '0' : tolower(ch) - 'a' + 10) < base) {
+        result = (result * base) + value;
         ch = read_char();
     }
+
+    /* This is not part of the digit, the caller should see this. */
+    return_char(ch);
+    return result;
 }
 
 /** Parse a string.
