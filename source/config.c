@@ -1306,7 +1306,7 @@ static bool load_config_file(const char *path) {
 
     ret = fs_read(handle, current_file, handle->size, 0);
     if (ret != STATUS_SUCCESS)
-        boot_error("Error %d reading configuration file '%s'", ret, path);
+        boot_error("Error reading configuration file '%s': %pS", path, ret);
 
     current_file[handle->size] = 0;
 

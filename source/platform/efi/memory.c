@@ -363,7 +363,7 @@ void efi_memory_init(void) {
      * entries here). */
     ret = efi_get_memory_map(&memory_map, &num_entries, &map_key);
     if (ret != EFI_SUCCESS)
-        internal_error("Failed to get memory map: 0x%zx\n", ret);
+        internal_error("Failed to get memory map (0x%zx)", ret);
 
     dprintf("efi: usable memory ranges (%zu total):\n", num_entries);
     for (i = 0; i < num_entries; i++) {

@@ -324,7 +324,7 @@ static status_t open_inode(ext2_mount_t *mount, uint32_t id, ext2_handle_t *owne
 
     ret = device_read(mount->mount.device, &handle->inode, size, offset);
     if (ret != STATUS_SUCCESS) {
-        dprintf("ext2: failed to read inode %" PRIu32 ": %d\n", id, ret);
+        dprintf("ext2: failed to read inode %" PRIu32 ": %pS\n", id, ret);
         free(handle);
         return false;
     }

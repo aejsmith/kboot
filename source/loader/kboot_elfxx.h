@@ -146,7 +146,7 @@ static void FUNC(load_kernel)(kboot_loader_t *loader) {
 
             ret = fs_read(loader->handle, dest, phdrs[i].p_filesz, phdrs[i].p_offset);
             if (ret != STATUS_SUCCESS)
-                boot_error("Error %d reading kernel image", ret);
+                boot_error("Error reading kernel image: %pS", ret);
 
             /* Clear zero-initialized sections. */
             memset(dest + phdrs[i].p_filesz, 0, phdrs[i].p_memsz - phdrs[i].p_filesz);
@@ -173,7 +173,7 @@ static void FUNC(load_sections)(kboot_loader_t *loader) {
     /* Read the section headers into the tag. */
     ret = fs_read(loader->handle, tag->sections, size, ehdr->e_shoff);
     if (ret != STATUS_SUCCESS)
-        boot_error("Error %d reading kernel sections", ret);
+        boot_error("Error reading kernel sections: %pS", ret);
 
     /* Iterate through the headers and load in additional loadable sections. */
     for (size_t i = 0; i < ehdr->e_shnum; i++) {
@@ -207,7 +207,7 @@ static void FUNC(load_sections)(kboot_loader_t *loader) {
         } else {
             ret = fs_read(loader->handle, dest, shdr->sh_size, shdr->sh_offset);
             if (ret != STATUS_SUCCESS)
-                boot_error("Error %d reading kernel sections", ret);
+                boot_error("Error reading kernel sections: %pS", ret);
         }
     }
 }

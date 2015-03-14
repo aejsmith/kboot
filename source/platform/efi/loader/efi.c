@@ -62,19 +62,19 @@ static __noreturn void efi_loader_load(void *_loader) {
     /* Read it in. */
     ret = fs_read(loader->handle, buf, loader->handle->size, 0);
     if (ret != STATUS_SUCCESS)
-        boot_error("Failed to read EFI image (%d)", ret);
+        boot_error("Error reading EFI image: %pS", ret);
 
     /* Ask the firmware to load the image. */
     status = efi_call(
         efi_boot_services->load_image,
         false, efi_image_handle, NULL, buf, loader->handle->size, &image_handle);
     if (status != EFI_SUCCESS)
-        boot_error("Failed to load EFI image (0x%zx)", status);
+        boot_error("Error loading EFI image (0x%zx)", status);
 
     /* Get the loaded image protocol. */
     status = efi_get_loaded_image(image_handle, &image);
     if (status != EFI_SUCCESS)
-        boot_error("Failed to get loaded image protocol (0x%zx)", status);
+        boot_error("Error getting loaded image protocol (0x%zx)", status);
 
     /* Try to identify the handle of the device the image was on. */
     device = loader->handle->mount->device;
@@ -216,7 +216,7 @@ static bool config_cmd_efi(value_list_t *args) {
     path = args->values[0].string;
     ret = fs_open(path, NULL, FILE_TYPE_REGULAR, &loader->handle);
     if (ret != STATUS_SUCCESS) {
-        config_error("Error %d opening '%s'", ret, path);
+        config_error("Error opening '%s': %pS", path, ret);
         goto err_free;
     }
 

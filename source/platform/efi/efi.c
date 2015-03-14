@@ -57,8 +57,6 @@ status_t efi_convert_status(efi_status_t status) {
         return STATUS_READ_ONLY;
     case EFI_VOLUME_CORRUPTED:
         return STATUS_CORRUPT_FS;
-    case EFI_VOLUME_FULL:
-        return STATUS_FS_FULL;
     case EFI_NOT_FOUND:
         return STATUS_NOT_FOUND;
     case EFI_TIMEOUT:

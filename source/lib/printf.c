@@ -28,6 +28,7 @@
 #endif
 
 #include <endian.h>
+#include <status.h>
 
 /* Flags to specify special behaviour. */
 #define PRINTF_ZERO_PAD         (1<<0)  /**< Pad with zeros. */
@@ -40,6 +41,8 @@
 
 /** Internal printf() state. */
 typedef struct printf_state {
+    const char *fmt;                    /**< Format string. */
+    va_list args;                       /**< Variable argument state. */
     printf_helper_t helper;             /**< Helper function. */
     void *data;                         /**< Argument to helper. */
     int total;                          /**< Current output total. */
@@ -53,6 +56,27 @@ typedef struct printf_state {
 static const char printf_digits_upper[] = "0123456789ABCDEF";
 static const char printf_digits_lower[] = "0123456789abcdef";
 
+/** Status code descriptions. */
+static const char *status_descriptions[] = {
+    [STATUS_SUCCESS]         = "Operation completed successfully",
+    [STATUS_NOT_SUPPORTED]   = "Operation not supported",
+    [STATUS_INVALID_ARG]     = "Invalid argument",
+    [STATUS_TIMED_OUT]       = "Timed out while waiting",
+    [STATUS_NO_MEMORY]       = "Out of memory",
+    [STATUS_NOT_DIR]         = "Not a directory",
+    [STATUS_NOT_FILE]        = "Not a regular file",
+    [STATUS_NOT_FOUND]       = "Not found",
+    [STATUS_UNKNOWN_FS]      = "Filesystem on device is unknown",
+    [STATUS_CORRUPT_FS]      = "Corruption detected on the filesystem",
+    [STATUS_READ_ONLY]       = "Filesystem is read only",
+    [STATUS_END_OF_FILE]     = "Read beyond end of file",
+    [STATUS_SYMLINK_LIMIT]   = "Exceeded nested symbolic link limit",
+    [STATUS_DEVICE_ERROR]    = "Device error",
+    [STATUS_UNKNOWN_IMAGE]   = "Image has an unrecognised format",
+    [STATUS_MALFORMED_IMAGE] = "Image format is incorrect",
+    [STATUS_SYSTEM_ERROR]    = "Error from system firmware",
+};
+
 /** Print a single character.
  * @param state         Internal state structure.
  * @param ch            Character to write. */
@@ -65,9 +89,7 @@ static void print_char(printf_state_t *state, char ch) {
  * @param str           String to write.
  * @param len           Length to print. */
 static void print_string(printf_state_t *state, const char *str, size_t len) {
-    size_t i;
-
-    for (i = 0; i < len; i++)
+    for (size_t i = 0; i < len; i++)
         print_char(state, str[i]);
 }
 
@@ -161,6 +183,26 @@ static void print_number(printf_state_t *state, uint64_t num) {
     }
 }
 
+/** Helper to print a status string.
+ * @param state         Internal state structure.
+ * @param status        Status to print. */
+static void print_status(printf_state_t *state, status_t status) {
+    const char *desc;
+
+    if (status >= array_size(status_descriptions) || !status_descriptions[status]) {
+        state->base = 10;
+        state->precision = state->width = -1;
+        print_number(state, status);
+        return;
+    }
+
+    desc = status_descriptions[status];
+    while (*desc) {
+        print_char(state, *desc);
+        desc++;
+    }
+}
+
 /** Helper to print a UUID.
  * @param state         Internal state structure.
  * @param ptr           Pointer to UUID.
@@ -196,15 +238,8 @@ static void print_uuid(printf_state_t *state, const uint8_t *uuid, bool big_endi
 }
 
 /** Helper to print a pointer.
- * @param state         Internal state structure.
- * @param fmt           Pointer to format string pointer.
- * @param ptr           Pointer to print. */
-static void print_pointer(printf_state_t *state, const char **fmt, void *ptr) {
-    /* Print lower-case and as though # was specified. */
-    state->flags |= PRINTF_LOW_CASE | PRINTF_PREFIX;
-    if (state->precision == -1)
-        state->precision = 1;
-
+ * @param state         Internal state structure. */
+static void print_pointer(printf_state_t *state) {
     /*
      * Extensions for certain useful things. Idea borrowed from the Linux
      * kernel. The following formats are implemented:
@@ -212,25 +247,34 @@ static void print_pointer(printf_state_t *state, const char **fmt, void *ptr) {
      *  - %pu = Print a little-endian (i.e. EFI) UUID (arg is pointer to 16-byte UUID).
      *  - %pU = Print a big-endian UUID (arg is pointer to 16-byte UUID).
      */
-    switch ((*fmt)[1]) {
-    case 'E':
-        #if defined(CONFIG_PLATFORM_EFI) && !defined(__TEST)
-            ++(*fmt);
-            efi_print_device_path((efi_device_path_t *)ptr, (void *)print_char, state);
+    if (isalpha(state->fmt[1])) {
+        state->fmt++;
+
+        switch (*state->fmt) {
+        case 'E':
+            #if defined(CONFIG_PLATFORM_EFI) && !defined(__TEST)
+                efi_print_device_path(va_arg(state->args, efi_device_path_t *), (void *)print_char, state);
+            #endif
+
             break;
-        #endif
-    case 'u':
-        ++(*fmt);
-        print_uuid(state, ptr, false);
-        break;
-    case 'U':
-        ++(*fmt);
-        print_uuid(state, ptr, true);
-        break;
-    default:
+        case 'S':
+            print_status(state, va_arg(state->args, status_t));
+            break;
+        case 'u':
+            print_uuid(state, va_arg(state->args, const uint8_t *), false);
+            break;
+        case 'U':
+            print_uuid(state, va_arg(state->args, const uint8_t *), true);
+            break;
+        }
+    } else {
+        /* Print lower-case and as though # was specified. */
+        state->flags |= PRINTF_LOW_CASE | PRINTF_PREFIX;
+        if (state->precision == -1)
+            state->precision = 1;
+
         state->base = 16;
-        print_number(state, (ptr_t)ptr);
-        break;
+        print_number(state, (ptr_t)va_arg(state->args, void *));
     }
 }
 
@@ -260,20 +304,22 @@ int do_vprintf(printf_helper_t helper, void *data, const char *fmt, va_list args
     uint64_t num;
     int32_t len;
 
+    state.fmt = fmt;
+    va_copy(state.args, args);
     state.helper = helper;
     state.data = data;
     state.total = 0;
 
-    for (; *fmt; fmt++) {
-        if (*fmt != '%') {
-            print_char(&state, *fmt);
+    for (; *state.fmt; state.fmt++) {
+        if (*state.fmt != '%') {
+            print_char(&state, *state.fmt);
             continue;
         }
 
         /* Parse flags in the format string. */
         state.flags = 0;
         while (true) {
-            switch (*(++fmt)) {
+            switch (*(++state.fmt)) {
             case '#':
                 state.flags |= PRINTF_PREFIX;
                 continue;
@@ -302,15 +348,15 @@ int do_vprintf(printf_helper_t helper, void *data, const char *fmt, va_list args
          * '*' character, the field width is the next argument (a negative field
          * width argument implies left justification, and the width will be made
          * positive). */
-        if (isdigit(*fmt)) {
-            state.width = strtol(fmt, (char **)&fmt, 10);
-        } else if (*fmt == '*') {
-            state.width = (long)va_arg(args, int);
+        if (isdigit(*state.fmt)) {
+            state.width = strtol(state.fmt, (char **)&state.fmt, 10);
+        } else if (*state.fmt == '*') {
+            state.width = (long)va_arg(state.args, int);
             if (state.width < 0) {
                 state.flags |= PRINTF_LEFT_JUSTIFY;
                 state.width = -state.width;
             }
-            fmt++;
+            state.fmt++;
         } else {
             state.width = -1;
         }
@@ -318,17 +364,17 @@ int do_vprintf(printf_helper_t helper, void *data, const char *fmt, va_list args
         /* If there is a period character in the string, there is a precision.
          * This can also be specified as a '*' character, like for field width,
          * except a negative value means 0. */
-        if (*fmt == '.') {
-            fmt++;
-            if (isdigit(*fmt)) {
-                state.precision = strtol(fmt, (char **)&fmt, 10);
+        if (*state.fmt == '.') {
+            state.fmt++;
+            if (isdigit(*state.fmt)) {
+                state.precision = strtol(state.fmt, (char **)&state.fmt, 10);
                 if (state.precision < 0)
                     state.precision = 0;
-            } else if (*fmt == '*') {
-                state.precision = (long)va_arg(args, int);
+            } else if (*state.fmt == '*') {
+                state.precision = (long)va_arg(state.args, int);
                 if (state.precision < 0)
                     state.precision = 0;
-                fmt++;
+                state.fmt++;
             } else {
                 state.precision = 0;
             }
@@ -337,20 +383,20 @@ int do_vprintf(printf_helper_t helper, void *data, const char *fmt, va_list args
         }
 
         /* Get the length modifier. */
-        switch (*fmt) {
+        switch (*state.fmt) {
         case 'h':
         case 'z':
-            len = (uint32_t)*(fmt++);
+            len = (uint32_t)*(state.fmt++);
             break;
         case 'l':
-            len = (uint32_t)*(fmt++);
-            if (*fmt == 'l') {
+            len = (uint32_t)*(state.fmt++);
+            if (*state.fmt == 'l') {
                 len = 'L';
-                fmt++;
+                state.fmt++;
             }
             break;
         case 'L':
-            len = (uint32_t)*(fmt++);
+            len = (uint32_t)*(state.fmt++);
             break;
         default:
             len = 0;
@@ -361,12 +407,12 @@ int do_vprintf(printf_helper_t helper, void *data, const char *fmt, va_list args
          * break out of the switch to get to the number handling code. For
          * anything else, continue to the next iteration of the main loop. */
         state.base = 10;
-        switch (*fmt) {
+        switch (*state.fmt) {
         case '%':
             print_char(&state, '%');
             continue;
         case 'c':
-            ch = (unsigned char)va_arg(args, int);
+            ch = (unsigned char)va_arg(state.args, int);
             if (state.flags & PRINTF_LEFT_JUSTIFY) {
                 print_char(&state, ch);
                 while (--state.width > 0)
@@ -385,11 +431,11 @@ int do_vprintf(printf_helper_t helper, void *data, const char *fmt, va_list args
             state.base = 8;
             break;
         case 'p':
-            print_pointer(&state, &fmt, va_arg(args, void *));
+            print_pointer(&state);
             continue;
         case 's':
             /* We won't need the length modifier here, can use the len variable. */
-            str = va_arg(args, const char *);
+            str = va_arg(state.args, const char *);
             len = strnlen(str, state.precision);
             if (state.flags & PRINTF_LEFT_JUSTIFY) {
                 print_string(&state, str, len);
@@ -411,8 +457,8 @@ int do_vprintf(printf_helper_t helper, void *data, const char *fmt, va_list args
         default:
             /* Unknown character, go back and reprint what we skipped over. */
             print_char(&state, '%');
-            while (fmt[-1] != '%')
-                fmt--;
+            while (state.fmt[-1] != '%')
+                state.fmt--;
 
             continue;
         }
@@ -424,25 +470,25 @@ int do_vprintf(printf_helper_t helper, void *data, const char *fmt, va_list args
         /* Perform conversions according to the length modifiers. */
         switch (len & 0xff) {
         case 'h':
-            num = (unsigned short)va_arg(args, int);
+            num = (unsigned short)va_arg(state.args, int);
             if (state.flags & PRINTF_SIGNED)
                 num = (signed short)num;
             break;
         case 'l':
-            num = va_arg(args, unsigned long);
+            num = va_arg(state.args, unsigned long);
             if (state.flags & PRINTF_SIGNED)
                 num = (signed long)num;
             break;
         case 'L':
-            num = va_arg(args, unsigned long long);
+            num = va_arg(state.args, unsigned long long);
             if (state.flags & PRINTF_SIGNED)
                 num = (signed long long)num;
             break;
         case 'z':
-            num = va_arg(args, size_t);
+            num = va_arg(state.args, size_t);
             break;
         default:
-            num = va_arg(args, unsigned int);
+            num = va_arg(state.args, unsigned int);
             if (state.flags & PRINTF_SIGNED)
                 num = (signed int)num;
         }
@@ -451,6 +497,7 @@ int do_vprintf(printf_helper_t helper, void *data, const char *fmt, va_list args
         print_number(&state, num);
     }
 
+    va_end(state.args);
     return state.total;
 }
 

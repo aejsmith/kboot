@@ -54,7 +54,7 @@ static status_t efi_disk_read_blocks(disk_device_t *_disk, void *buf, size_t cou
 
     ret = efi_call(disk->block->read_blocks, disk->block, disk->media_id, lba, count * disk->disk.block_size, buf);
     if (ret != EFI_SUCCESS) {
-        dprintf("efi: read from %s failed with status 0x%zx\n", disk->disk.device.name, ret);
+        dprintf("efi: read from %s failed: 0x%zx\n", disk->disk.device.name, ret);
         return efi_convert_status(ret);
     }
 
@@ -123,7 +123,7 @@ efi_handle_t efi_disk_get_handle(disk_device_t *_disk) {
         /* We need to try to locate the partition device node. */
         ret = efi_locate_handle(EFI_BY_PROTOCOL, &block_io_guid, NULL, &handles, &num_handles);
         if (ret != EFI_SUCCESS) {
-            dprintf("efi: failed to get handles while identifying partition (0x%zx)\n", ret);
+            dprintf("efi: failed to get handles while identifying partition: 0x%zx\n", ret);
             return NULL;
         }
 

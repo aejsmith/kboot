@@ -65,7 +65,7 @@ __noreturn void efi_main(efi_handle_t image_handle, efi_system_table_t *system_t
     /* Get the loaded image protocol. */
     ret = efi_get_loaded_image(image_handle, &efi_loaded_image);
     if (ret != EFI_SUCCESS)
-        internal_error("Failed to get loaded image protocol (0x%x)", ret);
+        internal_error("Failed to get loaded image protocol (0x%zx)", ret);
 
     loader_main();
 }
