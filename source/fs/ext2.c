@@ -314,6 +314,7 @@ static status_t open_inode(ext2_mount_t *mount, uint32_t id, ext2_handle_t *owne
 
     handle = malloc(sizeof(*handle));
     handle->handle.mount = &mount->mount;
+    handle->handle.count = 1;
     handle->num = id;
 
     /* Get the size of the inode and its offset in the group's inode table. */

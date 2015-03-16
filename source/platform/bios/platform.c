@@ -26,6 +26,7 @@
 
 #include <bios/bios.h>
 #include <bios/disk.h>
+#include <bios/multiboot.h>
 
 #include <device.h>
 #include <loader.h>
@@ -45,6 +46,7 @@ __noreturn void bios_main(void) {
 /** Detect and register all devices. */
 void target_device_probe(void) {
     bios_disk_init();
+    multiboot_init();
 }
 
 /** Reboot the system. */

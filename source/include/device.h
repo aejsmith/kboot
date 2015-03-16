@@ -32,7 +32,7 @@ struct device;
 typedef enum device_type {
     DEVICE_TYPE_DISK,                   /**< Local disk. */
     DEVICE_TYPE_NET,                    /**< Network device. */
-    DEVICE_TYPE_IMAGE,                  /**< Boot image. */
+    DEVICE_TYPE_VIRTUAL,                /**< Virtual device (e.g. boot image). */
 } device_type_t;
 
 /** Device identification information to get. */

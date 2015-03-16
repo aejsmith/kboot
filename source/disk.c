@@ -187,6 +187,7 @@ static void add_partition(disk_device_t *parent, uint8_t id, uint64_t lba, uint6
     partition = malloc(sizeof(*partition));
     partition->device.type = DEVICE_TYPE_DISK;
     partition->device.ops = &disk_device_ops;
+    partition->device.mount = NULL;
     partition->type = parent->type;
     partition->ops = &partition_disk_ops;
     partition->blocks = blocks;
@@ -240,6 +241,7 @@ void disk_device_register(disk_device_t *disk, bool boot) {
     /* Add the device. */
     disk->device.type = DEVICE_TYPE_DISK;
     disk->device.ops = &disk_device_ops;
+    disk->device.mount = NULL;
     device_register(&disk->device, name);
 
     if (boot)

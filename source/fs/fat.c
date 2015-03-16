@@ -193,6 +193,7 @@ static status_t fat_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle) 
     handle->handle.type =
         (state->entry.attributes & FAT_ATTRIBUTE_DIRECTORY) ? FILE_TYPE_DIR : FILE_TYPE_REGULAR;
     handle->handle.size = le32_to_cpu(state->entry.file_size);
+    handle->handle.count = 1;
     handle->cluster =
         (le16_to_cpu(state->entry.first_cluster_high) << 16) | le16_to_cpu(state->entry.first_cluster_low);
 
@@ -548,6 +549,7 @@ static status_t fat_mount(device_t *device, fs_mount_t **_mount) {
     root->handle.mount = &mount->mount;
     root->handle.type = FILE_TYPE_DIR;
     root->handle.size = root_sectors * sector_size;
+    root->handle.count = 1;
     root->cluster = (mount->fat_type == 32) ? le32_to_cpu(bpb.fat32.root_cluster) : 0;
     mount->mount.root = &root->handle;
 

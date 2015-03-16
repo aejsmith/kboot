@@ -93,8 +93,8 @@ static status_t bios_disk_read_blocks(disk_device_t *_disk, void *buf, size_t co
  * @param lba           Block that the partition starts at.
  * @return              Whether partition is a boot partition. */
 static bool bios_disk_is_boot_partition(disk_device_t *disk, uint8_t id, uint64_t lba) {
-    if (multiboot_magic == MULTIBOOT_LOADER_MAGIC) {
-        if (id == (multiboot_info.boot_device & 0x00FF0000) >> 16)
+    if (multiboot_valid()) {
+        if (id == (multiboot_info.boot_device & 0xff0000) >> 16)
             return true;
     } else {
         if (lba == bios_boot_partition)
