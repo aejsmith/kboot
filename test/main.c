@@ -22,7 +22,6 @@
 #include <test.h>
 
 KBOOT_IMAGE(KBOOT_IMAGE_SECTIONS | KBOOT_IMAGE_LOG);
-KBOOT_VIDEO(KBOOT_VIDEO_LFB | KBOOT_VIDEO_VGA, 0, 0, 0);
 KBOOT_BOOLEAN_OPTION("bool_option", "Boolean option", true);
 KBOOT_STRING_OPTION("string_option", "String option", "Default Value");
 

@@ -25,6 +25,8 @@
 
 #include <test.h>
 
+KBOOT_VIDEO(KBOOT_VIDEO_VGA | KBOOT_VIDEO_LFB, 0, 0, 0);
+
 /** Serial port definitions. */
 #define SERIAL_PORT         0x3f8
 #define SERIAL_CLOCK        1843200

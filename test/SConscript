@@ -23,6 +23,7 @@ if config['ARCH'] == 'x86':
         'platform/pc/console.c',
         '../source/arch/x86/lib/string.c',
         '../source/drivers/serial/ns16550.c',
+        '../source/drivers/video/vga.c',
     ]
     variants = [
         {

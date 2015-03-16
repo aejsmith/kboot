@@ -20,6 +20,7 @@
  */
 
 #include <drivers/video/fb.h>
+#include <drivers/video/vga.h>
 
 #include <lib/ctype.h>
 #include <lib/printf.h>
@@ -150,6 +151,22 @@ void console_init(kboot_tag_t *tags) {
                 main_console.out_private = fb_console_out_ops.init(&video_mode);
                 main_console.out = &fb_console_out_ops;
             }
+
+            #ifdef CONFIG_ARCH_X86
+                if (video->type == KBOOT_VIDEO_VGA) {
+                    video_mode.type = VIDEO_MODE_VGA;
+                    video_mode.width = video->vga.cols;
+                    video_mode.height = video->vga.lines;
+                    video_mode.x = video->vga.x;
+                    video_mode.y = video->vga.y;
+                    video_mode.mem_phys = video->vga.mem_phys;
+                    video_mode.mem_virt = video->vga.mem_virt;
+                    video_mode.mem_size = video->vga.mem_size;
+
+                    main_console.out_private = vga_console_out_ops.init(&video_mode);
+                    main_console.out = &vga_console_out_ops;
+                }
+            #endif
 
             break;
         }
