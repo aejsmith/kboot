@@ -45,22 +45,29 @@ for f in stage1s:
     Depends(target, File('stage1/stage1.ld'))
 
     # Create a disassembly.
-    env.AddPostAction(target,
+    env.AddPostAction(
+        target,
         Action('$OBJDUMP -d -m i386 -M i8086 $TARGET > ${TARGET.base}.lst', None))
 
     # Create the final stripped binary.
-    target = env.Command('stage1/%s.bin' % (f), target,
+    target = env.Command(
+        'stage1/%s.bin' % (f),
+        target,
         Action('$OBJCOPY -O binary --strip-all $SOURCE $TARGET', '$GENCOMSTR'))
 
     defaults.append(target)
 
 # Build the final loader binary.
-loader = env.Command(env['OUTDIR'].File('loader'), env['LOADER'],
+kboot = env.Command(
+    env['OUTDIR'].File('kboot.bin'),
+    env['KBOOT'],
     Action('$OBJCOPY -O binary --strip-all $SOURCE $TARGET', '$GENCOMSTR'))
-defaults.append(loader)
+defaults.append(kboot)
 
 # Create CD/PXE boot images by concatenating the boot sector with the loader.
-target = env.Command(env['OUTDIR'].File('cdboot.img'), ['stage1/cdboot.bin', loader],
+target = env.Command(
+    env['OUTDIR'].File('cdkboot.img'),
+    ['stage1/cdboot.bin', kboot],
     Action('cat ${SOURCES[0]} ${SOURCES[1]} > $TARGET', '$GENCOMSTR'))
 defaults.append(target)
 

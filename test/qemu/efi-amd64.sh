@@ -6,7 +6,7 @@ fsdir=${builddir}/testfs
 mkdir ${fsdir}
 mkdir -p ${fsdir}/efi/boot
 
-cp ${builddir}/bin/bootx64.efi ${fsdir}/efi/boot/
+cp ${builddir}/bin/kbootx64.efi ${fsdir}/efi/boot/bootx64.efi
 cp ${builddir}/test/test-ia32.elf ${builddir}/test/test-amd64.elf ${fsdir}/
 
 cat > ${fsdir}/kboot.cfg << EOF

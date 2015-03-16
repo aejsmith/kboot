@@ -78,7 +78,7 @@ env['CCFLAGS'] += ['-include', 'build/%s/source/config.h' % (env['CONFIG'])]
 env['ASFLAGS'] += ['-include', 'build/%s/source/config.h' % (env['CONFIG'])]
 
 # Platform code needs the location of the loader binary.
-env['LOADER'] = File('loader.elf')
+env['KBOOT'] = File('kboot.elf')
 
 # Get the list of source files from the architecture/platform.
 arch_sources = SConscript(dirs = ['arch/' + config['ARCH']], exports = vars)
@@ -89,7 +89,7 @@ objects = map(env.Object, sources)
 
 # Link the loader.
 linkflags = env['LINKFLAGS'] + ['-Wl,-T,$LDSCRIPT']
-target = env.Program('loader.elf', objects, LINKFLAGS = linkflags)
+target = env.Program('kboot.elf', objects, LINKFLAGS = linkflags)
 Depends(target, env['LDSCRIPT'])
 
 # Generate various information files.
