@@ -8,7 +8,6 @@ mkdir -p ${fsdir}/efi/boot
 
 cp ${builddir}/bin/bootx64.efi ${fsdir}/efi/boot/
 cp ${builddir}/test/test-ia32.elf ${builddir}/test/test-amd64.elf ${fsdir}/
-cp ../shellx64.efi ${fsdir}/
 
 cat > ${fsdir}/kboot.cfg << EOF
 set "timeout" 5
@@ -19,10 +18,6 @@ entry "Test (32-bit)" {
 
 entry "Test (64-bit)" {
     kboot "test-amd64.elf" ["test-amd64.elf"]
-}
-
-entry "EFI Shell" {
-    efi "shellx64.efi"
 }
 EOF
 

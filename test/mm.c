@@ -79,6 +79,38 @@ phys_ptr_t phys_alloc(phys_size_t size) {
     return ret;
 }
 
+/** Allocate a range of physical memory.
+ * @param size          Size of the range (multiple of PAGE_SIZE).
+ * @param align         Alignment of the range (power of 2, at least PAGE_SIZE).
+ * @param min_addr      Minimum address for the start of the allocated range.
+ * @param max_addr      Maximum address of the last byte of the allocated range.
+ * @param type          Type to give the allocated range.
+ * @param flags         Behaviour flags.
+ * @param _phys         Where to store physical address of allocation.
+ * @return              Virtual address of allocation on success, NULL on failure. */
+void *memory_alloc(
+    phys_size_t size, phys_size_t align, phys_ptr_t min_addr, phys_ptr_t max_addr,
+    uint8_t type, unsigned flags, phys_ptr_t *_phys)
+{
+    phys_ptr_t phys;
+
+    if (min_addr || max_addr || align > PAGE_SIZE)
+        internal_error("Unsupported allocation constraints");
+
+    phys = phys_alloc(size);
+    if (_phys)
+        *_phys = phys;
+
+    return phys_map(phys, size);
+}
+
+/** Free a range of physical memory.
+ * @param addr          Virtual address of allocation.
+ * @param size          Size of range to free. */
+void memory_free(void *addr, phys_size_t size) {
+    /* Nothing happens. */
+}
+
 /** Initialize the physical memory manager.
  * @param tags          Tag list. */
 static void phys_init(kboot_tag_t *tags) {

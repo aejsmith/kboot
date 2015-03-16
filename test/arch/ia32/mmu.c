@@ -34,18 +34,27 @@ static uint32_t *recursive_mapping;
  * @param size          Size of range to map. */
 void mmu_map(ptr_t virt, phys_ptr_t phys, size_t size) {
     ptr_t rmap_addr = (ptr_t)recursive_mapping;
-    unsigned pde, pte;
 
-    pde = (rmap_addr / PAGE_SIZE) + (virt / X86_PTBL_RANGE_32);
-    pte = virt / PAGE_SIZE;
+    assert(!(size % PAGE_SIZE));
 
-    if (!(recursive_mapping[pde] & X86_PTE_PRESENT)) {
-        phys_ptr_t phys = phys_alloc(PAGE_SIZE);
-        recursive_mapping[pde] = phys | X86_PTE_PRESENT | X86_PTE_WRITE;
-        memset(&recursive_mapping[pte & ~1023], 0, PAGE_SIZE);
+    while (size) {
+        unsigned pde, pte;
+
+        pde = (rmap_addr / PAGE_SIZE) + (virt / X86_PTBL_RANGE_32);
+        pte = virt / PAGE_SIZE;
+
+        if (!(recursive_mapping[pde] & X86_PTE_PRESENT)) {
+            phys_ptr_t phys = phys_alloc(PAGE_SIZE);
+            recursive_mapping[pde] = phys | X86_PTE_PRESENT | X86_PTE_WRITE;
+            memset(&recursive_mapping[pte & ~1023], 0, PAGE_SIZE);
+        }
+
+        recursive_mapping[pte] = phys | X86_PTE_PRESENT | X86_PTE_WRITE;
+
+        virt += PAGE_SIZE;
+        phys += PAGE_SIZE;
+        size -= PAGE_SIZE;
     }
-
-    recursive_mapping[pte] = phys | X86_PTE_PRESENT | X86_PTE_WRITE;
 }
 
 /** Initialize the MMU code.

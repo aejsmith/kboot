@@ -19,16 +19,22 @@
  * @brief               Test kernel console functions.
  */
 
+#include <drivers/video/fb.h>
+
 #include <lib/ctype.h>
 #include <lib/printf.h>
 #include <lib/string.h>
 #include <lib/utility.h>
 
 #include <test.h>
+#include <video.h>
 
 /** KBoot log buffer. */
 static kboot_log_t *kboot_log = NULL;
 static size_t kboot_log_size = 0;
+
+/** Framebuffer video mode information. */
+static video_mode_t video_mode;
 
 /** Main console. */
 console_t main_console;
@@ -117,5 +123,37 @@ void __noreturn internal_error(const char *fmt, ...) {
 /** Initialize the console.
  * @param tags          Tag list. */
 void console_init(kboot_tag_t *tags) {
+    kboot_tag_video_t *video;
+
     log_init(tags);
+
+    while (tags->type != KBOOT_TAG_NONE) {
+        if (tags->type == KBOOT_TAG_VIDEO) {
+            video = (kboot_tag_video_t *)tags;
+
+            if (video->type == KBOOT_VIDEO_LFB && video->lfb.flags & KBOOT_LFB_RGB) {
+                video_mode.type = VIDEO_MODE_LFB;
+                video_mode.width = video->lfb.width;
+                video_mode.height = video->lfb.height;
+                video_mode.bpp = video->lfb.bpp;
+                video_mode.pitch = video->lfb.pitch;
+                video_mode.red_size = video->lfb.red_size;
+                video_mode.red_pos = video->lfb.red_pos;
+                video_mode.green_size = video->lfb.green_size;
+                video_mode.green_pos = video->lfb.green_pos;
+                video_mode.blue_size = video->lfb.blue_size;
+                video_mode.blue_pos = video->lfb.blue_pos;
+                video_mode.mem_phys = video->lfb.fb_phys;
+                video_mode.mem_virt = video->lfb.fb_virt;
+                video_mode.mem_size = video->lfb.fb_size;
+
+                main_console.out_private = fb_console_out_ops.init(&video_mode);
+                main_console.out = &fb_console_out_ops;
+            }
+
+            break;
+        }
+
+        tags = (kboot_tag_t *)round_up((ptr_t)tags + tags->size, 8);
+    }
 }

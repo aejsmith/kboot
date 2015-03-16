@@ -51,6 +51,8 @@ main_sources = [
     'console.c',
     'main.c',
     'mm.c',
+    '../source/drivers/video/fb.c',
+    '../source/drivers/video/font.c',
     '../source/lib/printf.c',
     '../source/lib/string.c',
 ]
