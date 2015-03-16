@@ -156,7 +156,6 @@ static void add_disk(uint8_t id) {
     if (id == bios_boot_device) {
         specification_packet_t *packet = (specification_packet_t *)BIOS_MEM_BASE;
 
-        /* Use the bootable CD-ROM status function. */
         bios_regs_init(&regs);
         regs.eax = INT13_CDROM_GET_STATUS;
         regs.edx = id;
@@ -175,7 +174,7 @@ static void add_disk(uint8_t id) {
              * CD - get drive parameters returns -1 for sector count on a CD. */
             disk->disk.type = DISK_TYPE_CDROM;
             disk->disk.block_size = 2048;
-            disk->disk.blocks = ~0ULL;
+            disk->disk.blocks = ~0ull;
             disk_device_register(&disk->disk, true);
             return;
         }
@@ -184,10 +183,10 @@ static void add_disk(uint8_t id) {
     /* Check for INT13 extensions support. */
     bios_regs_init(&regs);
     regs.eax = INT13_EXT_INSTALL_CHECK;
-    regs.ebx = 0x55AA;
+    regs.ebx = 0x55aa;
     regs.edx = id;
     bios_call(0x13, &regs);
-    if (regs.eflags & X86_FLAGS_CF || (regs.ebx & 0xFFFF) != 0xAA55 || !(regs.ecx & (1<<0))) {
+    if (regs.eflags & X86_FLAGS_CF || (regs.ebx & 0xffff) != 0xaa55 || !(regs.ecx & (1<<0))) {
         dprintf("bios: device 0x%x does not support extensions, ignoring\n", id);
         return;
     }
@@ -221,13 +220,14 @@ void bios_disk_init(void) {
 
     /* If booted from Multiboot, retrieve boot device ID from there. */
     if (multiboot_magic == MULTIBOOT_LOADER_MAGIC) {
-        bios_boot_device = (multiboot_info.boot_device & 0xFF000000) >> 24;
+        bios_boot_device = (multiboot_info.boot_device & 0xff000000) >> 24;
 
-        dprintf("bios: boot device ID is 0x%x, partition ID is 0x%x\n",
-            bios_boot_device,
-            (multiboot_info.boot_device & 0x00FF0000) >> 16);
+        dprintf(
+            "bios: boot device ID is 0x%x, partition ID is 0x%x\n",
+            bios_boot_device, (multiboot_info.boot_device & 0xff0000) >> 16);
     } else {
-        dprintf("bios: boot device ID is 0x%x, partition offset is 0x%" PRIx64 "\n",
+        dprintf(
+            "bios: boot device ID is 0x%x, partition offset is 0x%" PRIx64 "\n",
             bios_boot_device, bios_boot_partition);
     }
 
@@ -236,13 +236,13 @@ void bios_disk_init(void) {
     regs.eax = INT13_GET_DRIVE_PARAMETERS;
     regs.edx = 0x80;
     bios_call(0x13, &regs);
-    count = (regs.eflags & X86_FLAGS_CF) ? 0 : (regs.edx & 0xFF);
+    count = (regs.eflags & X86_FLAGS_CF) ? 0 : (regs.edx & 0xff);
 
     /* Probe all drives. */
     for (uint8_t id = 0x80; id < count + 0x80; id++)
         add_disk(id);
 
     /* Add the boot device if it was not added by the above loop (e.g. a CD). */
-    if (bios_boot_device < 0x80 || bios_boot_device >= count + 0x80)
+    if (bios_boot_device && (bios_boot_device < 0x80 || bios_boot_device >= count + 0x80))
         add_disk(bios_boot_device);
 }
