@@ -7,17 +7,17 @@ mkdir ${isodir}
 mkdir ${isodir}/boot
 
 cp ${builddir}/bin/cdboot.img ${isodir}/boot/
-cp ${builddir}/test/test32.elf ${builddir}/test/test64.elf ${isodir}/
+cp ${builddir}/test/test-ia32.elf ${builddir}/test/test-amd64.elf ${isodir}/
 
 cat > ${isodir}/boot/kboot.cfg << EOF
 set "timeout" 5
 
 entry "Test (32-bit)" {
-    kboot "test32.elf" ["test32.elf"]
+    kboot "test-ia32.elf" ["test-ia32.elf"]
 }
 
 entry "Test (64-bit)" {
-    kboot "test64.elf" ["test64.elf"]
+    kboot "test-amd64.elf" ["test-amd64.elf"]
 }
 EOF
 

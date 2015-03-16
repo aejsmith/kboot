@@ -19,27 +19,28 @@ import os
 Import('env', 'config')
 
 if config['ARCH'] == 'x86':
-    x86_sources = ['../source/drivers/serial/ns16550.c']
+    x86_sources = [
+        'platform/pc/console.c',
+        '../source/drivers/serial/ns16550.c',
+    ]
     variants = [
         {
-            'name': '32',
+            'arch': 'ia32',
             'ccflags': ['-m32'],
             'asflags': ['-m32'],
             'linkflags': ['-m32'],
-            'ldscript': 'link-ia32.ld.in',
             'sources': x86_sources + [
-                'mmu-ia32.c',
+                'arch/ia32/mmu.c',
                 '../source/lib/runtime/i386/udivdi3.S',
                 '../source/lib/runtime/i386/umoddi3.S',
             ],
         }, {
-            'name': '64',
+            'arch': 'amd64',
             'ccflags': ['-m64', '-mcmodel=kernel', '-mno-red-zone'],
             'asflags': ['-m64'],
             'linkflags': ['-m64'],
-            'ldscript': 'link-amd64.ld.in',
             'sources': x86_sources + [
-                'mmu-amd64.c',
+                'arch/amd64/mmu.c',
             ],
         },
     ]
@@ -50,38 +51,46 @@ main_sources = [
     'console.c',
     'main.c',
     'mm.c',
-    'support.c',
     '../source/lib/printf.c',
     '../source/lib/string.c',
 ]
 
 for variant in variants:
-    name = variant['name'] if 'name' in variant else ''
+    arch = variant['arch']
     ccflags = variant['ccflags'] if 'ccflags' in variant else []
     asflags = variant['asflags'] if 'asflags' in variant else []
     linkflags = variant['linkflags'] if 'linkflags' in variant else []
     variant_sources = variant['sources'] if 'sources' in variant else []
 
-    ldscript = env.LDScript('link%s.ld' % (name), variant['ldscript'])
+    ldscript = env.LDScript('%s/arch/%s/link.ld' % (arch, arch), 'arch/%s/link.ld.in' % (arch))
 
     # Override whatever machine-specific flags were used to compile the loader.
     ccflags += [x for x in env['CCFLAGS'] if not x.startswith('-m') and x != '-fpic']
     asflags += [x for x in env['ASFLAGS'] if not x.startswith('-m') and x != '-fpic']
 
     linkflags += ['-nostdlib', '-Wl,--build-id=none']
-    linkflags += ["-Wl,-T,${File('link%s.ld')}" % name]
+    linkflags += ["-Wl,-T,${File('%s/arch/%s/link.ld')}" % (arch, arch)]
 
     sources = map(File, main_sources + variant_sources)
 
     # Generate a unique object name per variant for each source file.
-    objects = map(
-        lambda source: env.Object(
-            os.path.join(name, '%s.o' % (os.path.splitext(os.path.basename(str(source)))[0])),
+    objects = []
+    for source in sources:
+        path = os.path.splitext(str(source))[0]
+        external = str(Dir('../source'))
+        if path.startswith(external):
+            path = os.path.join(arch, 'external', '%s.o' % (path[len(external) + 1:]))
+        else:
+            path = os.path.join(arch, '%s.o' % (path))
+        objects.append(env.Object(
+            path,
             source,
-            CCFLAGS = ccflags, ASFLAGS = asflags, CPPDEFINES = ['__TEST']),
-        sources)
+            CCFLAGS = ccflags,
+            ASFLAGS = asflags,
+            CPPPATH = env['CPPPATH'] + [Dir('include')],
+            CPPDEFINES = ['__TEST']))
 
-    target = env.Program('test%s.elf' % (name), objects, LINKFLAGS = linkflags)
+    target = env.Program('test-%s.elf' % (arch), objects, LINKFLAGS = linkflags)
     Depends(target, ldscript)
 
     # Generate various information files.
@@ -91,4 +100,4 @@ for variant in variants:
         Action('$NM -C $TARGET | sort > ${TARGET.base}.sym', None),
     ])
 
-    Alias('test', File('test%s.elf' % (name)))
+    Alias('test', File('test-%s.elf' % (arch)))

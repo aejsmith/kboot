@@ -59,8 +59,8 @@ extern phys_ptr_t phys_alloc(phys_size_t size);
 extern int vprintf(const char *fmt, va_list args);
 extern int printf(const char *fmt, ...) __printf(1, 2);
 
+extern void debug_console_init(void);
 extern void console_init(kboot_tag_t *tags);
-extern void log_init(kboot_tag_t *tags);
 extern void mm_init(kboot_tag_t *tags);
 extern void mmu_init(kboot_tag_t *tags);
 

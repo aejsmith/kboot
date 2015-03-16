@@ -23,7 +23,7 @@
 
 #include <lib/string.h>
 
-#include "test.h"
+#include <test.h>
 
 /** Address of recursive mapping. */
 static uint32_t *recursive_mapping;

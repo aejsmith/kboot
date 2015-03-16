@@ -19,13 +19,13 @@
  * @brief               Memory management.
  */
 
-#include "test.h"
+#include <lib/utility.h>
 
-KBOOT_LOAD(0, 0, 0, VIRT_MAP_BASE, VIRT_MAP_SIZE);
+#include <memory.h>
+#include <test.h>
 
-#ifdef PHYS_MAP_BASE
-KBOOT_MAPPING(PHYS_MAP_BASE, 0, PHYS_MAP_SIZE);
-#endif
+/** Size of the heap. */
+#define HEAP_SIZE       32768
 
 /** Physical memory allocation range. */
 static phys_ptr_t phys_next;
@@ -34,6 +34,16 @@ static phys_size_t phys_size;
 /** Virtual memory allocation range. */
 static ptr_t virt_next;
 static size_t virt_size;
+
+/** Statically allocated heap. */
+static uint8_t heap[HEAP_SIZE] __aligned(PAGE_SIZE);
+static size_t heap_offset;
+
+KBOOT_LOAD(0, 0, 0, VIRT_MAP_BASE, VIRT_MAP_SIZE);
+
+#ifdef PHYS_MAP_BASE
+    KBOOT_MAPPING(PHYS_MAP_BASE, 0, PHYS_MAP_SIZE);
+#endif
 
 /** Map physical memory.
  * @param addr          Physical address to map.
@@ -140,6 +150,22 @@ static void virt_init(kboot_tag_t *tags) {
         internal_error("No usable virtual memory range found");
 
     printf("virt_next = %p, virt_size = 0x%zx\n", virt_next, virt_size);
+}
+
+/** Allocate memory from the heap.
+ * @param size          Size of allocation to make.
+ * @return              Address of allocation. */
+void *malloc(size_t size) {
+    size_t offset = heap_offset;
+    size = round_up(size, 8);
+    heap_offset += size;
+    return (void *)(heap + offset);
+}
+
+/** Free memory from the heap.
+ * @param addr          Address to free. */
+void free(void *addr) {
+    /* Nope. */
 }
 
 /** Initialize the memory manager.

@@ -19,7 +19,7 @@
  * @brief               KBoot test kernel.
  */
 
-#include "test.h"
+#include <test.h>
 
 KBOOT_IMAGE(KBOOT_IMAGE_SECTIONS | KBOOT_IMAGE_LOG);
 KBOOT_VIDEO(KBOOT_VIDEO_LFB | KBOOT_VIDEO_VGA, 0, 0, 0);
@@ -390,14 +390,16 @@ static void dump_efi_tag(kboot_tag_efi_t *tag) {
  * @param magic         KBoot magic number.
  * @param tags          Tag list pointer. */
 void kmain(uint32_t magic, kboot_tag_t *tags) {
+    debug_console_init();
+
     if (magic != KBOOT_MAGIC) {
+        printf("Incorrect magic number 0x%x\n", magic);
         while (true)
             arch_pause();
     }
 
-    console_init(tags);
-    log_init(tags);
     mm_init(tags);
+    console_init(tags);
 
     printf("Test kernel loaded: magic: 0x%x, tags: %p\n", magic, tags);
 
