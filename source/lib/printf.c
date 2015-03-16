@@ -22,6 +22,7 @@
 #include <lib/ctype.h>
 #include <lib/string.h>
 #include <lib/printf.h>
+#include <lib/utility.h>
 
 #ifdef CONFIG_PLATFORM_EFI
 #   include <efi/efi.h>
