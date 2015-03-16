@@ -41,7 +41,7 @@
 #   define PHYS_MAP_BASE    0xfffffffe00000000
 #   define PHYS_MAP_SIZE    0x100000000
 #   define VIRT_MAP_BASE    0xffffffff00000000
-#   define VIRT_MAP_SIZE    0x100000000
+#   define VIRT_MAP_SIZE    0x80000000
 #   define PHYS_MAX         0xffffffffffffffff
 #else
 #   define VIRT_MAP_BASE    0xc0000000
