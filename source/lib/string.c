@@ -30,7 +30,7 @@
 #include <loader.h>
 #include <memory.h>
 
-#if !defined(TARGET_HAS_MEMCPY) || defined(__TEST)
+#ifndef TARGET_HAS_MEMCPY
 
 /**
  * Copy data in memory.
@@ -56,7 +56,7 @@ void *memcpy(void *__restrict dest, const void *__restrict src, size_t count) {
 
 #endif /* TARGET_HAS_MEMCPY */
 
-#if !defined(TARGET_HAS_MEMSET) || defined(__TEST)
+#ifndef TARGET_HAS_MEMSET
 
 /** Fill a memory area.
  * @param dest          The memory area to fill.
