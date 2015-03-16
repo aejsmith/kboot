@@ -28,7 +28,7 @@ if config['ARCH'] == 'x86':
     variants = [
         {
             'arch': 'ia32',
-            'ccflags': ['-m32'],
+            'ccflags': ['-m32', '-mno-sse', '-mno-mmx', '-mno-sse2', '-mno-3dnow'],
             'asflags': ['-m32'],
             'linkflags': ['-m32'],
             'sources': x86_sources + [
@@ -38,7 +38,7 @@ if config['ARCH'] == 'x86':
             ],
         }, {
             'arch': 'amd64',
-            'ccflags': ['-m64', '-mcmodel=kernel', '-mno-red-zone'],
+            'ccflags': ['-m64', '-mcmodel=kernel', '-mno-red-zone', '-mno-sse', '-mno-mmx', '-mno-sse2', '-mno-3dnow'],
             'asflags': ['-m64'],
             'linkflags': ['-m64'],
             'sources': x86_sources + [
