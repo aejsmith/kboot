@@ -71,6 +71,34 @@ static void menu_entry_help(ui_entry_t *_entry) {
     ui_print_action(CONSOLE_KEY_F2, "Shell");
 }
 
+/** Display the configuration menu for an entry.
+ * @param console       Console to display on.
+ * @param env           Environment for the entry.
+ * @param name          Name of the entry (NULL for root). */
+static void display_config_menu(console_t *console, environ_t *env, const char *name) {
+    char *title;
+    ui_window_t *window;
+    environ_t *prev;
+
+    /* Determine the window title. */
+    if (name) {
+        size_t len = strlen(name) + 13;
+        title = malloc(len);
+        snprintf(title, len, "Configure '%s'", name);
+    }
+
+    prev = current_environ;
+    current_environ = env;
+    window = env->loader->configure(env->loader_private, (name) ? title : "Configure");
+    current_environ = prev;
+
+    ui_display(window, console, 0);
+    ui_window_destroy(window);
+
+    if (name)
+        free(title);
+}
+
 /** Handle input on a menu entry.
  * @param _entry        Entry input was performed on.
  * @param key           Key that was pressed.
@@ -84,23 +112,7 @@ static input_result_t menu_entry_input(ui_entry_t *_entry, uint16_t key) {
         return INPUT_CLOSE;
     case CONSOLE_KEY_F1:
         if (!entry->error && entry->env->loader->configure) {
-            size_t len;
-            char *title __cleanup_free;
-            ui_window_t *window;
-            environ_t *prev;
-
-            /* Determine the window title. */
-            len = strlen(entry->name) + 13;
-            title = malloc(len);
-            snprintf(title, len, "Configure '%s'", entry->name);
-
-            prev = current_environ;
-            current_environ = entry->env;
-            window = entry->env->loader->configure(entry->env->loader_private, title);
-            current_environ = prev;
-
-            ui_display(window, ui_console, 0);
-            ui_window_destroy(window);
+            display_config_menu(ui_console, entry->env, entry->name);
             return INPUT_RENDER_WINDOW;
         } else {
             return INPUT_HANDLED;
@@ -151,17 +163,44 @@ static menu_entry_t *get_default_entry(void) {
     return list_first(&menu_entries, menu_entry_t, header);
 }
 
+/** Check if the user requested the menu to be displayed with a key press.
+ * @return              Whether the menu should be displayed. */
+static bool check_key_press(void) {
+    /* Wait half a second for Esc to be pressed. */
+    delay(500);
+    while (console_poll(&main_console)) {
+        uint16_t key = console_getc(&main_console);
+
+        if (key == CONSOLE_KEY_F8) {
+            return true;
+        } else if (key == CONSOLE_KEY_F2) {
+            shell_main();
+        }
+    }
+
+    return false;
+}
+
+
 /** Display the menu interface.
  * @return              Environment to boot. */
 environ_t *menu_display(void) {
-    ui_window_t *window;
     const value_t *value;
     bool display;
     unsigned timeout;
 
-    /* Assume if no entries are declared the root environment is bootable. */
-    if (list_empty(&menu_entries))
+    if (list_empty(&menu_entries)) {
+        /* Assume if no entries are declared the root environment is bootable.
+         * If it is not an error will be raised in loader_main(). We do give
+         * the user the option to bring up the configuration menu by pressing
+         * escape here. */
+        if (root_environ->loader && root_environ->loader->configure) {
+            if (check_key_press())
+                display_config_menu(&main_console, root_environ, NULL);
+        }
+
         return root_environ;
+    }
 
     /* Determine the default entry. */
     selected_menu_entry = get_default_entry();
@@ -169,29 +208,19 @@ environ_t *menu_display(void) {
     /* Check if the menu was requested to be hidden. */
     value = environ_lookup(root_environ, "hidden");
     if (value && value->type == VALUE_TYPE_BOOLEAN && value->boolean) {
-        display = false;
+        /* Don't set a timeout if the user manually enters the menu. */
         timeout = 0;
-
-        /* Wait half a second for Esc to be pressed. */
-        delay(500);
-        while (console_poll(&main_console)) {
-            if (console_getc(&main_console) == '\e') {
-                /* We don't set a timeout if forced to show. */
-                display = true;
-                break;
-            }
-        }
+        display = check_key_press();
     } else {
-        display = true;
-
         /* Get the timeout. */
         value = environ_lookup(root_environ, "timeout");
         timeout = (value && value->type == VALUE_TYPE_INTEGER) ? value->integer : 0;
+
+        display = true;
     }
 
     if (display) {
-        /* Build the UI. */
-        window = ui_list_create("Boot Menu", false);
+        ui_window_t *window = ui_list_create("Boot Menu", false);
 
         list_foreach(&menu_entries, iter) {
             menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
@@ -210,8 +239,8 @@ environ_t *menu_display(void) {
             return selected_menu_entry->env;
         }
     } else {
+        /* Selected entry is set NULL to indicate that F2 was pressed. */
         shell_main();
-        target_reboot();
     }
 }
 
@@ -263,8 +292,6 @@ static bool config_cmd_entry(value_list_t *args) {
         /* We don't return an error here. We store the error string, and will
          * display it when the user attempts to boot the failed entry. */
         assert(entry->error);
-    } else if (!entry->env->loader) {
-        config_error("No operating system loader set");
     }
 
     config_set_error_handler(prev_handler);

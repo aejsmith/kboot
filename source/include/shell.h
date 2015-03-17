@@ -26,6 +26,6 @@
 
 extern bool shell_enabled;
 
-extern void shell_main(void);
+extern void shell_main(void) __noreturn;
 
 #endif /* __SHELL_H */

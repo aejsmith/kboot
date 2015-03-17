@@ -92,20 +92,21 @@ static int shell_input_helper(unsigned nest) {
 }
 
 /** Main function of the shell. */
-void shell_main(void) {
+__noreturn void shell_main(void) {
     config_error_handler_t prev_handler;
 
     assert(shell_enabled);
 
+    // FIXME
     if (main_console.out && main_console.in) {
         config_console = &main_console;
     } else if (debug_console.out && debug_console.in) {
         config_console = &debug_console;
     } else {
-        return;
+        target_reboot();
     }
 
-    current_environ = root_environ;
+    current_environ = environ_create(root_environ);
 
     prev_handler = config_set_error_handler(shell_error_handler);
 
@@ -129,6 +130,4 @@ void shell_main(void) {
                 environ_boot(current_environ);
         }
     }
-
-    config_set_error_handler(prev_handler);
 }

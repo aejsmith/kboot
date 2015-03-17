@@ -147,15 +147,9 @@ static void generate_config(multiboot_mount_t *mount) {
     multiboot_file_t *file;
 
     /* Take a wild guess at the maximum file size for now. */
-    count = 2048;
+    count = 1024;
     offset = 0;
     buf = malloc(count);
-
-    /* Write the preamble. We still put things in an entry here rather than just
-     * putting the kboot command at top level to allow the user to break into
-     * the configuration interface. */
-    offset += snprintf(buf + offset, count - offset, "set \"hidden\" true\n");
-    offset += snprintf(buf + offset, count - offset, "entry \"KBoot Kernel\" {\n");
 
     /* Get the kernel image. */
     file = list_first(&mount->files, multiboot_file_t, header);
@@ -193,7 +187,7 @@ static void generate_config(multiboot_mount_t *mount) {
                 if (*pos)
                     *pos++ = 0;
 
-                offset += snprintf(buf + offset, count - offset, "    set \"%s\" %s\n", name, value);
+                offset += snprintf(buf + offset, count - offset, "set \"%s\" %s\n", name, value);
             } else {
                 pos++;
             }
@@ -201,7 +195,7 @@ static void generate_config(multiboot_mount_t *mount) {
     }
 
     /* Add the kernel load command. */
-    offset += snprintf(buf + offset, count - offset, "    kboot \"%s\"", file->entry.name);
+    offset += snprintf(buf + offset, count - offset, "kboot \"%s\"", file->entry.name);
 
     /* Add all modules. */
     if (file != list_last(&mount->files, multiboot_file_t, header)) {
@@ -209,13 +203,13 @@ static void generate_config(multiboot_mount_t *mount) {
 
         while (file != list_last(&mount->files, multiboot_file_t, header)) {
             file = list_next(file, header);
-            offset += snprintf(buf + offset, count - offset, "        \"%s\"\n", file->entry.name);
+            offset += snprintf(buf + offset, count - offset, "    \"%s\"\n", file->entry.name);
         }
 
-        offset += snprintf(buf + offset, count - offset, "    ]");
+        offset += snprintf(buf + offset, count - offset, "]\n");
+    } else {
+        offset += snprintf(buf + offset, count - offset, "\n");
     }
-
-    offset += snprintf(buf + offset, count - offset, "\n}\n");
 
     /* Create a file for the entry. */
     file = malloc(sizeof(*file));
