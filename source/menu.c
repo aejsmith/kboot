@@ -55,7 +55,7 @@ static menu_entry_t *selected_menu_entry;
 static void menu_entry_render(ui_entry_t *_entry) {
     menu_entry_t *entry = (menu_entry_t *)_entry;
 
-    ui_printf("%s", entry->name);
+    printf("%s", entry->name);
 }
 
 /** Write the help text for a menu entry.
@@ -72,10 +72,9 @@ static void menu_entry_help(ui_entry_t *_entry) {
 }
 
 /** Display the configuration menu for an entry.
- * @param console       Console to display on.
  * @param env           Environment for the entry.
  * @param name          Name of the entry (NULL for root). */
-static void display_config_menu(console_t *console, environ_t *env, const char *name) {
+static void display_config_menu(environ_t *env, const char *name) {
     char *title;
     ui_window_t *window;
     environ_t *prev;
@@ -92,7 +91,7 @@ static void display_config_menu(console_t *console, environ_t *env, const char *
     window = env->loader->configure(env->loader_private, (name) ? title : "Configure");
     current_environ = prev;
 
-    ui_display(window, console, 0);
+    ui_display(window, 0);
     ui_window_destroy(window);
 
     if (name)
@@ -112,7 +111,7 @@ static input_result_t menu_entry_input(ui_entry_t *_entry, uint16_t key) {
         return INPUT_CLOSE;
     case CONSOLE_KEY_F1:
         if (!entry->error && entry->env->loader->configure) {
-            display_config_menu(ui_console, entry->env, entry->name);
+            display_config_menu(entry->env, entry->name);
             return INPUT_RENDER_WINDOW;
         } else {
             return INPUT_HANDLED;
@@ -168,8 +167,8 @@ static menu_entry_t *get_default_entry(void) {
 static bool check_key_press(void) {
     /* Wait half a second for Esc to be pressed. */
     delay(500);
-    while (console_poll(&main_console)) {
-        uint16_t key = console_getc(&main_console);
+    while (console_poll(current_console)) {
+        uint16_t key = console_getc(current_console);
 
         if (key == CONSOLE_KEY_F8) {
             return true;
@@ -196,7 +195,7 @@ environ_t *menu_display(void) {
          * escape here. */
         if (root_environ->loader && root_environ->loader->configure) {
             if (check_key_press())
-                display_config_menu(&main_console, root_environ, NULL);
+                display_config_menu(root_environ, NULL);
         }
 
         return root_environ;
@@ -227,7 +226,7 @@ environ_t *menu_display(void) {
             ui_list_insert(window, &entry->entry, entry == selected_menu_entry);
         }
 
-        ui_display(window, &main_console, timeout);
+        ui_display(window, timeout);
     }
 
     if (selected_menu_entry) {

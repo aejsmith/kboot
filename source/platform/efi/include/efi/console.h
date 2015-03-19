@@ -22,7 +22,6 @@
 #ifndef __EFI_CONSOLE_H
 #define __EFI_CONSOLE_H
 
-extern void efi_console_init(void);
 extern void efi_console_reset(void);
 
 #endif /* __EFI_CONSOLE_H */

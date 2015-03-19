@@ -112,9 +112,6 @@ typedef struct ui_textview {
 static uint16_t ui_console_width;
 static uint16_t ui_console_height;
 
-/** Console that the UI is running on. */
-console_t *ui_console;
-
 /** Dimensions of the content area. */
 #define CONTENT_WIDTH               (ui_console_width - 4)
 #define CONTENT_HEIGHT              (ui_console_height - 6)
@@ -143,38 +140,38 @@ void ui_entry_destroy(ui_entry_t *entry) {
 void ui_print_action(uint16_t key, const char *name) {
     switch (key) {
     case CONSOLE_KEY_UP:
-        ui_printf("Up");
+        printf("Up");
         break;
     case CONSOLE_KEY_DOWN:
-        ui_printf("Down");
+        printf("Down");
         break;
     case CONSOLE_KEY_LEFT:
-        ui_printf("Left");
+        printf("Left");
         break;
     case CONSOLE_KEY_RIGHT:
-        ui_printf("Right");
+        printf("Right");
         break;
     case CONSOLE_KEY_HOME:
-        ui_printf("Home");
+        printf("Home");
         break;
     case CONSOLE_KEY_END:
-        ui_printf("End");
+        printf("End");
         break;
     case CONSOLE_KEY_F1 ... CONSOLE_KEY_F10:
-        ui_printf("F%u", key + 1 - CONSOLE_KEY_F1);
+        printf("F%u", key + 1 - CONSOLE_KEY_F1);
         break;
     case '\n':
-        ui_printf("Enter");
+        printf("Enter");
         break;
     case '\e':
-        ui_printf("Esc");
+        printf("Esc");
         break;
     default:
-        ui_printf("%c", key & 0xFF);
+        printf("%c", key & 0xFF);
         break;
     }
 
-    ui_printf(" = %s  ", name);
+    printf(" = %s  ", name);
 }
 
 /** Set the draw region to the title region. */
@@ -187,8 +184,8 @@ static inline void set_title_region(void) {
     region.height = 1;
     region.scrollable = false;
 
-    console_set_region(ui_console, &region);
-    console_set_colour(ui_console, COLOUR_WHITE, COLOUR_BLACK);
+    console_set_region(current_console, &region);
+    console_set_colour(current_console, COLOUR_WHITE, COLOUR_BLACK);
 }
 
 /** Set the draw region to the help region. */
@@ -201,8 +198,8 @@ static inline void set_help_region(void) {
     region.height = 1;
     region.scrollable = false;
 
-    console_set_region(ui_console, &region);
-    console_set_colour(ui_console, COLOUR_WHITE, COLOUR_BLACK);
+    console_set_region(current_console, &region);
+    console_set_colour(current_console, COLOUR_WHITE, COLOUR_BLACK);
 }
 
 /** Set the draw region to the error region. */
@@ -215,8 +212,8 @@ static inline void set_error_region(void) {
     region.height = 1;
     region.scrollable = false;
 
-    console_set_region(ui_console, &region);
-    console_set_colour(ui_console, COLOUR_YELLOW, COLOUR_BLACK);
+    console_set_region(current_console, &region);
+    console_set_colour(current_console, COLOUR_YELLOW, COLOUR_BLACK);
 }
 
 /** Set the draw region to the content region. */
@@ -229,8 +226,8 @@ static inline void set_content_region(void) {
     region.height = CONTENT_HEIGHT;
     region.scrollable = false;
 
-    console_set_region(ui_console, &region);
-    console_set_colour(ui_console, COLOUR_LIGHT_GREY, COLOUR_BLACK);
+    console_set_region(current_console, &region);
+    console_set_colour(current_console, COLOUR_LIGHT_GREY, COLOUR_BLACK);
 }
 
 /** Render help text for a window.
@@ -244,28 +241,28 @@ static void render_help(ui_window_t *window, unsigned timeout, bool update) {
     bool visible;
 
     if (update) {
-        console_get_region(ui_console, &region);
-        console_get_cursor(ui_console, &x, &y, &visible);
+        console_get_region(current_console, &region);
+        console_get_cursor(current_console, &x, &y, &visible);
     }
 
     set_help_region();
 
     /* Do not need to clear if this is not an update. */
     if (update)
-        console_clear(ui_console, 0, 0, 0, 0);
+        console_clear(current_console, 0, 0, 0, 0);
 
     window->type->help(window);
 
     /* Only draw timeout if it is non-zero. */
     if (timeout) {
-        console_set_cursor(ui_console, 0 - ((timeout >= 10) ? 12 : 11), 0, false);
-        ui_printf("%u second(s)", timeout);
+        console_set_cursor(current_console, 0 - ((timeout >= 10) ? 12 : 11), 0, false);
+        printf("%u second(s)", timeout);
     }
 
     if (update) {
-        console_set_region(ui_console, &region);
-        console_set_colour(ui_console, COLOUR_LIGHT_GREY, COLOUR_BLACK);
-        console_set_cursor(ui_console, x, y, visible);
+        console_set_region(current_console, &region);
+        console_set_colour(current_console, COLOUR_LIGHT_GREY, COLOUR_BLACK);
+        console_set_cursor(current_console, x, y, visible);
     }
 }
 
@@ -276,17 +273,17 @@ static void render_window(ui_window_t *window, unsigned timeout) {
     draw_region_t region;
 
     /* Clear the console and save its dimensions for convenient access. */
-    console_reset(ui_console);
-    console_get_region(ui_console, &region);
+    console_reset(current_console);
+    console_get_region(current_console, &region);
     ui_console_width = region.width;
     ui_console_height = region.height;
 
     /* Disable the cursor. */
-    console_set_cursor(ui_console, 0, 0, false);
+    console_set_cursor(current_console, 0, 0, false);
 
     /* Draw the title. */
     set_title_region();
-    ui_printf("%s", window->title);
+    printf("%s", window->title);
 
     /* Draw the help text. */
     render_help(window, timeout, false);
@@ -298,23 +295,21 @@ static void render_window(ui_window_t *window, unsigned timeout) {
 
 /** Display a user interface.
  * @param window        Window to display.
- * @param console       Console to display on.
  * @param timeout       Seconds to wait before closing the window if no input.
  *                      If 0, the window will not time out. */
-void ui_display(ui_window_t *window, console_t *console, unsigned timeout) {
+void ui_display(ui_window_t *window, unsigned timeout) {
     mstime_t msecs;
 
-    if (!console->out || !console->in)
+    if (!console_has_caps(current_console, CONSOLE_CAP_UI | CONSOLE_CAP_IN))
         return;
 
-    ui_console = console;
     render_window(window, timeout);
 
     /* Handle input until told to exit. */
     msecs = secs_to_msecs(timeout);
     while (true) {
         if (timeout) {
-            if (console_poll(ui_console)) {
+            if (console_poll(current_console)) {
                 timeout = 0;
                 render_help(window, timeout, true);
             } else {
@@ -330,7 +325,7 @@ void ui_display(ui_window_t *window, console_t *console, unsigned timeout) {
                 }
             }
         } else {
-            uint16_t key = console_getc(ui_console);
+            uint16_t key = console_getc(current_console);
             input_result_t result = window->type->input(window, key);
             bool done = false;
 
@@ -356,7 +351,7 @@ void ui_display(ui_window_t *window, console_t *console, unsigned timeout) {
         }
     }
 
-    console_reset(ui_console);
+    console_reset(current_console);
 }
 
 /** Destroy a list window.
@@ -378,26 +373,26 @@ static void render_entry(ui_entry_t *entry, size_t pos, bool selected) {
     draw_region_t region, content;
 
     /* Work out where to put the entry. */
-    console_get_region(ui_console, &content);
+    console_get_region(current_console, &content);
     region.x = content.x;
     region.y = content.y + pos;
     region.width = content.width;
     region.height = 1;
     region.scrollable = false;
-    console_set_region(ui_console, &region);
+    console_set_region(current_console, &region);
 
     /* Clear the area. If the entry is selected, it should be highlighted. */
-    console_set_colour(ui_console,
+    console_set_colour(current_console,
         (selected) ? COLOUR_BLACK : COLOUR_LIGHT_GREY,
         (selected) ? COLOUR_LIGHT_GREY : COLOUR_BLACK);
-    console_clear(ui_console, 0, 0, 0, 0);
+    console_clear(current_console, 0, 0, 0, 0);
 
     /* Render the entry. */
     entry->type->render(entry);
 
     /* Restore content region and colour. */
-    console_set_region(ui_console, &content);
-    console_set_colour(ui_console, COLOUR_LIGHT_GREY, COLOUR_BLACK);
+    console_set_region(current_console, &content);
+    console_set_colour(current_console, COLOUR_LIGHT_GREY, COLOUR_BLACK);
 }
 
 /** Render a list window.
@@ -456,7 +451,7 @@ static input_result_t ui_list_input(ui_window_t *window, uint16_t key) {
         list->selected--;
         if (list->selected < list->offset) {
             list->offset--;
-            console_scroll_up(ui_console);
+            console_scroll_up(current_console);
         }
 
         /* Draw the new entry highlighted. */
@@ -477,7 +472,7 @@ static input_result_t ui_list_input(ui_window_t *window, uint16_t key) {
         list->selected++;
         if (list->selected >= list->offset + CONTENT_HEIGHT) {
             list->offset++;
-            console_scroll_down(ui_console);
+            console_scroll_down(current_console);
         }
 
         /* Draw the new entry highlighted. */
@@ -562,9 +557,9 @@ bool ui_list_empty(ui_window_t *window) {
 static void ui_link_render(ui_entry_t *entry) {
     ui_link_t *link = (ui_link_t *)entry;
 
-    ui_printf("%s", link->window->title);
-    console_set_cursor(ui_console, -2, 0, false);
-    ui_printf("->");
+    printf("%s", link->window->title);
+    console_set_cursor(current_console, -2, 0, false);
+    printf("->");
 }
 
 /** Write the help text for a link.
@@ -582,7 +577,7 @@ static input_result_t ui_link_input(ui_entry_t *entry, uint16_t key) {
 
     switch (key) {
     case '\n':
-        ui_display(link->window, ui_console, 0);
+        ui_display(link->window, 0);
         return INPUT_RENDER_WINDOW;
     default:
         return INPUT_HANDLED;
@@ -629,9 +624,9 @@ ui_entry_t *ui_entry_create(const char *label, value_t *value) {
 static void ui_checkbox_render(ui_entry_t *entry) {
     ui_checkbox_t *box = (ui_checkbox_t *)entry;
 
-    ui_printf("%s", box->label);
-    console_set_cursor(ui_console, -3, 0, false);
-    ui_printf("[%c]", (box->value->boolean) ? 'x' : ' ');
+    printf("%s", box->label);
+    console_set_cursor(current_console, -3, 0, false);
+    printf("[%c]", (box->value->boolean) ? 'x' : ' ');
 }
 
 /** Write the help text for a checkbox.
@@ -685,7 +680,7 @@ ui_entry_t *ui_checkbox_create(const char *label, value_t *value) {
 static void ui_textbox_editor_render(ui_window_t *window) {
     ui_textbox_editor_t *editor = (ui_textbox_editor_t *)window;
 
-    console_set_cursor(ui_console, 0, 0, true);
+    console_set_cursor(current_console, 0, 0, true);
     line_editor_output(&editor->editor);
 }
 
@@ -703,14 +698,14 @@ static void ui_textbox_editor_help(ui_window_t *window) {
 static void ui_textbox_editor_error_handler(const char *cmd, const char *fmt, va_list args) {
     uint16_t x, y;
 
-    console_get_cursor(ui_console, &x, &y, NULL);
+    console_get_cursor(current_console, &x, &y, NULL);
     set_error_region();
-    console_clear(ui_console, 0, 0, 0, 0);
+    console_clear(current_console, 0, 0, 0, 0);
 
-    ui_vprintf(fmt, args);
+    vprintf(fmt, args);
 
     set_content_region();
-    console_set_cursor(ui_console, x, y, true);
+    console_set_cursor(current_console, x, y, true);
 }
 
 /** Handle input on a textbox editor window.
@@ -740,7 +735,7 @@ static input_result_t ui_textbox_editor_input(ui_window_t *window, uint16_t key)
         } else {
             size_t offset = editor->editor.offset;
 
-            line_editor_init(&editor->editor, ui_console, value->string);
+            line_editor_init(&editor->editor, current_console, value->string);
             editor->editor.offset = offset;
 
             free(value->string);
@@ -773,19 +768,19 @@ static void ui_textbox_render(ui_entry_t *entry) {
     ui_textbox_t *box = (ui_textbox_t *)entry;
     size_t len, avail;
 
-    ui_printf("%s", box->label);
+    printf("%s", box->label);
 
     /* Work out the length available to put the string value in. */
     avail = CONTENT_WIDTH - strlen(box->label) - 3;
     len = strlen(box->value->string);
     if (len > avail) {
-        ui_printf(" [");
+        printf(" [");
         for (size_t i = 0; i < avail - 3; i++)
-            console_putc(ui_console, box->value->string[i]);
-        ui_printf("...]");
+            console_putc(current_console, box->value->string[i]);
+        printf("...]");
     } else {
-        console_set_cursor(ui_console, 0 - len - 2, 0, false);
-        ui_printf("[%s]", box->value->string);
+        console_set_cursor(current_console, 0 - len - 2, 0, false);
+        printf("[%s]", box->value->string);
     }
 }
 
@@ -815,9 +810,9 @@ static input_result_t ui_textbox_input(ui_entry_t *entry, uint16_t key) {
         editor.window.type = &ui_textbox_editor_window_type;
         editor.window.title = title;
         editor.box = box;
-        line_editor_init(&editor.editor, ui_console, box->value->string);
+        line_editor_init(&editor.editor, current_console, box->value->string);
 
-        ui_display(&editor.window, ui_console, 0);
+        ui_display(&editor.window, 0);
         return INPUT_RENDER_WINDOW;
     } else {
         return INPUT_HANDLED;
@@ -864,7 +859,7 @@ static void ui_chooser_render(ui_entry_t *entry) {
 
     assert(chooser->selected);
 
-    ui_printf("%s", chooser->label);
+    printf("%s", chooser->label);
 
     if (chooser->selected->label) {
         snprintf(buf, sizeof(buf), "%s", chooser->selected->label);
@@ -888,13 +883,13 @@ static void ui_chooser_render(ui_entry_t *entry) {
     avail = CONTENT_WIDTH - strlen(chooser->label) - 3;
     len = strlen(buf);
     if (len > avail) {
-        ui_printf(" [");
+        printf(" [");
         for (size_t i = 0; i < avail - 3; i++)
-            console_putc(ui_console, buf[i]);
-        ui_printf("...]");
+            console_putc(current_console, buf[i]);
+        printf("...]");
     } else {
-        console_set_cursor(ui_console, 0 - len - 2, 0, false);
-        ui_printf("[%s]", buf);
+        console_set_cursor(current_console, 0 - len - 2, 0, false);
+        printf("[%s]", buf);
     }
 }
 
@@ -912,7 +907,7 @@ static input_result_t ui_chooser_input(ui_entry_t *entry, uint16_t key) {
     ui_chooser_t *chooser = (ui_chooser_t *)entry;
 
     if (key == '\n') {
-        ui_display(chooser->list, ui_console, 0);
+        ui_display(chooser->list, 0);
         return INPUT_RENDER_WINDOW;
     } else {
         return INPUT_HANDLED;
@@ -978,17 +973,17 @@ static void ui_choice_render(ui_entry_t *entry) {
     ui_choice_t *choice = (ui_choice_t *)entry;
 
     if (choice->label) {
-        ui_printf("%s", choice->label);
+        printf("%s", choice->label);
     } else {
         switch (choice->value.type) {
         case VALUE_TYPE_INTEGER:
-            ui_printf("%" PRIu64, choice->value.integer);
+            printf("%" PRIu64, choice->value.integer);
             break;
         case VALUE_TYPE_BOOLEAN:
-            ui_printf((choice->value.boolean) ? "True" : "False");
+            printf((choice->value.boolean) ? "True" : "False");
             break;
         case VALUE_TYPE_STRING:
-            ui_printf("%s", choice->value.string);
+            printf("%s", choice->value.string);
             break;
         default:
             unreachable();
@@ -1065,10 +1060,10 @@ static void ui_textview_destroy(ui_window_t *window) {
  * @param line          Index of line to print. */
 static void render_textview_line(ui_textview_t *textview, size_t line) {
     for (size_t i = 0; i < textview->lines[line].len; i++)
-        console_putc(ui_console, textview->buf[(textview->lines[line].start + i) % textview->size]);
+        console_putc(current_console, textview->buf[(textview->lines[line].start + i) % textview->size]);
 
     if (textview->lines[line].len < CONTENT_WIDTH)
-        console_putc(ui_console, '\n');
+        console_putc(current_console, '\n');
 }
 
 /** Render a text view window.
@@ -1105,16 +1100,16 @@ static input_result_t ui_textview_input(ui_window_t *window, uint16_t key) {
     switch (key) {
     case CONSOLE_KEY_UP:
         if (textview->offset) {
-            console_scroll_up(ui_console);
-            console_set_cursor(ui_console, 0, 0, false);
+            console_scroll_up(current_console);
+            console_set_cursor(current_console, 0, 0, false);
             render_textview_line(textview, --textview->offset);
         }
 
         return INPUT_HANDLED;
     case CONSOLE_KEY_DOWN:
         if ((textview->count - textview->offset) > CONTENT_HEIGHT) {
-            console_scroll_down(ui_console);
-            console_set_cursor(ui_console, 0, -1, false);
+            console_scroll_down(current_console);
+            console_set_cursor(current_console, 0, -1, false);
             render_textview_line(textview, textview->offset++ + CONTENT_HEIGHT);
         }
 

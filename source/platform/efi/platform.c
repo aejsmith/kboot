@@ -19,7 +19,6 @@
  * @brief               EFI platform main functions.
  */
 
-#include <efi/console.h>
 #include <efi/disk.h>
 #include <efi/efi.h>
 #include <efi/memory.h>
@@ -27,6 +26,7 @@
 
 #include <lib/string.h>
 
+#include <console.h>
 #include <device.h>
 #include <loader.h>
 
@@ -58,7 +58,8 @@ __noreturn void efi_main(efi_handle_t image_handle, efi_system_table_t *system_t
      * image. Disable it. */
     efi_call(efi_boot_services->set_watchdog_timer, 0, 0, 0, NULL);
 
-    efi_console_init();
+    console_init();
+
     efi_memory_init();
     efi_video_init();
 

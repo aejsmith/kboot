@@ -339,11 +339,11 @@ static bool config_cmd_ls_cb(const fs_entry_t *entry, void *arg) {
 
     ret = fs_open_entry(entry, FILE_TYPE_NONE, &handle);
     if (ret != STATUS_SUCCESS) {
-        config_printf("ls: warning: Failed to open entry '%s'\n", entry->name);
+        printf("ls: warning: Failed to open entry '%s'\n", entry->name);
         return true;
     }
 
-    config_printf(
+    printf(
         "%-5s %-10" PRIu64 " %s\n",
         (handle->type == FILE_TYPE_DIR) ? "Dir" : "File", handle->size, entry->name);
 
@@ -373,8 +373,8 @@ static bool config_cmd_ls(value_list_t *args) {
         return false;
     }
 
-    config_printf("F/D   Size       Name\n");
-    config_printf("---   ----       ----\n");
+    printf("F/D   Size       Name\n");
+    printf("---   ----       ----\n");
 
     ret = fs_iterate(handle, config_cmd_ls_cb, NULL);
     if (ret != STATUS_SUCCESS) {
@@ -433,7 +433,7 @@ static bool config_cmd_cat(value_list_t *args) {
 
             buf[size] = 0;
 
-            config_printf("%s", buf);
+            printf("%s", buf);
 
             offset += size;
         }

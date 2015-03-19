@@ -26,7 +26,6 @@
 
 #include <platform/loader.h>
 
-#include <console.h>
 #include <status.h>
 #include <types.h>
 
@@ -148,6 +147,11 @@ static inline __noreturn void target_exit(void) { target_reboot(); }
 
 extern void boot_error(const char *fmt, ...) __printf(1, 2) __noreturn;
 extern void internal_error(const char *fmt, ...) __printf(1, 2) __noreturn;
+
+extern int vprintf(const char *fmt, va_list args);
+extern int printf(const char *fmt, ...) __printf(1, 2);
+extern int dvprintf(const char *fmt, va_list args);
+extern int dprintf(const char *fmt, ...) __printf(1, 2);
 
 extern void loader_main(void) __noreturn;
 

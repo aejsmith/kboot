@@ -398,7 +398,7 @@ void kmain(uint32_t magic, kboot_tag_t *tags) {
     }
 
     mm_init(tags);
-    console_init(tags);
+    primary_console_init(tags);
 
     printf("Test kernel loaded: magic: 0x%x, tags: %p\n", magic, tags);
 

@@ -45,8 +45,8 @@ bool shell_enabled;
  * @param fmt           Error format string.
  * @param args          Arguments to substitute into format. */
 static void shell_error_handler(const char *cmd, const char *fmt, va_list args) {
-    console_vprintf(config_console, fmt, args);
-    console_putc(config_console, '\n');
+    console_vprintf(current_console, fmt, args);
+    console_putc(current_console, '\n');
 }
 
 /** Input helper for the shell.
@@ -66,17 +66,17 @@ static int shell_input_helper(unsigned nest) {
             return EOF;
         } else {
             /* Expecting more input, get another line. */
-            console_set_colour(config_console, COLOUR_WHITE, CONSOLE_COLOUR_BG);
-            config_printf("> ");
-            console_set_colour(config_console, CONSOLE_COLOUR_FG, CONSOLE_COLOUR_BG);
+            console_set_colour(current_console, COLOUR_WHITE, COLOUR_DEFAULT);
+            printf("> ");
+            console_set_colour(current_console, COLOUR_DEFAULT, COLOUR_DEFAULT);
         }
     }
 
-    line_editor_init(&shell_line_editor, config_console, NULL);
+    line_editor_init(&shell_line_editor, current_console, NULL);
 
     /* Accumulate another line. */
     while (true) {
-        uint16_t key = console_getc(config_console);
+        uint16_t key = console_getc(current_console);
 
         /* Parser requires a new line at the end of the buffer to work properly,
          * so always add here. */
@@ -97,14 +97,8 @@ __noreturn void shell_main(void) {
 
     assert(shell_enabled);
 
-    // FIXME
-    if (main_console.out && main_console.in) {
-        config_console = &main_console;
-    } else if (debug_console.out && debug_console.in) {
-        config_console = &debug_console;
-    } else {
+    if (!console_has_caps(current_console, CONSOLE_CAP_OUT | CONSOLE_CAP_IN))
         target_reboot();
-    }
 
     current_environ = environ_create(root_environ);
 
@@ -113,9 +107,9 @@ __noreturn void shell_main(void) {
     while (true) {
         command_list_t *list;
 
-        console_set_colour(config_console, COLOUR_WHITE, CONSOLE_COLOUR_BG);
-        config_printf("KBoot> ");
-        console_set_colour(config_console, CONSOLE_COLOUR_FG, CONSOLE_COLOUR_BG);
+        console_set_colour(current_console, COLOUR_WHITE, CONSOLE_COLOUR_BG);
+        printf("KBoot> ");
+        console_set_colour(current_console, CONSOLE_COLOUR_FG, CONSOLE_COLOUR_BG);
 
         shell_line = NULL;
         shell_line_offset = shell_line_len = 0;

@@ -22,7 +22,7 @@
 #ifndef __DRIVERS_SERIAL_NS16550_H
 #define __DRIVERS_SERIAL_NS16550_H
 
-#include <types.h>
+#include <drivers/console/serial.h>
 
 /** UART port definitions. */
 #define NS16550_REG_RHR         0       /**< Receive Holding Register (R). */
@@ -30,7 +30,7 @@
 #define NS16550_REG_DLL         0       /**< Divisor Latches Low (R/W). */
 #define NS16550_REG_DLH         1       /**< Divisor Latches High (R/W). */
 #define NS16550_REG_IER         1       /**< Interrupt Enable Register (R/W). */
-#define NS16550_REG_ISR         2       /**< Interrupt Status Register (R). */
+#define NS16550_REG_IIR         2       /**< Interrupt Identification Register (R). */
 #define NS16550_REG_FCR         2       /**< FIFO Control Register (W). */
 #define NS16550_REG_LCR         3       /**< Line Control Register (R/W). */
 #define NS16550_REG_MCR         4       /**< Modem Control Register (R/W). */
@@ -70,12 +70,11 @@
 #define NS16550_LSR_ERR         (1<<7)  /**< Error. */
 
 #ifdef CONFIG_TARGET_NS16550_IO
-    typedef uint16_t ns16550_t;
+    typedef uint16_t ns16550_base_t;
 #else
-    typedef ptr_t ns16550_t;
+    typedef ptr_t ns16550_base_t;
 #endif
 
-extern void ns16550_init(ns16550_t base);
-extern void ns16550_config(ns16550_t base, uint32_t clock_rate, unsigned baud_rate);
+extern serial_port_t *ns16550_register(ns16550_base_t base, unsigned index, uint32_t clock_rate);
 
 #endif /* __DRIVERS_SERIAL_NS16550_H */

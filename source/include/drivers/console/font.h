@@ -19,8 +19,8 @@
  * @brief               Console font.
  */
 
-#ifndef __DRIVERS_VIDEO_FONT_H
-#define __DRIVERS_VIDEO_FONT_H
+#ifndef __DRIVERS_CONSOLE_FONT_H
+#define __DRIVERS_CONSOLE_FONT_H
 
 /** Dimensions of the console font. */
 #define CONSOLE_FONT_WIDTH      8
@@ -28,4 +28,4 @@
 
 extern unsigned char console_font[];
 
-#endif /* __DRIVERS_VIDEO_FONT_H */
+#endif /* __DRIVERS_CONSOLE_FONT_H */

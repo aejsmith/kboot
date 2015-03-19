@@ -241,6 +241,7 @@ static void load_modules(void) {
     mount->device.mount = &mount->mount;
     mount->device.type = DEVICE_TYPE_VIRTUAL;
     mount->device.ops = &multiboot_device_ops;
+    mount->device.name = "mb";
     mount->mount.device = &mount->device;
     mount->mount.case_insensitive = false;
     mount->mount.ops = &multiboot_fs_ops;
@@ -302,7 +303,7 @@ static void load_modules(void) {
     if (!found_config)
         generate_config(mount);
 
-    device_register(&mount->device, "mb");
+    device_register(&mount->device);
     boot_device = &mount->device;
 }
 

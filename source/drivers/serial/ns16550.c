@@ -27,125 +27,166 @@
 #include <loader.h>
 #include <memory.h>
 
-/** 16550 console data. */
-typedef struct ns16550_console {
-    ns16550_t base;                     /**< Base of the 16550 registers. */
-} ns16550_console_t;
-
-#ifdef CONFIG_TARGET_NS16550_IO
-
-/** Read a UART register.
- * @param base          UART registers to read from.
- * @param reg           Register to read.
- * @return              Value read. */
-static inline uint8_t ns16550_read(ns16550_t base, int reg) {
-    return in8(base + reg);
-}
-
-/** Write a UART register.
- * @param base          UART registers to write to.
- * @param reg           Register to read.
- * @param value         Value to write. */
-static inline void ns16550_write(ns16550_t base, int reg, uint8_t value) {
-    out8(base + reg, value);
-}
-
-#else /* CONFIG_TARGET_NS16550_IO */
-
-#ifndef CONFIG_TARGET_NS16550_REG_SHIFT
-#   define CONFIG_TARGET_NS16550_REG_SHIFT  2
+#ifndef CONFIG_TARGET_NS16550_IO
+#   ifndef CONFIG_TARGET_NS16550_REG_SHIFT
+#       define CONFIG_TARGET_NS16550_REG_SHIFT  2
+#   endif
 #endif
 
+/** 16550 serial port structure. */
+typedef struct ns16550_port {
+    serial_port_t port;                 /**< Serial port header. */
+
+    ns16550_base_t base;                /**< Base of the 16550 registers. */
+    uint32_t clock_rate;                /**< Clock rate. */
+} ns16550_port_t;
+
 /** Read a UART register.
- * @param base          UART registers to read from.
+ * @param port          Port to read from.
  * @param reg           Register to read.
  * @return              Value read. */
-static inline uint8_t ns16550_read(ns16550_t base, int reg) {
-    reg = reg << CONFIG_TARGET_NS16550_REG_SHIFT;
-    return read8((void *)(base + reg));
+static inline uint8_t ns16550_read(ns16550_port_t *port, int reg) {
+    #ifdef CONFIG_TARGET_NS16550_IO
+        return in8(port->base + reg);
+    #else
+        reg = reg << CONFIG_TARGET_NS16550_REG_SHIFT;
+        return read8((void *)(port->base + reg));
+    #endif
 }
 
 /** Write a UART register.
- * @param base          UART registers to write to.
+ * @param port          Port to write to.
  * @param reg           Register to read.
  * @param value         Value to write. */
-static inline void ns16550_write(ns16550_t base, int reg, uint8_t value) {
-    reg = reg << CONFIG_TARGET_NS16550_REG_SHIFT;
-    write8((void *)(base + reg), value);
+static inline void ns16550_write(ns16550_port_t *port, int reg, uint8_t value) {
+    #ifdef CONFIG_TARGET_NS16550_IO
+        out8(port->base + reg, value);
+    #else
+        reg = reg << CONFIG_TARGET_NS16550_REG_SHIFT;
+        write8((void *)(port->base + reg), value);
+    #endif
 }
 
-#endif /* CONFIG_TARGET_NS16550_IO */
+/** Set the port configuration.
+ * @param _port         Port to configure.
+ * @param config        Port configuration.
+ * @return              Status code describing the result of the operation. */
+static status_t ns16550_port_config(serial_port_t *_port, const serial_config_t *config) {
+    ns16550_port_t *port = (ns16550_port_t *)_port;
+    uint16_t divisor;
+    uint8_t lcr;
 
-/** Write a character to the serial console.
- * @param _console      Pointer to console.
- * @param ch            Character to write. */
-static void ns16550_console_putc(void *_console, char ch) {
-    ns16550_console_t *console = _console;
+    /* Disable all interrupts, disable the UART while configuring. */
+    ns16550_write(port, NS16550_REG_IER, 0);
+    ns16550_write(port, NS16550_REG_FCR, 0);
 
-    if (ch == '\n')
-        ns16550_console_putc(console, '\r');
+    /* Set DLAB to enable access to divisor registers. */
+    ns16550_write(port, NS16550_REG_LCR, NS16550_LCR_DLAB);
 
-    ns16550_write(console->base, NS16550_REG_THR, ch);
-    while (!(ns16550_read(console->base, NS16550_REG_LSR) & NS16550_LSR_THRE))
-        ;
+    /* Program the divisor to set the baud rate. */
+    divisor = (port->clock_rate / 16) / config->baud_rate;
+    ns16550_write(port, NS16550_REG_DLL, divisor & 0xff);
+    ns16550_write(port, NS16550_REG_DLH, (divisor >> 8) & 0x3f);
+
+    /* Determine the LCR value. */
+    lcr = NS16550_LCR_WLS_5 + config->data_bits - 5;
+    if (config->stop_bits == 2)
+        lcr |= NS16550_LCR_STOP;
+    if (config->parity != SERIAL_PARITY_NONE) {
+        lcr |= NS16550_LCR_PARITY;
+        if (config->parity == SERIAL_PARITY_EVEN)
+            lcr |= NS16550_LCR_EPAR;
+    }
+
+    /* Switch to operational mode. */
+    ns16550_write(port, NS16550_REG_LCR, lcr);
+
+    /* Clear and enable FIFOs. */
+    ns16550_write(port, NS16550_REG_FCR, NS16550_FCR_FIFO_EN | NS16550_FCR_CLEAR_RX | NS16550_FCR_CLEAR_TX);
+
+    /* Enable RTS/DTR. */
+    ns16550_write(port, NS16550_REG_MCR, NS16550_MCR_DTR | NS16550_MCR_RTS);
+
+    return STATUS_SUCCESS;
 }
 
-/** NS16550 UART debug console output operations. */
-static console_out_ops_t ns16550_console_out_ops = {
-    .putc = ns16550_console_putc,
+/** Check whether the RX buffer is empty.
+ * @param _port         Port to check.
+ * @return              Whether the RX buffer is empty. */
+static bool ns16550_port_rx_empty(serial_port_t *_port) {
+    ns16550_port_t *port = (ns16550_port_t *)_port;
+
+    return !(ns16550_read(port, NS16550_REG_LSR) & NS16550_LSR_DR);
+}
+
+/** Read from a port (RX will be non-empty).
+ * @param _port         Port to write to.
+ * @return              Value read from the port. */
+static uint8_t ns16550_port_read(serial_port_t *_port) {
+    ns16550_port_t *port = (ns16550_port_t *)_port;
+
+    return ns16550_read(port, NS16550_REG_RHR);
+}
+
+/** Check whether the TX buffer is empty.
+ * @param _port         Port to check.
+ * @return              Whether the TX buffer is empty. */
+static bool ns16550_port_tx_empty(serial_port_t *_port) {
+    ns16550_port_t *port = (ns16550_port_t *)_port;
+
+    return ns16550_read(port, NS16550_REG_LSR) & NS16550_LSR_THRE;
+}
+
+/** Write to a port (TX will be empty).
+ * @param _port         Port to write to.
+ * @param val           Value to write. */
+static void ns16550_port_write(serial_port_t *_port, uint8_t val) {
+    ns16550_port_t *port = (ns16550_port_t *)_port;
+
+    ns16550_write(port, NS16550_REG_THR, val);
+}
+
+/** NS16550 serial port operations. */
+static serial_port_ops_t ns16550_port_ops = {
+    .config = ns16550_port_config,
+    .rx_empty = ns16550_port_rx_empty,
+    .read = ns16550_port_read,
+    .tx_empty = ns16550_port_tx_empty,
+    .write = ns16550_port_write,
 };
 
 /**
- * Initialise the NS16550 UART as the debug console.
+ * Register a NS16550 UART.
  *
- * Sets the NS16550 UART as the debug console. This function does not
- * reconfigure the UART, that is done by ns16550_config(). The reason for this
- * split is for platforms where we know the UART has already been configured
- * prior to the loader being executed, meaning we can keep that configuration.
+ * Registers a NS16650 UART as a console. This function does not reconfigure
+ * the UART, to do so use serial_port_config(). If no reconfiguration is done,
+ * the UART will continue to use whichever parameters are currently set (e.g.
+ * ones set by platform firmware.
  *
  * @param base          Base of UART registers.
+ * @param index         Index of the UART, used to name the console.
+ * @param clock_rate    UART base clock rate.
+ *
+ * @return              Created port, or NULL if port does not exist.
  */
-void ns16550_init(ns16550_t base) {
-    ns16550_console_t *console;
+serial_port_t *ns16550_register(ns16550_base_t base, unsigned index, uint32_t clock_rate) {
+    ns16550_port_t *port = malloc(sizeof(*port));
 
-    console = malloc(sizeof(*console));
-    console->base = base;
+    port->port.ops = &ns16550_port_ops;
+    port->port.index = index;
+    port->base = base;
+    port->clock_rate = clock_rate;
 
-    /* Wait for the transmit buffer to empty. */
-    while (!(ns16550_read(base, NS16550_REG_LSR) & NS16550_LSR_THRE))
-        ;
+    /* See if this looks like a 16550. Check for registers that are known 0. */
+    if (ns16550_read(port, NS16550_REG_IIR) & 0x30 || ns16550_read(port, NS16550_REG_MCR) & 0xe0) {
+        free(port);
+        return NULL;
+    }
 
-    /* Set the debug console. No input operations needed, we don't need input
-     * on the debug console. */
-    debug_console.out = &ns16550_console_out_ops;
-    debug_console.out_private = console;
-}
+    if (serial_port_register(&port->port) != STATUS_SUCCESS) {
+        free(port);
+        return NULL;
+    }
 
-/** Reconfigure a NS16550 UART.
- * @param base          Base of UART registers.
- * @param clock_rate    Base clock rate.
- * @param baud_rate     Baud rate to use. */
-void ns16550_config(ns16550_t base, uint32_t clock_rate, unsigned baud_rate) {
-    uint16_t divisor;
-
-    /* Disable all interrupts, disable the UART while configuring. */
-    ns16550_write(base, NS16550_REG_IER, 0);
-    ns16550_write(base, NS16550_REG_FCR, 0);
-
-    /* Set DLAB to enable access to divisor registers. */
-    ns16550_write(base, NS16550_REG_LCR, NS16550_LCR_DLAB);
-
-    /* Program the divisor to set the baud rate. */
-    divisor = (clock_rate / 16) / baud_rate;
-    ns16550_write(base, NS16550_REG_DLL, divisor & 0xff);
-    ns16550_write(base, NS16550_REG_DLH, (divisor >> 8) & 0x3f);
-
-    /* Switch to operational mode. */
-    ns16550_write(base, NS16550_REG_LCR, NS16550_LCR_WLS_8);
-
-    /* Clear and enable FIFOs. */
-    ns16550_write(base, NS16550_REG_FCR, NS16550_FCR_FIFO_EN | NS16550_FCR_CLEAR_RX | NS16550_FCR_CLEAR_TX);
-
-    /* Enable RTS/DTR. */
-    ns16550_write(base, NS16550_REG_MCR, NS16550_MCR_DTR | NS16550_MCR_RTS);
+    return &port->port;
 }

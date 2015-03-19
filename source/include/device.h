@@ -69,7 +69,7 @@ typedef struct device {
     device_type_t type;                 /**< Type of the device. */
     const device_ops_t *ops;            /**< Operations for the device (can be NULL). */
 
-    char *name;                         /**< Name of the device. */
+    const char *name;                   /**< Name of the device. */
     struct fs_mount *mount;             /**< Filesystem on the device. */
 } device_t;
 
@@ -78,7 +78,7 @@ extern device_t *boot_device;
 extern status_t device_read(device_t *device, void *buf, size_t count, offset_t offset);
 
 extern device_t *device_lookup(const char *name);
-extern void device_register(device_t *device, const char *name);
+extern void device_register(device_t *device);
 
 extern void target_device_probe(void);
 

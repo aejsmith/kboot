@@ -23,6 +23,7 @@
 
 #include <drivers/serial/ns16550.h>
 
+#include <console.h>
 #include <test.h>
 
 KBOOT_VIDEO(KBOOT_VIDEO_VGA | KBOOT_VIDEO_LFB, 0, 0, 0);
@@ -30,17 +31,11 @@ KBOOT_VIDEO(KBOOT_VIDEO_VGA | KBOOT_VIDEO_LFB, 0, 0, 0);
 /** Serial port definitions. */
 #define SERIAL_PORT         0x3f8
 #define SERIAL_CLOCK        1843200
-#define SERIAL_BAUD_RATE    115200
 
 /** Initialize the debug console. */
 void debug_console_init(void) {
-    uint8_t status;
+    serial_port_t *port = ns16550_register(SERIAL_PORT, 0, SERIAL_CLOCK);
 
-    /* Initialize the serial port as the debug console. TODO: Disable for
-     * non-debug builds? */
-    status = in8(SERIAL_PORT + 6);
-    if ((status & ((1 << 4) | (1 << 5))) && status != 0xff) {
-        ns16550_init(SERIAL_PORT);
-        ns16550_config(SERIAL_PORT, SERIAL_CLOCK, SERIAL_BAUD_RATE);
-    }
+    if (port)
+        debug_console = &port->console;
 }

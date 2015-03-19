@@ -41,7 +41,7 @@
 static LIST_DECLARE(video_modes);
 
 /** Current video mode. */
-static video_mode_t *current_video_mode;
+video_mode_t *current_video_mode;
 
 /** Set a mode as the current mode.
  * @param mode          Mode that is now current.
@@ -49,11 +49,13 @@ static video_mode_t *current_video_mode;
 static void set_current_mode(video_mode_t *mode, bool set_console) {
     current_video_mode = mode;
 
-    if (mode && set_console) {
-        if (mode->ops->console && mode->ops->console->init)
-            main_console.out_private = mode->ops->console->init(mode);
+    if (set_console && mode && mode->ops->create_console) {
+        console_out_t *console = mode->ops->create_console(mode);
 
-        main_console.out = mode->ops->console;
+        primary_console.out = console;
+
+        if (current_console == &primary_console && console && console->ops->init)
+            console->ops->init(console);
     }
 }
 
@@ -62,17 +64,20 @@ static void set_current_mode(video_mode_t *mode, bool set_console) {
  * @param set_console   Whether to set the mode as console. */
 void video_set_mode(video_mode_t *mode, bool set_console) {
     video_mode_t *prev = current_video_mode;
-    bool was_console = prev && prev->ops->console && main_console.out == prev->ops->console;
 
-    if (was_console) {
-        if (prev->ops->console->deinit)
-            prev->ops->console->deinit(main_console.out_private);
+    if (prev && prev->ops->create_console && primary_console.out) {
+        if (current_console == &primary_console && primary_console.out->ops->deinit)
+            primary_console.out->ops->deinit(primary_console.out);
+
+        free(primary_console.out);
     }
+
+    primary_console.out = NULL;
 
     if (mode)
         mode->ops->set_mode(mode);
 
-    set_current_mode(mode, set_console && (!main_console.out || was_console));
+    set_current_mode(mode, set_console);
 }
 
 /**
@@ -173,12 +178,6 @@ video_mode_t *video_parse_and_find_mode(const char *str) {
     bpp = (tok) ? strtoul(tok, NULL, 10) : 0;
 
     return video_find_mode(type, width, height, bpp);
-}
-
-/** Get the current video mode.
- * @return              Current video mode. */
-video_mode_t *video_current_mode(void) {
-    return current_video_mode;
 }
 
 /** Format a video mode string.
@@ -295,14 +294,14 @@ void video_mode_register(video_mode_t *mode, bool current) {
     list_append(&video_modes, &mode->header);
 
     if (current)
-        set_current_mode(mode, !main_console.out);
+        set_current_mode(mode, true);
 }
 
 /**
  * Shell commands.
  */
 
-/** Print a list of video modes.
+/** List available video modes.
  * @param args          Argument list.
  * @return              Whether successful. */
 static bool config_cmd_lsvideo(value_list_t *args) {
@@ -316,14 +315,14 @@ static bool config_cmd_lsvideo(value_list_t *args) {
 
         switch (mode->type) {
         case VIDEO_MODE_VGA:
-            config_printf("vga:%" PRIu32 "x%" PRIu32, mode->width, mode->height);
+            printf("vga:%" PRIu32 "x%" PRIu32, mode->width, mode->height);
             break;
         case VIDEO_MODE_LFB:
-            config_printf("lfb:%" PRIu32 "x%" PRIu32 "x%" PRIu8, mode->width, mode->height, mode->bpp);
+            printf("lfb:%" PRIu32 "x%" PRIu32 "x%" PRIu8, mode->width, mode->height, mode->bpp);
             break;
         }
 
-        config_printf("%s\n", (mode == current_video_mode) ? " (current)" : "");
+        printf("%s\n", (mode == current_video_mode) ? " (current)" : "");
     }
 
     return true;
@@ -331,7 +330,7 @@ static bool config_cmd_lsvideo(value_list_t *args) {
 
 BUILTIN_COMMAND("lsvideo", "List available video modes", config_cmd_lsvideo);
 
-/** Set a video mode on the main console.
+/** Set the current video mode.
  * @param args          Argument list.
  * @return              Whether successful. */
 static bool config_cmd_video(value_list_t *args) {
@@ -345,9 +344,6 @@ static bool config_cmd_video(value_list_t *args) {
     mode = video_parse_and_find_mode(args->values[0].string);
     if (!mode) {
         config_error("Mode '%s' not found", args->values[0].string);
-        return false;
-    } else if (!mode->ops->console) {
-        config_error("Mode '%s' does not support console output", args->values[0].string);
         return false;
     }
 

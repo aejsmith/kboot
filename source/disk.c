@@ -182,7 +182,7 @@ static disk_ops_t partition_disk_ops = {
  * @param blocks        Size in blocks. */
 static void add_partition(disk_device_t *parent, uint8_t id, uint64_t lba, uint64_t blocks) {
     disk_device_t *partition;
-    char name[32];
+    char *name;
 
     partition = malloc(sizeof(*partition));
     partition->device.type = DEVICE_TYPE_DISK;
@@ -196,12 +196,14 @@ static void add_partition(disk_device_t *parent, uint8_t id, uint64_t lba, uint6
     partition->parent = parent;
     partition->partition.offset = lba;
 
-    snprintf(name, sizeof(name), "%s,%u", parent->device.name, id);
+    name = malloc(16);
+    snprintf(name, 16, "%s,%u", parent->device.name, id);
+    partition->device.name = name;
 
     list_init(&partition->partition.link);
     list_append(&parent->raw.partitions, &partition->partition.link);
 
-    device_register(&partition->device, name);
+    device_register(&partition->device);
 
     /* Check if this is the boot partition. */
     if (boot_device == &parent->device && parent->ops->is_boot_partition) {
@@ -230,19 +232,21 @@ static void probe_partitions(disk_device_t *disk) {
  * @param boot          Whether the device is the boot device or contains the
  *                      boot partition. */
 void disk_device_register(disk_device_t *disk, bool boot) {
-    char name[16];
+    char *name;
 
     list_init(&disk->raw.partitions);
 
     /* Assign an ID for the disk and name it. */
     disk->id = next_disk_ids[disk->type]++;
-    snprintf(name, sizeof(name), "%s%u", disk_type_names[disk->type], disk->id);
+    name = malloc(16);
+    snprintf(name, 16, "%s%u", disk_type_names[disk->type], disk->id);
 
     /* Add the device. */
     disk->device.type = DEVICE_TYPE_DISK;
     disk->device.ops = &disk_device_ops;
+    disk->device.name = name;
     disk->device.mount = NULL;
-    device_register(&disk->device, name);
+    device_register(&disk->device);
 
     if (boot)
         boot_device = &disk->device;

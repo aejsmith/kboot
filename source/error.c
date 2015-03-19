@@ -32,13 +32,21 @@
 static const char *boot_error_format;
 static va_list boot_error_args;
 
+/**
+ * Whether message has been displayed once (used to prevent repeated messages
+ * on debug console).
+ */
+static bool error_displayed;
+
 /** Helper for printing error messages.
  * @param ch            Character to display.
  * @param data          Ignored.
  * @param total         Pointer to total character count. */
 static void error_printf_helper(char ch, void *data, int *total) {
-    console_putc(&debug_console, ch);
-    console_putc(&main_console, ch);
+    if (debug_console != current_console && !error_displayed)
+        console_putc(debug_console, ch);
+
+    console_putc(current_console, ch);
 
     *total = *total + 1;
 }
@@ -72,8 +80,8 @@ static void internal_error_backtrace_cb(void *private, ptr_t addr) {
 void __noreturn internal_error(const char *fmt, ...) {
     va_list args;
 
-    if (main_console.out)
-        main_console.out->reset(main_console.out_private);
+    error_displayed = false;
+    console_reset(current_console);
 
     error_printf("\nInternal Error: ");
 
@@ -101,9 +109,11 @@ static void boot_error_message(void) {
     error_printf("\n\n");
     error_printf("Ensure that you have enough memory available, that you do not have any\n");
     error_printf("malfunctioning hardware and that your computer meets the minimum system\n");
-    error_printf("requirements for the operating system.\n");
+    error_printf("requirements for the operating system.\n\n");
 
-    console_putc(&debug_console, '\n');
+    /* Don't display the error again on the debug console - this can happen
+     * otherwise if the user opens the debug log window then returns here. */
+    error_displayed = true;
 }
 
 #ifdef CONFIG_TARGET_HAS_UI
@@ -158,31 +168,40 @@ static ui_window_type_t boot_error_window_type = {
  * @param fmt           Error format string.
  * @param ...           Values to substitute into format. */
 void __noreturn boot_error(const char *fmt, ...) {
-    console_printf(&debug_console, "\nBoot Error: ");
+    error_displayed = false;
 
     /* Save the format string and arguments for UI render code. */
     boot_error_format = fmt;
     va_start(boot_error_args, fmt);
 
     #ifdef CONFIG_TARGET_HAS_UI
-        ui_window_t *window;
+        if (console_has_caps(current_console, CONSOLE_CAP_UI)) {
+            ui_window_t *window;
 
-        window = malloc(sizeof(*window));
-        window->type = &boot_error_window_type;
-        window->title = "Boot Error";
+            window = malloc(sizeof(*window));
+            window->type = &boot_error_window_type;
+            window->title = "Boot Error";
 
-        ui_display(window, &main_console, 0);
-        ui_window_destroy(window);
-    #else
-        /* Just print it straight out on the console. */
-        console_reset(&main_console);
-        console_printf(&main_console, "\nBoot Error: ");
-        boot_error_message();
+            /* Title isn't visible on the debug console. */
+            console_printf(debug_console, "\nBoot Error: ");
+
+            ui_display(window, 0);
+            ui_window_destroy(window);
+
+            /* Jump into the shell (only get here if it is enabled). */
+            shell_main();
+        }
     #endif
 
-    va_end(boot_error_args);
+    /* No UI support, print it straight out on the console. */
+    console_reset(current_console);
+    error_printf("\nBoot Error: ");
+    boot_error_message();
 
-    /* Jump into the shell (will only get here if it is enabled). */
-    shell_main();
-    target_halt();
+    /* Jump into the shell. */
+    if (shell_enabled) {
+        shell_main();
+    } else {
+        target_halt();
+    }
 }

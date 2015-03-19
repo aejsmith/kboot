@@ -26,6 +26,7 @@
 #include <loader/kboot.h>
 
 #include <assert.h>
+#include <console.h>
 #include <memory.h>
 
 #ifdef __LP64__
@@ -65,7 +66,7 @@ void kboot_platform_setup(kboot_loader_t *loader) {
             kboot_tag_efi_t *tag;
 
             /* Disable the debug console, it could now be invalid. */
-            debug_console.out = NULL;
+            console_set_debug(NULL);
 
             tag = kboot_alloc_tag(loader, KBOOT_TAG_EFI, sizeof(*tag) + size);
             tag->type = KBOOT_EFI_TYPE;

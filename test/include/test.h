@@ -31,11 +31,6 @@
 #include <kboot.h>
 #include <loader.h>
 
-#undef vprintf
-#undef printf
-#undef dvprintf
-#undef dprintf
-
 /** Address space definitions. */
 #ifdef __LP64__
 #   define PHYS_MAP_BASE    0xfffffffe00000000
@@ -56,11 +51,8 @@ extern ptr_t virt_alloc(size_t size);
 extern void *phys_map(phys_ptr_t addr, size_t size);
 extern phys_ptr_t phys_alloc(phys_size_t size);
 
-extern int vprintf(const char *fmt, va_list args);
-extern int printf(const char *fmt, ...) __printf(1, 2);
-
 extern void debug_console_init(void);
-extern void console_init(kboot_tag_t *tags);
+extern void primary_console_init(kboot_tag_t *tags);
 extern void mm_init(kboot_tag_t *tags);
 extern void mmu_init(kboot_tag_t *tags);
 

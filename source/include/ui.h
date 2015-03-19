@@ -105,18 +105,12 @@ typedef struct ui_entry {
     ui_entry_type_t *type;              /**< Type of the entry. */
 } ui_entry_t;
 
-extern console_t *ui_console;
-
-/** Versions of printf() to use when rendering the UI. */
-#define ui_vprintf(fmt, args) console_vprintf(ui_console, fmt, args)
-#define ui_printf(fmt...) console_printf(ui_console, fmt)
-
 extern void ui_window_destroy(ui_window_t *window);
 extern void ui_entry_destroy(ui_entry_t *entry);
 
 extern void ui_print_action(uint16_t key, const char *name);
 
-extern void ui_display(ui_window_t *window, console_t *console, unsigned timeout);
+extern void ui_display(ui_window_t *window, unsigned timeout);
 
 extern ui_window_t *ui_list_create(const char *title, bool exitable);
 extern void ui_list_insert(ui_window_t *window, ui_entry_t *entry, bool selected);

@@ -63,18 +63,15 @@ void line_editor_init(line_editor_t *editor, console_t *console, const char *str
 /** Output the line and place the cursor at the current position.
  * @param editor        Line editor state. */
 void line_editor_output(line_editor_t *editor) {
-    uint16_t x, y;
-    bool visible;
+    size_t i;
 
-    for (size_t i = 0; i <= editor->len; i++) {
-        if (i == editor->offset)
-            console_get_cursor(editor->console, &x, &y, &visible);
+    for (i = 0; i < editor->len; i++)
+        console_putc(editor->console, editor->buf[i]);
 
-        if (i < editor->len)
-            console_putc(editor->console, editor->buf[i]);
+    while (i > editor->offset) {
+        console_putc(editor->console, '\b');
+        i--;
     }
-
-    console_set_cursor(editor->console, x, y, visible);
 }
 
 /** Reprint from the current offset, mainting cursor position.
@@ -82,18 +79,20 @@ void line_editor_output(line_editor_t *editor) {
  * @param space         Whether to print an additional space at the end (after
  *                      removing a character). */
 static void reprint_from_current(line_editor_t *editor, bool space) {
-    uint16_t x, y;
-    bool visible;
+    size_t i;
 
-    console_get_cursor(editor->console, &x, &y, &visible);
-
-    for (size_t i = editor->offset; i < editor->len; i++)
+    for (i = editor->offset; i < editor->len; i++)
         console_putc(editor->console, editor->buf[i]);
 
-    if (space)
+    if (space) {
         console_putc(editor->console, ' ');
+        console_putc(editor->console, '\b');
+    }
 
-    console_set_cursor(editor->console, x, y, visible);
+    while (i > editor->offset) {
+        console_putc(editor->console, '\b');
+        i--;
+    }
 }
 
 /** Insert a character to the buffer at the current position.

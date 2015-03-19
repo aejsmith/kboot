@@ -21,22 +21,25 @@
 
 #include <arch/io.h>
 
+#include <bios/bios.h>
+
 #include <drivers/serial/ns16550.h>
 
-#include <bios/bios.h>
+#include <lib/utility.h>
 
 #include <console.h>
 #include <loader.h>
 
 /** Serial port definitions. */
-#define SERIAL_PORT         0x3f8
 #define SERIAL_CLOCK        1843200
-#define SERIAL_BAUD_RATE    115200
+
+/** Array of serial port numbers. */
+static uint16_t serial_ports[] = { 0x3f8, 0x2f8, 0x3e8, 0x2e8 };
 
 /** Check for a character from the console.
- * @param private       Unused.
+ * @param console       Console input device.
  * @return              Whether a character is available. */
-static bool bios_console_poll(void *private) {
+static bool bios_console_poll(console_in_t *console) {
     bios_regs_t regs;
 
     bios_regs_init(&regs);
@@ -46,9 +49,9 @@ static bool bios_console_poll(void *private) {
 }
 
 /** Read a character from the console.
- * @param private       Unused.
+ * @param console       Console input device.
  * @return              Character read. */
-static uint16_t bios_console_getc(void *private) {
+static uint16_t bios_console_getc(console_in_t *console) {
     bios_regs_t regs;
     uint8_t ascii, scan;
 
@@ -97,18 +100,33 @@ static console_in_ops_t bios_console_in_ops = {
     .getc = bios_console_getc,
 };
 
-/** Initialize the console. */
-void bios_console_init(void) {
-    uint8_t status;
+/** BIOS console input device. */
+static console_in_t bios_console_in = {
+    .ops = &bios_console_in_ops,
+};
 
-    /* Initialize the serial port as the debug console. TODO: Disable for
-     * non-debug builds? */
-    status = in8(SERIAL_PORT + 6);
-    if ((status & ((1 << 4) | (1 << 5))) && status != 0xff) {
-        ns16550_init(SERIAL_PORT);
-        ns16550_config(SERIAL_PORT, SERIAL_CLOCK, SERIAL_BAUD_RATE);
+/** Initialize the console. */
+void target_console_init(void) {
+    serial_config_t config;
+
+    config.baud_rate = SERIAL_DEFAULT_BAUD_RATE;
+    config.data_bits = SERIAL_DEFAULT_DATA_BITS;
+    config.parity = SERIAL_DEFAULT_PARITY;
+    config.stop_bits = SERIAL_DEFAULT_STOP_BITS;
+
+    /* Register serial ports. */
+    for (size_t i = 0; i < array_size(serial_ports); i++) {
+        serial_port_t *port = ns16550_register(serial_ports[i], i, SERIAL_CLOCK);
+
+        if (port) {
+            serial_port_config(port, &config);
+
+            /* Register the first as the debug console. */
+            if (i == 0)
+                console_set_debug(&port->console);
+        }
     }
 
     /* Use BIOS for input. */
-    main_console.in = &bios_console_in_ops;
+    primary_console.in = &bios_console_in;
 }

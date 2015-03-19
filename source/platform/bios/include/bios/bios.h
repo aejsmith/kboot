@@ -76,7 +76,6 @@ static inline void bios_regs_init(bios_regs_t *regs) {
 
 extern void bios_call(uint8_t num, bios_regs_t *regs);
 
-extern void bios_console_init(void);
 extern void bios_video_init(void);
 
 extern void bios_main(void) __noreturn;

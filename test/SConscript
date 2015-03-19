@@ -23,7 +23,7 @@ if config['ARCH'] == 'x86':
         'platform/pc/console.c',
         '../source/arch/x86/lib/string.c',
         '../source/drivers/serial/ns16550.c',
-        '../source/drivers/video/vga.c',
+        '../source/drivers/console/vga.c',
     ]
     variants = [
         {
@@ -53,8 +53,9 @@ main_sources = [
     'console.c',
     'main.c',
     'mm.c',
-    '../source/drivers/video/fb.c',
-    '../source/drivers/video/font.c',
+    '../source/drivers/console/fb.c',
+    '../source/drivers/console/font.c',
+    '../source/drivers/console/serial.c',
     '../source/lib/printf.c',
     '../source/lib/string.c',
 ]

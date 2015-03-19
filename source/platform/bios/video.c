@@ -21,7 +21,7 @@
 
 #include <lib/utility.h>
 
-#include <drivers/video/vga.h>
+#include <drivers/console/vga.h>
 
 #include <bios/bios.h>
 #include <bios/vbe.h>
@@ -56,15 +56,19 @@ static void bios_video_set_mode(video_mode_t *_mode) {
         internal_error("Failed to set VBE mode 0x%" PRIx16 " (0x%" PRIx16 ")", mode->num, regs.ax);
 }
 
-/** BIOS VBE video operations. */
-static video_ops_t bios_vbe_video_ops = {
-    .set_mode = &bios_video_set_mode,
-};
+/** Create a console for a mode.
+ * @param _mode         Mode to create for.
+ * @return              Pointer to created console. */
+static console_out_t *bios_video_create_console(video_mode_t *_mode) {
+    bios_video_mode_t *mode = (bios_video_mode_t *)_mode;
 
-/** BIOS VGA video operations. */
-static video_ops_t bios_vga_video_ops = {
-    .console = &vga_console_out_ops,
+    return (mode->num == 3) ? vga_console_create() : NULL;
+}
+
+/** BIOS video operations. */
+static video_ops_t bios_video_ops = {
     .set_mode = &bios_video_set_mode,
+    .create_console = &bios_video_create_console,
 };
 
 /** Detect available video modes. */
@@ -75,11 +79,11 @@ void bios_video_init(void) {
     bios_regs_t regs;
     uint16_t *location;
 
-    /* Register the VGA video mode. This will also set the main console. */
+    /* Register the VGA video mode. */
     mode = malloc(sizeof(*mode));
     mode->num = 3;
     mode->mode.type = VIDEO_MODE_VGA;
-    mode->mode.ops = &bios_vga_video_ops;
+    mode->mode.ops = &bios_video_ops;
     mode->mode.width = VGA_COLS;
     mode->mode.height = VGA_ROWS;
     mode->mode.mem_phys = mode->mode.mem_virt = VGA_MEM_BASE;
@@ -136,11 +140,10 @@ void bios_video_init(void) {
             continue;
         }
 
-        /* Add the mode to the list. */
         mode = malloc(sizeof(*mode));
         mode->num = location[i] | VBE_MODE_LFB;
         mode->mode.type = VIDEO_MODE_LFB;
-        mode->mode.ops = &bios_vbe_video_ops;
+        mode->mode.ops = &bios_video_ops;
         mode->mode.width = mode_info->x_resolution;
         mode->mode.height = mode_info->y_resolution;
         mode->mode.bpp = mode_info->bits_per_pixel;

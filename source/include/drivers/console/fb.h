@@ -22,11 +22,11 @@
  * done as it uses the physical memory manager to allocate a backbuffer.
  */
 
-#ifndef __DRIVERS_VIDEO_FB_H
-#define __DRIVERS_VIDEO_FB_H
+#ifndef __DRIVERS_CONSOLE_FB_H
+#define __DRIVERS_CONSOLE_FB_H
 
 #include <console.h>
 
-extern console_out_ops_t fb_console_out_ops;
+extern console_out_t *fb_console_create(void);
 
-#endif /* __DRIVERS_VIDEO_FB_H */
+#endif /* __DRIVERS_CONSOLE_FB_H */

@@ -28,6 +28,7 @@
 #include <bios/disk.h>
 #include <bios/multiboot.h>
 
+#include <console.h>
 #include <device.h>
 #include <loader.h>
 #include <memory.h>
@@ -35,7 +36,7 @@
 
 /** Main function of the BIOS loader. */
 __noreturn void bios_main(void) {
-    bios_console_init();
+    console_init();
     bios_video_init();
 
     arch_init();

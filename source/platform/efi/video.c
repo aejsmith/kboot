@@ -19,7 +19,7 @@
  * @brief               EFI video mode detection.
  */
 
-#include <drivers/video/fb.h>
+#include <drivers/console/fb.h>
 
 #include <lib/utility.h>
 
@@ -62,10 +62,17 @@ static void efi_video_set_mode(video_mode_t *_mode) {
     mode->mode.mem_size = graphics_output->mode->frame_buffer_size;
 }
 
+/** Create a console for a mode.
+ * @param _mode         Mode to create for.
+ * @return              Pointer to created console. */
+static console_out_t *efi_video_create_console(video_mode_t *_mode) {
+    return fb_console_create();
+}
+
 /** EFI video operations. */
 static video_ops_t efi_video_ops = {
-    .console = &fb_console_out_ops,
     .set_mode = efi_video_set_mode,
+    .create_console = efi_video_create_console,
 };
 
 /** Get the depth for a GOP mode.

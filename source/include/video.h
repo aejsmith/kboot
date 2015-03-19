@@ -27,7 +27,7 @@
 #include <status.h>
 #include <types.h>
 
-struct console_out_ops;
+struct console_out;
 struct environ;
 
 /** Video mode types (defined to match KBoot types). */
@@ -76,19 +76,22 @@ typedef struct video_mode {
 
 /** Structure containing video mode operations. */
 typedef struct video_ops {
-    /** Main console operations to use with this video mode (optional). */
-    const struct console_out_ops *console;
-
     /** Set the mode.
      * @param mode          Mode to set. */
     void (*set_mode)(video_mode_t *mode);
+
+    /** Create a console for a mode (optional).
+     * @param mode          Mode to create for.
+     * @return              Pointer to created console. */
+    struct console_out *(*create_console)(video_mode_t *mode);
 } video_ops_t;
+
+extern video_mode_t *current_video_mode;
 
 extern void video_set_mode(video_mode_t *mode, bool set_console);
 
 extern video_mode_t *video_find_mode(video_mode_type_t type, uint32_t width, uint32_t height, uint32_t bpp);
 extern video_mode_t *video_parse_and_find_mode(const char *str);
-extern video_mode_t *video_current_mode(void);
 
 extern void video_env_init(struct environ *env, const char *name, uint32_t types, video_mode_t *def);
 extern video_mode_t *video_env_set(struct environ *env, const char *name);
