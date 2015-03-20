@@ -28,7 +28,6 @@ sources = FeatureSources(config, [
     'efi.c',
     'memory.c',
     'platform.c',
-    'time.c',
     'video.c',
 ])
 

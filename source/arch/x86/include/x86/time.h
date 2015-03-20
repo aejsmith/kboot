@@ -26,10 +26,6 @@
 
 #include <time.h>
 
-#ifdef CONFIG_X86_TSC
 extern void x86_time_init(void);
-#else
-static inline void x86_time_init(void) {}
-#endif
 
 #endif /* __X86_TIME_H */

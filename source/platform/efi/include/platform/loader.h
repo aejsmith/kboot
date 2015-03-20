@@ -28,6 +28,5 @@
 /** Properties of the platform (functions we provide etc.). */
 #define TARGET_HAS_MM       1
 #define TARGET_HAS_EXIT     1
-#define TARGET_HAS_DELAY    1
 
 #endif /* __PLATFORM_LOADER_H */

@@ -47,7 +47,7 @@ static uint64_t tsc_cycles_per_msec;
 
 /** Get the current internal time.
  * @return              Current internal time. */
-mstime_t target_internal_time(void) {
+mstime_t current_time(void) {
     return (x86_rdtsc() - tsc_start_time) / tsc_cycles_per_msec;
 }
 

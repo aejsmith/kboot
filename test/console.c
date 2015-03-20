@@ -29,6 +29,7 @@
 
 #include <memory.h>
 #include <test.h>
+#include <time.h>
 #include <video.h>
 
 /** KBoot log buffer. */
@@ -223,4 +224,8 @@ void primary_console_init(kboot_tag_t *tags) {
 
 void console_register(console_t *console) {
     /* Nothing happens. */
+}
+
+mstime_t current_time(void) {
+    return 0;
 }

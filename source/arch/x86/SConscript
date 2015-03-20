@@ -29,7 +29,7 @@ sources = FeatureSources(config, [
     'entry.S',
     'exception.c',
     'mmu.c',
-    ('X86_TSC', 'time.c'),
+    'time.c',
 ])
 
 # Set 64-/32-bit-specific flags.

@@ -22,15 +22,11 @@
 #include <loader.h>
 #include <time.h>
 
-#ifndef TARGET_HAS_DELAY
-
 /** Delay for a number of milliseconds.
  * @param msecs         Milliseconds to delay for. */
 void delay(mstime_t msecs) {
-    mstime_t target = target_internal_time() + msecs;
+    mstime_t target = current_time() + msecs;
 
-    while (target_internal_time() < target)
+    while (current_time() < target)
         arch_pause();
 }
-
-#endif /* TARGET_HAS_DELAY */

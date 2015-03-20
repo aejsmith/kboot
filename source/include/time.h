@@ -24,9 +24,7 @@
 
 #include <lib/utility.h>
 
-#ifndef TARGET_HAS_DELAY
-extern mstime_t target_internal_time(void);
-#endif
+extern mstime_t current_time(void);
 
 extern void delay(mstime_t time);
 
