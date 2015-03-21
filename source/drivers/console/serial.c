@@ -199,9 +199,13 @@ static void serial_console_putc(console_out_t *console, char ch) {
             break;
         case '\r':
             port->cursor_x = port->region.x;
+            if (port->region.x)
+                update = true;
             break;
         case '\n':
             port->cursor_y++;
+            if (port->region.x)
+                update = true;
             break;
         case '\t':
             port->cursor_x += 8 - (port->cursor_x % 8);
