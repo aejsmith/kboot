@@ -442,3 +442,20 @@ static bool config_cmd_console(value_list_t *args) {
 }
 
 BUILTIN_COMMAND("console", "Set the current console", config_cmd_console);
+
+/** Print the debug log.
+ * @param args          Argument list.
+ * @return              Whether successful. */
+static bool config_cmd_log(value_list_t *args) {
+    if (args->count != 0) {
+        config_error("Invalid arguments");
+        return false;
+    }
+
+    for (size_t i = 0; i < debug_log_length; i++)
+        console_putc(current_console, debug_log[(debug_log_start + i) % DEBUG_LOG_SIZE]);
+
+    return true;
+}
+
+BUILTIN_COMMAND("log", "Output the contents of the debug log", config_cmd_log);
