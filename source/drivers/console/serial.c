@@ -291,15 +291,11 @@ static void serial_console_set_cursor(console_out_t *console, int16_t x, int16_t
  * @param _visible      Where to store whether the cursor is visible */
 static void serial_console_get_cursor(console_out_t *console, uint16_t *_x, uint16_t *_y, bool *_visible) {
     serial_port_t *port = container_of(console, serial_port_t, out);
-    uint16_t x, y;
-
-    get_absolute_cursor(port, &x, &y);
-    assert(x == port->cursor_x && y == port->cursor_y);
 
     if (_x)
-        *_x = x - port->region.x;
+        *_x = port->cursor_x - port->region.x;
     if (_y)
-        *_y = y - port->region.y;
+        *_y = port->cursor_y - port->region.y;
     if (_visible)
         *_visible = port->cursor_visible;
 }

@@ -108,9 +108,9 @@ __noreturn void shell_main(void) {
     while (true) {
         command_list_t *list;
 
-        console_set_colour(current_console, COLOUR_WHITE, CONSOLE_COLOUR_BG);
+        console_set_colour(current_console, COLOUR_WHITE, COLOUR_DEFAULT);
         printf("KBoot> ");
-        console_set_colour(current_console, CONSOLE_COLOUR_FG, CONSOLE_COLOUR_BG);
+        console_set_colour(current_console, COLOUR_DEFAULT, COLOUR_DEFAULT);
 
         shell_line = NULL;
         shell_line_offset = shell_line_len = 0;
