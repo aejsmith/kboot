@@ -22,6 +22,7 @@
 #include <lib/printf.h>
 #include <lib/string.h>
 
+#include <assert.h>
 #include <config.h>
 #include <console.h>
 #include <loader.h>
@@ -46,6 +47,162 @@ console_t *current_console = &primary_console;
 
 /** Debug output console. */
 console_t *debug_console;
+
+/** Check if a console has capabilities.
+ * @param console       Console to check (if NULL false will be returned).
+ * @param caps          Capabilities to check for.
+ * @return              Whether the console has the capabilities. */
+bool console_has_caps(console_t *console, unsigned caps) {
+    unsigned has = 0;
+
+    if (!console)
+        return false;
+
+    if (console->out) {
+        has |= CONSOLE_CAP_OUT;
+        if (console->out->ops->set_region)
+            has |= CONSOLE_CAP_UI;
+    }
+
+    if (console->in)
+        has |= CONSOLE_CAP_IN;
+
+    return (has & caps) == caps;
+}
+
+/** Write a character to a console.
+ * @param console       Console to write to (will be checked for output support).
+ * @param ch            Character to write. */
+void console_putc(console_t *console, char ch) {
+    if (console && console->out)
+        console->out->ops->putc(console->out, ch);
+}
+
+/** Set the current colours.
+ * @param console       Console to operate on (will be checked for support).
+ * @param fg            Foreground colour.
+ * @param bg            Background colour. */
+void console_set_colour(console_t *console, colour_t fg, colour_t bg) {
+    if (console && console->out && console->out->ops->set_colour)
+        console->out->ops->set_colour(console->out, fg, bg);
+}
+
+/** Begin UI mode on a console.
+ * @param console       Console to operate on (must have CONSOLE_CAP_UI). */
+void console_begin_ui(console_t *console) {
+    assert(console_has_caps(console, CONSOLE_CAP_UI));
+    assert(!console->out->in_ui);
+
+    console->out->in_ui = true;
+
+    if (console->out->ops->begin_ui)
+        console->out->ops->begin_ui(console->out);
+}
+
+/** End UI mode on a console.
+ * @param console       Console to operate on (must have CONSOLE_CAP_UI). */
+void console_end_ui(console_t *console) {
+    assert(console->out->in_ui);
+
+    /* Reset state and clear to default colours. */
+    console_set_region(current_console, NULL);
+    console_set_cursor(current_console, 0, 0, true);
+    console_set_colour(current_console, COLOUR_DEFAULT, COLOUR_DEFAULT);
+    console_clear(current_console, 0, 0, 0, 0);
+
+    if (console->out->ops->end_ui)
+        console->out->ops->end_ui(console->out);
+
+    console->out->in_ui = false;
+}
+
+/**
+ * Set the draw region of the console.
+ *
+ * Sets the draw region of the console. All operations on the console (i.e.
+ * writing, scrolling) will be constrained to this region. The cursor will
+ * be moved to 0, 0 within this region.
+ *
+ * @param console       Console to operate on (must have CONSOLE_CAP_UI).
+ * @param region        New draw region, or NULL to restore to whole console.
+ */
+void console_set_region(console_t *console, const draw_region_t *region) {
+    assert(console->out->in_ui);
+    console->out->ops->set_region(console->out, region);
+}
+
+/** Get the current draw region.
+ * @param console       Console to operate on (must have CONSOLE_CAP_UI).
+ * @param region        Where to store details of the current draw region. */
+void console_get_region(console_t *console, draw_region_t *region) {
+    assert(console->out->in_ui);
+    console->out->ops->get_region(console->out, region);
+}
+
+/** Set the cursor properties.
+ * @param console       Console to operate on (must have CONSOLE_CAP_UI).
+ * @param x             New X position (relative to draw region). Negative
+ *                      values will move the cursor back from the right edge
+ *                      of the draw region.
+ * @param y             New Y position (relative to draw region). Negative
+ *                      values will move the cursor up from the bottom edge
+ *                      of the draw region.
+ * @param visible       Whether the cursor should be visible. */
+void console_set_cursor(console_t *console, int16_t x, int16_t y, bool visible) {
+    assert(console->out->in_ui);
+    console->out->ops->set_cursor(console->out, x, y, visible);
+}
+
+/** Get the cursor properties.
+ * @param console       Console to operate on (must have CONSOLE_CAP_UI).
+ * @param _x            Where to store X position (relative to draw region).
+ * @param _y            Where to store Y position (relative to draw region).
+ * @param _visible      Where to store whether the cursor is visible */
+void console_get_cursor(console_t *console, uint16_t *_x, uint16_t *_y, bool *_visible) {
+    assert(console->out->in_ui);
+    console->out->ops->get_cursor(console->out, _x, _y, _visible);
+}
+
+/** Clear an area to the current background colour.
+ * @param console       Console to operate on (must have CONSOLE_CAP_UI).
+ * @param x             Start X position (relative to draw region).
+ * @param y             Start Y position (relative to draw region).
+ * @param width         Width of the area (if 0, whole width is cleared).
+ * @param height        Height of the area (if 0, whole height is cleared). */
+void console_clear(console_t *console, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+    assert(console->out->in_ui);
+    console->out->ops->clear(console->out, x, y, width, height);
+}
+
+/** Scroll the draw region up (move contents down).
+ * @param console       Console to operate on (must have CONSOLE_CAP_UI). */
+void console_scroll_up(console_t *console) {
+    assert(console->out->in_ui);
+    console->out->ops->scroll_up(console->out);
+}
+
+/** Scroll the draw region down (move contents up).
+ * @param console       Console to operate on (must have CONSOLE_CAP_UI). */
+void console_scroll_down(console_t *console) {
+    assert(console->out->in_ui);
+    console->out->ops->scroll_down(console->out);
+}
+
+/** Check for a character from a console.
+ * @param console       Console to operate on (must have CONSOLE_CAP_IN).
+ * @return              Whether a character is available. */
+bool console_poll(console_t *console) {
+    assert(console_has_caps(console, CONSOLE_CAP_IN));
+    return console->in->ops->poll(console->in);
+}
+
+/** Read a character from a console.
+ * @param console       Console to operate on (must have CONSOLE_CAP_IN).
+ * @return              Character read. */
+uint16_t console_getc(console_t *console) {
+    assert(console_has_caps(console, CONSOLE_CAP_IN));
+    return console->in->ops->getc(console->in);
+}
 
 /** Helper for console_vprintf().
  * @param ch            Character to display.
@@ -106,20 +263,6 @@ int printf(const char *fmt, ...) {
     return ret;
 }
 
-#ifdef CONFIG_TARGET_HAS_UI
-
-/** Display the debug log. */
-void debug_log_display(void) {
-    ui_window_t *textview = ui_textview_create(
-        "Debug Log", debug_log, DEBUG_LOG_SIZE, debug_log_start,
-        debug_log_length);
-
-    ui_display(textview, 0);
-    ui_window_destroy(textview);
-}
-
-#endif /* CONFIG_TARGET_HAS_UI */
-
 /** Helper for dvprintf().
  * @param ch            Character to display.
  * @param data          Unused.
@@ -159,28 +302,6 @@ int dprintf(const char *fmt, ...) {
     va_end(args);
 
     return ret;
-}
-
-/** Check if a console has capabilities.
- * @param console       Console to check (if NULL false will be returned).
- * @param caps          Capabilities to check for.
- * @return              Whether the console has the capabilities. */
-bool console_has_caps(console_t *console, unsigned caps) {
-    unsigned has = 0;
-
-    if (!console)
-        return false;
-
-    if (console->out) {
-        has |= CONSOLE_CAP_OUT;
-        if (console->out->ops->set_region)
-            has |= CONSOLE_CAP_UI;
-    }
-
-    if (console->in)
-        has |= CONSOLE_CAP_IN;
-
-    return (has & caps) == caps;
 }
 
 /** Look up a console by name.
@@ -249,6 +370,24 @@ void console_init(void) {
     console_register(&primary_console);
     target_console_init();
 }
+
+/**
+ * Debug log functions.
+ */
+
+#ifdef CONFIG_TARGET_HAS_UI
+
+/** Display the debug log. */
+void debug_log_display(void) {
+    ui_window_t *textview = ui_textview_create(
+        "Debug Log", debug_log, DEBUG_LOG_SIZE, debug_log_start,
+        debug_log_length);
+
+    ui_display(textview, 0);
+    ui_window_destroy(textview);
+}
+
+#endif /* CONFIG_TARGET_HAS_UI */
 
 /**
  * Configuration commands.

@@ -19,6 +19,8 @@
  * @brief               Loader main function.
  */
 
+#include <lib/ctype.h>
+
 #include <config.h>
 #include <device.h>
 #include <loader.h>

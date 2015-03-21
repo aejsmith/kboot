@@ -112,6 +112,9 @@ typedef struct ui_textview {
 static uint16_t ui_console_width;
 static uint16_t ui_console_height;
 
+/** UI nesting count (nested calls to ui_display()). */
+static unsigned ui_nest_count;
+
 /** Dimensions of the content area. */
 #define CONTENT_WIDTH               (ui_console_width - 4)
 #define CONTENT_HEIGHT              (ui_console_height - 6)
@@ -270,13 +273,10 @@ static void render_help(ui_window_t *window, unsigned timeout, bool update) {
  * @param window        Window to render.
  * @param timeout       Seconds remaining. */
 static void render_window(ui_window_t *window, unsigned timeout) {
-    draw_region_t region;
-
-    /* Clear the console and save its dimensions for convenient access. */
-    console_reset(current_console);
-    console_get_region(current_console, &region);
-    ui_console_width = region.width;
-    ui_console_height = region.height;
+    /* Clear to the background colour. */
+    console_set_region(current_console, NULL);
+    console_set_colour(current_console, COLOUR_LIGHT_GREY, COLOUR_BLACK);
+    console_clear(current_console, 0, 0, 0, 0);
 
     /* Disable the cursor. */
     console_set_cursor(current_console, 0, 0, false);
@@ -300,8 +300,22 @@ static void render_window(ui_window_t *window, unsigned timeout) {
 void ui_display(ui_window_t *window, unsigned timeout) {
     mstime_t msecs;
 
-    if (!console_has_caps(current_console, CONSOLE_CAP_UI | CONSOLE_CAP_IN))
-        return;
+    if (!ui_nest_count) {
+        draw_region_t region;
+
+        if (!console_has_caps(current_console, CONSOLE_CAP_UI | CONSOLE_CAP_IN))
+            return;
+
+        /* First entry into UI, begin UI mode on the console. */
+        console_begin_ui(current_console);
+
+        /* Save console dimensions for convenient access. */
+        console_get_region(current_console, &region);
+        ui_console_width = region.width;
+        ui_console_height = region.height;
+    }
+
+    ui_nest_count++;
 
     render_window(window, timeout);
 
@@ -351,7 +365,10 @@ void ui_display(ui_window_t *window, unsigned timeout) {
         }
     }
 
-    console_reset(current_console);
+    ui_nest_count--;
+
+    if (!ui_nest_count)
+        console_end_ui(current_console);
 }
 
 /** Destroy a list window.

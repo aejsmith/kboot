@@ -83,10 +83,6 @@ typedef struct console_out_ops {
      * @param console       Console output device. */
     void (*deinit)(struct console_out *console);
 
-    /** Reset the console to a default state.
-     * @param console       Console output device. */
-    void (*reset)(struct console_out *console);
-
     /**
      * Basic operations.
      */
@@ -105,6 +101,14 @@ typedef struct console_out_ops {
     /**
      * UI operations.
      */
+
+    /** Begin UI mode (optional).
+     * @param console       Console output device. */
+    void (*begin_ui)(struct console_out *console);
+
+    /** End UI mode (optional).
+     * @param console       Console output device. */
+    void (*end_ui)(struct console_out *console);
 
     /**
      * Set the draw region of the console.
@@ -161,6 +165,7 @@ typedef struct console_out_ops {
 /** Console output structure (embedded in implementation-specific structure). */
 typedef struct console_out {
     const console_out_ops_t *ops;       /**< Output operations. */
+    bool in_ui;                         /**< Whether in UI mode. */
 } console_out_t;
 
 /** Special key codes. */
@@ -190,10 +195,6 @@ typedef struct console_in_ops {
     /** Deinitialize the console when it is being made inactive.
      * @param console       Console input device. */
     void (*deinit)(struct console_in *console);
-
-    /** Reset the console to a default state.
-     * @param console       Console input device. */
-    void (*reset)(struct console_in *console);
 
     /** Check for a character from the console.
      * @param console       Console input device.
@@ -237,132 +238,37 @@ extern console_t primary_console;
 extern console_t *current_console;
 extern console_t *debug_console;
 
-#ifdef CONFIG_TARGET_HAS_UI
-extern void debug_log_display(void);
-#endif
-
 extern bool console_has_caps(console_t *console, unsigned caps);
+
+extern void console_putc(console_t *console, char ch);
+extern void console_set_colour(console_t *console, colour_t fg, colour_t bg);
+extern void console_begin_ui(console_t *console);
+extern void console_end_ui(console_t *console);
+extern void console_set_region(console_t *console, const draw_region_t *region);
+extern void console_get_region(console_t *console, draw_region_t *region);
+extern void console_set_cursor(console_t *console, int16_t x, int16_t y, bool visible);
+extern void console_get_cursor(console_t *console, uint16_t *_x, uint16_t *_y, bool *_visible);
+extern void console_clear(console_t *console, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+extern void console_scroll_up(console_t *console);
+extern void console_scroll_down(console_t *console);
+extern bool console_poll(console_t *console);
+extern uint16_t console_getc(console_t *console);
+
+extern void console_vprintf_helper(char ch, void *data, int *total);
+extern int console_vprintf(console_t *console, const char *fmt, va_list args);
+extern int console_printf(console_t *console, const char *fmt, ...) __printf(2, 3);
 
 extern console_t *console_lookup(const char *name);
 extern void console_register(console_t *console);
 extern void console_set_current(console_t *console);
 extern void console_set_debug(console_t *console);
 
-extern void console_vprintf_helper(char ch, void *data, int *total);
-extern int console_vprintf(console_t *console, const char *fmt, va_list args);
-extern int console_printf(console_t *console, const char *fmt, ...) __printf(2, 3);
-
 extern void target_console_init(void);
 
 extern void console_init(void);
 
-/**
- * Console operation wrappers.
- */
-
-/** Reset the console to a default state.
- * @param console       Console to reset. */
-static inline void console_reset(console_t *console) {
-    if (console && console->out && console->out->ops->reset)
-        console->out->ops->reset(console->out);
-    if (console && console->in && console->in->ops->reset)
-        console->in->ops->reset(console->in);
-}
-
-/** Write a character to a console.
- * @param console       Console to write to (will be checked for output support).
- * @param ch            Character to write. */
-static inline void console_putc(console_t *console, char ch) {
-    if (console && console->out)
-        console->out->ops->putc(console->out, ch);
-}
-
-/** Set the current colours.
- * @param console       Console to operate on (will be checked for support).
- * @param fg            Foreground colour.
- * @param bg            Background colour. */
-static inline void console_set_colour(console_t *console, colour_t fg, colour_t bg) {
-    if (console && console->out && console->out->ops->set_colour)
-        console->out->ops->set_colour(console->out, fg, bg);
-}
-
-/**
- * Set the draw region of the console.
- *
- * Sets the draw region of the console. All operations on the console (i.e.
- * writing, scrolling) will be constrained to this region. The cursor will
- * be moved to 0, 0 within this region.
- *
- * @param console       Console to operate on (must have CONSOLE_CAP_UI).
- * @param region        New draw region, or NULL to restore to whole console.
- */
-static inline void console_set_region(console_t *console, const draw_region_t *region) {
-    console->out->ops->set_region(console->out, region);
-}
-
-/** Get the current draw region.
- * @param console       Console to operate on (must have CONSOLE_CAP_UI).
- * @param region        Where to store details of the current draw region. */
-static inline void console_get_region(console_t *console, draw_region_t *region) {
-    console->out->ops->get_region(console->out, region);
-}
-
-/** Set the cursor properties.
- * @param console       Console to operate on (must have CONSOLE_CAP_UI).
- * @param x             New X position (relative to draw region). Negative
- *                      values will move the cursor back from the right edge
- *                      of the draw region.
- * @param y             New Y position (relative to draw region). Negative
- *                      values will move the cursor up from the bottom edge
- *                      of the draw region.
- * @param visible       Whether the cursor should be visible. */
-static inline void console_set_cursor(console_t *console, int16_t x, int16_t y, bool visible) {
-    console->out->ops->set_cursor(console->out, x, y, visible);
-}
-
-/** Get the cursor properties.
- * @param console       Console to operate on (must have CONSOLE_CAP_UI).
- * @param _x            Where to store X position (relative to draw region).
- * @param _y            Where to store Y position (relative to draw region).
- * @param _visible      Where to store whether the cursor is visible */
-static inline void console_get_cursor(console_t *console, uint16_t *_x, uint16_t *_y, bool *_visible) {
-    console->out->ops->get_cursor(console->out, _x, _y, _visible);
-}
-
-/** Clear an area to the current background colour.
- * @param console       Console to operate on (must have CONSOLE_CAP_UI).
- * @param x             Start X position (relative to draw region).
- * @param y             Start Y position (relative to draw region).
- * @param width         Width of the area (if 0, whole width is cleared).
- * @param height        Height of the area (if 0, whole height is cleared). */
-static inline void console_clear(console_t *console, uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
-    console->out->ops->clear(console->out, x, y, width, height);
-}
-
-/** Scroll the draw region up (move contents down).
- * @param console       Console to operate on (must have CONSOLE_CAP_UI). */
-static inline void console_scroll_up(console_t *console) {
-    console->out->ops->scroll_up(console->out);
-}
-
-/** Scroll the draw region down (move contents up).
- * @param console       Console to operate on (must have CONSOLE_CAP_UI). */
-static inline void console_scroll_down(console_t *console) {
-    console->out->ops->scroll_down(console->out);
-}
-
-/** Check for a character from a console.
- * @param console       Console to operate on (must have CONSOLE_CAP_IN).
- * @return              Whether a character is available. */
-static inline bool console_poll(console_t *console) {
-    return console->in->ops->poll(console->in);
-}
-
-/** Read a character from a console.
- * @param console       Console to operate on (must have CONSOLE_CAP_IN).
- * @return              Character read. */
-static inline uint16_t console_getc(console_t *console) {
-    return console->in->ops->getc(console->in);
-}
+#ifdef CONFIG_TARGET_HAS_UI
+extern void debug_log_display(void);
+#endif
 
 #endif /* __CONSOLE_H */

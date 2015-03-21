@@ -269,21 +269,6 @@ static void vga_console_putc(console_out_t *console, char ch) {
     update_hw_cursor(vga);
 }
 
-/** Reset the console to a default state.
- * @param console       Console output device. */
-static void vga_console_reset(console_out_t *console) {
-    vga_console_out_t *vga = (vga_console_out_t *)console;
-
-    vga->cursor_visible = true;
-    vga->attrib = (CONSOLE_COLOUR_FG << 8) | (CONSOLE_COLOUR_BG << 12);
-    vga_console_set_region(console, NULL);
-
-    for (uint16_t i = 0; i < current_video_mode->height; i++) {
-        for (uint16_t j = 0; j < current_video_mode->width; j++)
-            write_cell(vga, j, i, ' ' | vga->attrib);
-    }
-}
-
 /** Initialize the VGA console.
  * @param console       Console output device. */
 static void vga_console_init(console_out_t *console) {
@@ -292,7 +277,10 @@ static void vga_console_init(console_out_t *console) {
     assert(current_video_mode->type == VIDEO_MODE_VGA);
 
     vga->mapping = (uint16_t *)current_video_mode->mem_virt;
-    vga_console_reset(console);
+    vga->cursor_visible = true;
+    vga->attrib = (CONSOLE_COLOUR_FG << 8) | (CONSOLE_COLOUR_BG << 12);
+    vga_console_set_region(console, NULL);
+    vga_console_clear(console, 0, 0, 0, 0);
 }
 
 /** VGA console output operations. */
@@ -306,7 +294,6 @@ static console_out_ops_t vga_console_out_ops = {
     .scroll_up = vga_console_scroll_up,
     .scroll_down = vga_console_scroll_down,
     .putc = vga_console_putc,
-    .reset = vga_console_reset,
     .init = vga_console_init,
 };
 
@@ -314,6 +301,8 @@ static console_out_ops_t vga_console_out_ops = {
  * @return              VGA console output device. */
 console_out_t *vga_console_create(void) {
     vga_console_out_t *vga = malloc(sizeof(*vga));
+
+    memset(vga, 0, sizeof(*vga));
     vga->console.ops = &vga_console_out_ops;
     return &vga->console;
 }

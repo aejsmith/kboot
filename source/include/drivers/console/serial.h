@@ -92,7 +92,20 @@ typedef struct serial_port {
     uint16_t next_ch;                   /**< Next character to read. */
     char esc_buffer[ESC_BUFFER_LEN];    /**< Buffer containing collected escape sequence. */
     int esc_len;                        /**< Escape buffer length. */
+    mstime_t esc_time;                  /**< Time that an escape character was received. */
+
+    uint16_t width;                     /**< Width of the console. */
+    uint16_t height;                    /**< Height of the console. */
+    draw_region_t region;               /**< Current draw region. */
+    uint16_t cursor_x;                  /**< X position of the cursor. */
+    uint16_t cursor_y;                  /**< Y position of the cursor. */
+    bool cursor_visible;                /**< Whether the cursor is visible. */
 } serial_port_t;
+
+extern void serial_port_flush_rx(serial_port_t *port);
+extern uint8_t serial_port_read(serial_port_t *port);
+extern void serial_port_write(serial_port_t *port, uint8_t val);
+extern void serial_port_puts(serial_port_t *port, const char *str);
 
 /** Reconfigure a serial port.
  * @param port          Port to reconfigure.

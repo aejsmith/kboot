@@ -81,7 +81,9 @@ void __noreturn internal_error(const char *fmt, ...) {
     va_list args;
 
     error_displayed = false;
-    console_reset(current_console);
+
+    if (current_console && current_console->out && current_console->out->in_ui)
+        console_end_ui(current_console);
 
     error_printf("\nInternal Error: ");
 
@@ -194,7 +196,6 @@ void __noreturn boot_error(const char *fmt, ...) {
     #endif
 
     /* No UI support, print it straight out on the console. */
-    console_reset(current_console);
     error_printf("\nBoot Error: ");
     boot_error_message();
 

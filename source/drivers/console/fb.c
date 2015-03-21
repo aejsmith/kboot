@@ -500,23 +500,6 @@ static void fb_console_putc(console_out_t *console, char ch) {
     toggle_cursor(fb);
 }
 
-/** Reset the console to a default state.
- * @param console       Console output device. */
-static void fb_console_reset(console_out_t *console) {
-    fb_console_out_t *fb = (fb_console_out_t *)console;
-
-    /* Reset state to defaults. */
-    fb->fg_colour = CONSOLE_COLOUR_FG;
-    fb->bg_colour = CONSOLE_COLOUR_BG;
-    fb->cursor_visible = true;
-    fb_console_set_region(console, NULL);
-
-    /* Clear the console. */
-    fb_fillrect(fb, 0, 0, current_video_mode->width, current_video_mode->height, fb_colour_table[CONSOLE_COLOUR_BG]);
-    memset(fb->chars, 0, fb->cols * fb->rows * sizeof(*fb->chars));
-    toggle_cursor(fb);
-}
-
 /** Initialize the console.
  * @param console       Console output device. */
 static void fb_console_init(console_out_t *console) {
@@ -535,7 +518,15 @@ static void fb_console_init(console_out_t *console) {
     size = round_up(fb->cols * fb->rows * sizeof(*fb->chars), PAGE_SIZE);
     fb->chars = memory_alloc(size, 0, 0, 0, MEMORY_TYPE_INTERNAL, MEMORY_ALLOC_HIGH, NULL);
 
-    fb_console_reset(console);
+    fb->fg_colour = CONSOLE_COLOUR_FG;
+    fb->bg_colour = CONSOLE_COLOUR_BG;
+    fb->cursor_visible = true;
+    fb_console_set_region(console, NULL);
+
+    /* Clear the console. */
+    fb_fillrect(fb, 0, 0, current_video_mode->width, current_video_mode->height, fb_colour_table[CONSOLE_COLOUR_BG]);
+    memset(fb->chars, 0, fb->cols * fb->rows * sizeof(*fb->chars));
+    toggle_cursor(fb);
 }
 
 /** Deinitialize the console.
@@ -562,7 +553,6 @@ console_out_ops_t fb_console_out_ops = {
     .scroll_up = fb_console_scroll_up,
     .scroll_down = fb_console_scroll_down,
     .putc = fb_console_putc,
-    .reset = fb_console_reset,
     .init = fb_console_init,
     .deinit = fb_console_deinit,
 };
@@ -571,6 +561,8 @@ console_out_ops_t fb_console_out_ops = {
  * @return              Framebuffer console output device. */
 console_out_t *fb_console_create(void) {
     fb_console_out_t *fb = malloc(sizeof(*fb));
+
+    memset(fb, 0, sizeof(*fb));
     fb->console.ops = &fb_console_out_ops;
     return &fb->console;
 }

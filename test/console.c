@@ -48,6 +48,14 @@ console_t *debug_console;
 /** Framebuffer video mode information. */
 video_mode_t *current_video_mode;
 
+/** Write a character to a console.
+ * @param console       Console to write to.
+ * @param ch            Character to write. */
+void console_putc(console_t *console, char ch) {
+    if (console && console->out)
+        console->out->ops->putc(console->out, ch);
+}
+
 /** Helper for console_vprintf().
  * @param ch            Character to display.
  * @param data          Console to use.

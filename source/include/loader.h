@@ -150,8 +150,18 @@ extern void internal_error(const char *fmt, ...) __printf(1, 2) __noreturn;
 
 extern int vprintf(const char *fmt, va_list args);
 extern int printf(const char *fmt, ...) __printf(1, 2);
+
+#ifndef __TEST
+
 extern int dvprintf(const char *fmt, va_list args);
 extern int dprintf(const char *fmt, ...) __printf(1, 2);
+
+#else
+
+#define dvprintf(fmt, args)
+#define dprintf(fmt...)
+
+#endif
 
 extern void loader_main(void) __noreturn;
 
