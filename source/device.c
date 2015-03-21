@@ -19,6 +19,7 @@
  * @brief               Device management.
  */
 
+#include <lib/printf.h>
 #include <lib/string.h>
 
 #include <config.h>
@@ -165,9 +166,9 @@ static bool config_cmd_device(value_list_t *args) {
 BUILTIN_COMMAND("device", "Set the current device", config_cmd_device);
 
 /** Print a list of devices.
- * @param console       Console to write to.
+ * @param func          Print function to use.
  * @param indent        Indentation level. */
-static void print_device_list(console_t *console, size_t indent) {
+static void print_device_list(printf_t func, size_t indent) {
     list_foreach(&device_list, iter) {
         device_t *device = list_entry(iter, device_t, header);
         size_t child = 0;
@@ -184,7 +185,7 @@ static void print_device_list(console_t *console, size_t indent) {
         if (device->ops->identify)
             device->ops->identify(device, DEVICE_IDENTIFY_SHORT, buf, sizeof(buf));
 
-        console_printf(console, "%-*s%-*s -> %s\n", indent + child, "", 7 - child, device->name, buf);
+        func("%-*s%-*s -> %s\n", indent + child, "", 7 - child, device->name, buf);
     }
 }
 
@@ -193,7 +194,7 @@ static void print_device_list(console_t *console, size_t indent) {
  * @return              Whether successful. */
 static bool config_cmd_lsdevice(value_list_t *args) {
     if (args->count == 0) {
-        print_device_list(current_console, 0);
+        print_device_list(printf, 0);
         return true;
     } else if (args->count == 1 && args->values[0].type == VALUE_TYPE_STRING) {
         device_t *device;
@@ -242,7 +243,7 @@ void device_init(void) {
 
     /* Print out a list of all devices. */
     dprintf("device: detected devices:\n");
-    print_device_list(debug_console, 1);
+    print_device_list(dprintf, 1);
 
     /* Set the device in the environment. */
     if (boot_device) {

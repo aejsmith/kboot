@@ -41,6 +41,7 @@ target_flags = {
     'CCFLAGS': [
         '-gdwarf-2', '-pipe', '-nostdlib', '-nostdinc', '-ffreestanding',
         '-fno-stack-protector', '-Os', '-fno-omit-frame-pointer',
+        '-fno-optimize-sibling-calls',
     ],
     'ASFLAGS': ['-nostdinc'],
     'LINKFLAGS': ['-nostdlib', '-Wl,--build-id=none'],
@@ -54,13 +55,18 @@ import os, sys
 from subprocess import Popen, PIPE
 
 sys.path = [os.path.abspath(os.path.join('utilities', 'build'))] + sys.path
-import util
+import util, vcs
+
+# Compile for debug by default if building from git.
+revision = vcs.revision_id()
+debug_default = 1 if revision is not None else 0
 
 # Configurable build options.
 opts = Variables('.options.cache')
 opts.AddVariables(
     ('CONFIG', 'Target system configuration name.'),
     ('CROSS_COMPILE', 'Cross compiler tool prefix (prepended to all tool names).', ''),
+    ('DEBUG', 'Whether to compile with debugging features.', debug_default)
 )
 
 # Create the build environment.
@@ -141,6 +147,10 @@ elif not env['CONFIG'] in configs:
     util.StopError("Unknown configuration '%s'." % (env['CONFIG']))
 
 config = configs[env['CONFIG']]['config']
+
+# Set the debug flag in the configuration.
+if int(env['DEBUG']):
+    config['DEBUG'] = True
 
 # Detect which compiler to use.
 compilers = ['cc', 'gcc', 'clang']

@@ -122,8 +122,10 @@ void target_console_init(void) {
             serial_port_config(port, &config);
 
             /* Register the first as the debug console. */
-            if (i == 0)
-                console_set_debug(&port->console);
+            #ifdef CONFIG_DEBUG
+                if (i == 0)
+                    console_set_debug(&port->console);
+            #endif
         }
     }
 

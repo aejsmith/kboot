@@ -148,6 +148,7 @@ static status_t efi_serial_port_config(serial_port_t *_port, const serial_config
         break;
     default:
         assert(0 && "Invalid parity type");
+        return STATUS_INVALID_ARG;
     }
 
     switch (config->stop_bits) {
@@ -159,6 +160,7 @@ static status_t efi_serial_port_config(serial_port_t *_port, const serial_config
         break;
     default:
         assert(0 && "Invalid stop bits value");
+        return STATUS_INVALID_ARG;
     }
 
     ret = efi_call(port->serial->set_attributes,
@@ -230,12 +232,14 @@ static serial_port_ops_t efi_serial_port_ops = {
 /** Register a fallback serial port.
  * @param config        Configuration to use. */
 static void register_fallback_port(const serial_config_t *config) {
-    #if CONFIG_ARCH_X86
+    #ifdef CONFIG_ARCH_X86
         serial_port_t *port = ns16550_register(SERIAL_PORT, 0, SERIAL_CLOCK);
 
         if (port) {
             serial_port_config(port, config);
-            console_set_debug(&port->console);
+            #ifdef CONFIG_DEBUG
+                console_set_debug(&port->console);
+            #endif
         }
     #endif
 }
@@ -287,8 +291,10 @@ static void efi_serial_init(void) {
         serial_port_register(&port->port);
         serial_port_config(&port->port, &config);
 
-        if (i == 0)
-            console_set_debug(&port->port.console);
+        #if !defined(CONFIG_ARCH_X86) || defined(CONFIG_DEBUG)
+            if (i == 0)
+                console_set_debug(&port->port.console);
+        #endif
     }
 }
 
