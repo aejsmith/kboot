@@ -33,6 +33,7 @@ SECTIONS {
     .gnu.hash : { *(.gnu.hash) }
 
     . = ALIGN(PAGE_SIZE);
+    __text_start = .;
     .text : {
         *(.init.text)
         *(.text)
@@ -45,6 +46,7 @@ SECTIONS {
     .reloc : { *(.reloc) }
 
     . = ALIGN(PAGE_SIZE);
+    __data_start = .;
     .data : {
         /* Roll the read-only data into the main data section. It would not be
          * write protected even if we put it separately, and PE requires page
@@ -82,6 +84,7 @@ SECTIONS {
     .dynstr : { *(.dynstr) }
 
     . = ALIGN(PAGE_SIZE);
+    __bss_start = .;
     .bss : {
         __bss_start = .;
         *(.dynbss)

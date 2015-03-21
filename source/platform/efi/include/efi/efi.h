@@ -28,6 +28,8 @@
 
 #include <status.h>
 
+extern char __text_start[], __data_start[], __bss_start[];
+
 extern efi_handle_t efi_image_handle;
 extern efi_loaded_image_t *efi_loaded_image;
 extern efi_system_table_t *efi_system_table;

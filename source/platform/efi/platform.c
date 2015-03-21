@@ -60,6 +60,9 @@ __noreturn void efi_main(efi_handle_t image_handle, efi_system_table_t *system_t
 
     console_init();
 
+    /* Print out section information, useful for debugging. */
+    dprintf("efi: base @ %p, text @ %p, data @ %p, bss @ %p\n", __start, __text_start, __data_start, __bss_start);
+
     efi_memory_init();
     efi_video_init();
 
