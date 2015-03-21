@@ -290,6 +290,9 @@ static status_t iso9660_mount(device_t *device, fs_mount_t **_mount) {
         return STATUS_UNKNOWN_FS;
 
     mount = malloc(sizeof(*mount));
+
+    /* If we don't have Joliet, names should not be case sensitive. */
+    mount->mount.case_insensitive = !joliet;
     mount->joliet_level = joliet;
 
     /* Store the filesystem label and UUID. */
