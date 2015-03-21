@@ -437,6 +437,11 @@ static bool config_cmd_console(value_list_t *args) {
         return false;
     }
 
+    if (!console->out) {
+        config_error("Console '%s' does not support output", args->values[0].string);
+        return false;
+    }
+
     console_set_current(console);
     return true;
 }
