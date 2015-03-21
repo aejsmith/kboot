@@ -32,10 +32,19 @@ for line in lines:
     if not line.startswith(" 0x"):
         continue
 
-    line = line.strip()
-    process = Popen([addr2line, '-f', '-e', loader, line], stdout = PIPE, stderr = PIPE)
+    line = line.strip().split()
+    if len(line) == 2:
+        if not line[1].startswith("(0x"):
+            continue
+        addr = line[1][1:-1]
+    elif len(line) == 1:
+        addr = line[0]
+    else:
+        continue
+
+    process = Popen([addr2line, '-f', '-e', loader, addr], stdout = PIPE, stderr = PIPE)
     output = process.communicate()[0].split('\n')
     if process.returncode != 0:
         continue
 
-    print '%s - %s @ %s' % (line, output[0], output[1])
+    print '%s - %s @ %s' % (addr, output[0], output[1])
