@@ -305,8 +305,8 @@ static bool mmu_mem_op_64(mmu_context_t *ctx, uint64_t addr, uint64_t size, unsi
     uint64_t *pdir = NULL, *ptbl = NULL;
 
     while (size) {
-        phys_ptr_t page;
-        size_t page_size;
+        phys_ptr_t page = 0;
+        size_t page_size = 0;
 
         /* If we have crossed a page directory boundary, get new directory. */
         if (!pdir || !(addr % X86_PDIR_RANGE_64)) {
@@ -360,8 +360,8 @@ static bool mmu_mem_op_32(mmu_context_t *ctx, uint32_t addr, uint32_t size, unsi
     uint32_t *ptbl = NULL;
 
     while (size) {
-        phys_ptr_t page;
-        size_t page_size;
+        phys_ptr_t page = 0;
+        size_t page_size = 0;
 
         /* If we have crossed a page table boundary, get new table. */
         if (!ptbl || !(addr % X86_PTBL_RANGE_32)) {

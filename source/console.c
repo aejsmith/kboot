@@ -124,7 +124,7 @@ void debug_log_display(void) {
  * @param ch            Character to display.
  * @param data          Unused.
  * @param total         Pointer to total character count. */
-void dvprintf_helper(char ch, void *data, int *total) {
+static void dvprintf_helper(char ch, void *data, int *total) {
     console_putc(debug_console, ch);
 
     /* Store in the log buffer. */

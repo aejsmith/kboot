@@ -98,7 +98,7 @@ void video_set_mode(video_mode_t *mode, bool set_console) {
 video_mode_t *video_find_mode(video_mode_type_t type, uint32_t width, uint32_t height, uint32_t bpp) {
     video_mode_t *mode, *ret;
 
-    if (width == 0 != height == 0)
+    if ((width == 0) != (height == 0))
         return NULL;
 
     /* Check if we've been asked for a preferred mode. TODO: EDID */

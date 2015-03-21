@@ -115,7 +115,7 @@ void *malloc(size_t size) {
  * @param size          New size of allocation.
  * @return              Address of new allocation, or NULL if size is 0. */
 void *realloc(void *addr, size_t size) {
-    heap_chunk_t *chunk;
+    heap_chunk_t *chunk = NULL;
     void *new;
 
     if (size == 0) {

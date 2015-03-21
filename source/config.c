@@ -1126,7 +1126,7 @@ static bool config_cmd_env(value_list_t *args) {
 
     list_foreach(&current_environ->entries, iter) {
         environ_entry_t *entry = list_entry(iter, environ_entry_t, header);
-        const char *type;
+        const char *type = NULL;
 
         switch (entry->value.type) {
         case VALUE_TYPE_INTEGER:

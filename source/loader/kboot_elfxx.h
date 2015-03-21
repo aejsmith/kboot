@@ -111,7 +111,7 @@ static void FUNC(load_kernel)(kboot_loader_t *loader) {
     kboot_elf_ehdr_t *ehdr = loader->ehdr;
     kboot_elf_phdr_t *phdrs = loader->phdrs;
     kboot_elf_addr_t virt_base, virt_end;
-    void *load_base;
+    void *load_base = NULL;
 
     /* Unless the kernel has a fixed load address, we allocate a single block of
      * physical memory to load at. This means that the offsets between segments

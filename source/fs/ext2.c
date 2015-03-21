@@ -243,7 +243,7 @@ static status_t inode_block_to_raw(ext2_handle_t *handle, uint32_t block, uint32
  * @return              Status code describing the result of the operation. */
 static status_t read_inode_block(ext2_handle_t *handle, void *buf, uint32_t num, size_t offset, size_t count) {
     ext2_mount_t *mount = (ext2_mount_t *)handle->handle.mount;
-    uint32_t total, raw;
+    uint32_t total, raw = 0;
     status_t ret;
 
     total = round_up(handle->handle.size, mount->block_size) / mount->block_size;

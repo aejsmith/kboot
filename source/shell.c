@@ -28,6 +28,7 @@
 #include <console.h>
 #include <loader.h>
 #include <memory.h>
+#include <shell.h>
 
 /** Current line being read out by the config parser. */
 static char *shell_line;

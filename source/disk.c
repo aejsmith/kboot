@@ -42,7 +42,7 @@ static const char *const disk_type_names[] = {
  * @param count         Number of bytes to read.
  * @param offset        Offset in the disk to read from.
  * @return              Whether the read was successful. */
-status_t disk_device_read(device_t *device, void *buf, size_t count, offset_t offset) {
+static status_t disk_device_read(device_t *device, void *buf, size_t count, offset_t offset) {
     disk_device_t *disk = (disk_device_t *)device;
     void *tmp __cleanup_free = NULL;
     uint64_t start, end;
