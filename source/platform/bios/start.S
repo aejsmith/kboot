@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief               BIOS bootloader startup code.
+ * @brief               BIOS loader startup code.
  */
 
 #include <arch/page.h>

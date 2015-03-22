@@ -35,14 +35,14 @@ sources = FeatureSources(config, [
 # Set the linker script path.
 env['LDSCRIPT'] = env.LDScript('link.ld', 'link.ld.in')
 
-# Build the stage 1 loaders.
-env.LDScript('stage1/stage1.ld', 'stage1/stage1.ld.in')
-stage1s = ['cdboot']
-for f in stage1s:
+# Build the boot sectors.
+env.LDScript('bootsect/bootsect.ld', 'bootsect/bootsect.ld.in')
+bootsects = ['cdboot', 'pxeboot']
+for f in bootsects:
     # Build an ELF image.
-    linkflags = env['LINKFLAGS'] + ['-Wl,-T,${TARGET.dir}/stage1.ld', '-Wl,-N']
-    target = env.Program('stage1/%s.elf' % (f), 'stage1/%s.S' % (f), LINKFLAGS = linkflags)
-    Depends(target, File('stage1/stage1.ld'))
+    linkflags = env['LINKFLAGS'] + ['-Wl,-T,${TARGET.dir}/bootsect.ld', '-Wl,-N']
+    target = env.Program('bootsect/%s.elf' % (f), 'bootsect/%s.S' % (f), LINKFLAGS = linkflags)
+    Depends(target, File('bootsect/bootsect.ld'))
 
     # Create a disassembly.
     env.AddPostAction(
@@ -51,7 +51,7 @@ for f in stage1s:
 
     # Create the final stripped binary.
     target = env.Command(
-        'stage1/%s.bin' % (f),
+        'bootsect/%s.bin' % (f),
         target,
         Action('$OBJCOPY -O binary --strip-all $SOURCE $TARGET', '$GENCOMSTR'))
 
@@ -67,7 +67,12 @@ defaults.append(kboot)
 # Create CD/PXE boot images by concatenating the boot sector with the loader.
 target = env.Command(
     env['OUTDIR'].File('cdkboot.img'),
-    ['stage1/cdboot.bin', kboot],
+    ['bootsect/cdboot.bin', kboot],
+    Action('cat ${SOURCES[0]} ${SOURCES[1]} > $TARGET', '$GENCOMSTR'))
+defaults.append(target)
+target = env.Command(
+    env['OUTDIR'].File('pxekboot.img'),
+    ['bootsect/pxeboot.bin', kboot],
     Action('cat ${SOURCES[0]} ${SOURCES[1]} > $TARGET', '$GENCOMSTR'))
 defaults.append(target)
 
