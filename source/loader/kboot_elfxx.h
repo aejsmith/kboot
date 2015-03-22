@@ -137,6 +137,9 @@ static void FUNC(load_kernel)(kboot_loader_t *loader) {
             void *dest;
             status_t ret;
 
+            if (!phdrs[i].p_memsz)
+                continue;
+
             /* If loading at a fixed location, we have to allocate space. */
             if (loader->load->flags & KBOOT_LOAD_FIXED) {
                 dest = allocate_segment(loader, phdrs[i].p_vaddr, phdrs[i].p_paddr, phdrs[i].p_memsz, i);
@@ -144,9 +147,11 @@ static void FUNC(load_kernel)(kboot_loader_t *loader) {
                 dest = load_base + (phdrs[i].p_vaddr - virt_base);
             }
 
-            ret = fs_read(loader->handle, dest, phdrs[i].p_filesz, phdrs[i].p_offset);
-            if (ret != STATUS_SUCCESS)
-                boot_error("Error reading kernel image: %pS", ret);
+            if (phdrs[i].p_filesz) {
+                ret = fs_read(loader->handle, dest, phdrs[i].p_filesz, phdrs[i].p_offset);
+                if (ret != STATUS_SUCCESS)
+                    boot_error("Error reading kernel image: %pS", ret);
+            }
 
             /* Clear zero-initialized sections. */
             memset(dest + phdrs[i].p_filesz, 0, phdrs[i].p_memsz - phdrs[i].p_filesz);
