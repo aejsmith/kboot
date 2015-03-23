@@ -20,6 +20,7 @@
  */
 
 #include <bios/bios.h>
+#include <bios/console.h>
 #include <bios/disk.h>
 
 #include <partition/mbr.h>
@@ -84,7 +85,7 @@ static __noreturn void chain_loader_load(void *_handle) {
     dprintf("chain: chainloading device %s (id: 0x%x)\n", disk->device.name, disk_id);
 
     loader_preboot();
-
+    bios_console_reset();
     chain_loader_enter(disk_id, partition_addr);
 }
 

@@ -76,15 +76,6 @@ FUNCTION_START(chain_loader_enter)
     push    %edx
     push    %esi
 
-    /* Restore the console to a decent state. Set display page to the first and
-     * move the cursor to (0, 0). */
-    movw    $0x0500, %ax
-    int     $0x10
-    movw    $0x0200, %ax
-    xorw    %bx, %bx
-    xorw    %dx, %dx
-    int     $0x10
-
     /* Try to disable the A20 line. */
     call    disable_a20
 

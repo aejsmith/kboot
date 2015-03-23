@@ -22,6 +22,8 @@
 #include <arch/io.h>
 
 #include <bios/bios.h>
+#include <bios/console.h>
+#include <bios/vbe.h>
 
 #include <drivers/serial/ns16550.h>
 
@@ -131,4 +133,25 @@ void target_console_init(void) {
 
     /* Use BIOS for input. */
     primary_console.in = &bios_console_in;
+}
+
+/** Reset the console to original state. */
+void bios_console_reset(void) {
+    bios_regs_t regs;
+
+    /* Set VGA text mode. */
+    bios_regs_init(&regs);
+    regs.eax = VBE_FUNCTION_SET_MODE;
+    regs.ebx = 0x3;
+    bios_call(0x10, &regs);
+
+    /* Set display page to the first. */
+    bios_regs_init(&regs);
+    regs.ax = 0x0500;
+    bios_call(0x10, &regs);
+
+    /* Move the cursor to (0, 0). */
+    bios_regs_init(&regs);
+    regs.ax = 0x0200;
+    bios_call(0x10, &regs);
 }
