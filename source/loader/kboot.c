@@ -30,6 +30,7 @@
 #include <disk.h>
 #include <loader.h>
 #include <memory.h>
+#include <net.h>
 #include <ui.h>
 #include <video.h>
 
@@ -455,12 +456,26 @@ static void add_fs_bootdev_tag(kboot_loader_t *loader, const char *uuid) {
     tag->type = KBOOT_BOOTDEV_FS;
     tag->fs.flags = 0;
 
-    if (uuid) {
-        strncpy((char *)tag->fs.uuid, uuid, sizeof(tag->fs.uuid));
-        tag->fs.uuid[sizeof(tag->fs.uuid) - 1] = 0;
-    } else {
-        tag->fs.uuid[0] = 0;
-    }
+    strncpy((char *)tag->fs.uuid, uuid, sizeof(tag->fs.uuid));
+    tag->fs.uuid[sizeof(tag->fs.uuid) - 1] = 0;
+}
+
+/** Add a network boot device tag.
+ * @param loader        Loader internal data.
+ * @param device        Device booted from. */
+static void add_net_bootdev_tag(kboot_loader_t *loader, device_t *device) {
+    net_device_t *net = (net_device_t *)device;
+    kboot_tag_bootdev_t *tag = kboot_alloc_tag(loader, KBOOT_TAG_BOOTDEV, sizeof(*tag));
+
+    tag->type = KBOOT_BOOTDEV_NET;
+    tag->fs.flags = (net->flags & NET_DEVICE_IPV6) ? KBOOT_NET_IPV6 : 0;
+    tag->net.server_port = net->server_port;
+    tag->net.hw_type = net->hw_type;
+    tag->net.hw_addr_size = net->hw_addr_size;
+    memcpy(&tag->net.server_ip, &net->server_ip, sizeof(tag->net.server_ip));
+    memcpy(&tag->net.gateway_ip, &net->gateway_ip, sizeof(tag->net.gateway_ip));
+    memcpy(&tag->net.client_ip, &net->ip, sizeof(tag->net.client_ip));
+    memcpy(&tag->net.client_mac, &net->hw_addr, sizeof(tag->net.client_mac));
 }
 
 /** Add a tag for a device specifier string.
@@ -504,12 +519,17 @@ static void add_bootdev_tag(kboot_loader_t *loader) {
         device = loader->handle->mount->device;
     }
 
+    if (device->type == DEVICE_TYPE_NET) {
+        add_net_bootdev_tag(loader, device);
+        return;
+    }
+
     if (device->mount && device->mount->uuid) {
         add_fs_bootdev_tag(loader, device->mount->uuid);
         return;
     }
 
-    /* Nothing usable. TODO: network */
+    /* Nothing usable. */
     tag = kboot_alloc_tag(loader, KBOOT_TAG_BOOTDEV, sizeof(*tag));
     tag->type = KBOOT_BOOTDEV_NONE;
 }

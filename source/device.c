@@ -94,18 +94,23 @@ device_t *device_lookup(const char *name) {
     return NULL;
 }
 
-/** Register a device.
- * @param device        Device to register (details should be filled in). */
+/**
+ * Register a device.
+ *
+ * Register a device. The device's mount will initially be set to NULL. Should
+ * the caller wish to probe for filesystems, it should do so itself.
+ *
+ * @param device        Device to register (all fields other than mount should
+ *                      be initialized).
+ */
 void device_register(device_t *device) {
     if (device_lookup(device->name))
         internal_error("Device named '%s' already exists", device->name);
 
+    device->mount = NULL;
+
     list_init(&device->header);
     list_append(&device_list, &device->header);
-
-    /* Probe for filesystems. */
-    if (!device->mount)
-        device->mount = fs_probe(device);
 }
 
 /** Set the device in an environment.

@@ -29,6 +29,7 @@
 #endif
 
 #include <endian.h>
+#include <net.h>
 #include <status.h>
 
 /* Flags to specify special behaviour. */
@@ -184,6 +185,61 @@ static void print_number(printf_state_t *state, uint64_t num) {
     }
 }
 
+#ifdef CONFIG_TARGET_HAS_NET
+
+/** Helper to print an IPv4 address.
+ * @param state         Internal state structure.
+ * @param addr          Address to print. */
+static void print_ipv4_addr(printf_state_t *state, const ipv4_addr_t *addr) {
+    state->base = 10;
+    state->flags = 0;
+
+    for (unsigned i = 0; i < 4; i++) {
+        state->width = -1;
+        state->precision = 1;
+        print_number(state, addr->bytes[i]);
+        if (i != 3)
+            print_char(state, '.');
+    }
+}
+
+/** Helper to print an IPv6 address.
+ * @param state         Internal state structure.
+ * @param addr          Address to print. */
+static void print_ipv6_addr(printf_state_t *state, const ipv6_addr_t *addr) {
+    state->base = 16;
+    state->flags = PRINTF_LOW_CASE;
+
+    for (unsigned i = 0; i < 8; i++) {
+        state->width = -1;
+        state->precision = 1;
+        print_number(state, addr->bytes[i * 2]);
+        state->width = -1;
+        state->precision = 1;
+        print_number(state, addr->bytes[(i * 2) + 1]);
+        if (i != 7)
+            print_char(state, ':');
+    }
+}
+
+/** Helper to print a MAC address.
+ * @param state         Internal state structure.
+ * @param addr          Address to print. */
+static void print_mac_addr(printf_state_t *state, const mac_addr_t addr) {
+    state->base = 16;
+    state->flags = PRINTF_ZERO_PAD | PRINTF_LOW_CASE;
+
+    for (unsigned i = 0; i < 6; i++) {
+        state->width = 2;
+        state->precision = 1;
+        print_number(state, addr[i]);
+        if (i != 5)
+            print_char(state, ':');
+    }
+}
+
+#endif /* CONFIG_TARGET_HAS_NET */
+
 /** Helper to print a status string.
  * @param state         Internal state structure.
  * @param status        Status to print. */
@@ -192,7 +248,8 @@ static void print_status(printf_state_t *state, status_t status) {
 
     if (status >= array_size(status_descriptions) || !status_descriptions[status]) {
         state->base = 10;
-        state->precision = state->width = -1;
+        state->width = -1;
+        state->precision = 1;
         print_number(state, status);
         return;
     }
@@ -215,23 +272,23 @@ static void print_uuid(printf_state_t *state, const uint8_t *uuid, bool big_endi
     state->flags = PRINTF_ZERO_PAD | PRINTF_LOW_CASE;
 
     state->width = 8;
-    state->precision = -1;
+    state->precision = 1;
     val32 = *(const uint32_t *)(&uuid[0]);
     print_number(state, (big_endian) ? be32_to_cpu(val32) : le32_to_cpu(val32));
     print_char(state, '-');
 
-    for (size_t i = 0; i < 2; i++) {
+    for (unsigned i = 0; i < 2; i++) {
         uint16_t val16 = *(const uint16_t *)(&uuid[4 + (i * 2)]);
 
         state->width = 4;
-        state->precision = -1;
+        state->precision = 1;
         print_number(state, (big_endian) ? be16_to_cpu(val16) : le16_to_cpu(val16));
         print_char(state, '-');
     }
 
-    for (size_t i = 0; i < 8; i++) {
+    for (unsigned i = 0; i < 8; i++) {
         state->width = 2;
-        state->precision = -1;
+        state->precision = 1;
         print_number(state, uuid[8 + i]);
         if (i == 1)
             print_char(state, '-');
@@ -244,29 +301,55 @@ static void print_pointer(printf_state_t *state) {
     /*
      * Extensions for certain useful things. Idea borrowed from the Linux
      * kernel. The following formats are implemented:
-     *  - %pE = Print an EFI device path (arg is device path protocol, EFI only).
-     *  - %pu = Print a little-endian (i.e. EFI) UUID (arg is pointer to 16-byte UUID).
-     *  - %pU = Print a big-endian UUID (arg is pointer to 16-byte UUID).
+     *  - %pI[46] = Print an IP address, optional specifier for v4 or v6,
+     *              default is v4, arg is pointer to appropriately sized buffer.
+     *  - %pE     = Print an EFI device path, arg is device path protocol,
+     *              EFI only.
+     *  - %pM     = Print a 6 byte MAC address, arg is pointer to 6 byte buffer.
+     *  - %pS     = Print a status string, arg is status code.
+     *  - %pu     = Print a little-endian (i.e. EFI) UUID, arg is pointer to
+     *              16-byte UUID.
+     *  - %pU     = Print a big-endian UUID, arg is pointer to 16-byte UUID.
      */
     if (isalpha(state->fmt[1])) {
-        state->fmt++;
+        char ch = *(++state->fmt);
 
-        switch (*state->fmt) {
-        case 'E':
-            #if defined(CONFIG_PLATFORM_EFI) && !defined(__TEST)
+        #if defined(CONFIG_PLATFORM_EFI) && !defined(__TEST)
+            if (ch == 'E') {
                 efi_print_device_path(va_arg(state->args, efi_device_path_t *), (void *)print_char, state);
-            #endif
+                return;
+            }
+        #endif
 
-            break;
+        #ifdef CONFIG_TARGET_HAS_NET
+            switch (ch) {
+            case 'I':
+                if (state->fmt[1] == '6') {
+                    state->fmt++;
+                    print_ipv6_addr(state, va_arg(state->args, const ipv6_addr_t *));
+                } else {
+                    if (state->fmt[1] == '4')
+                        state->fmt++;
+                    print_ipv4_addr(state, va_arg(state->args, const ipv4_addr_t *));
+                }
+
+                break;
+            case 'M':
+                print_mac_addr(state, va_arg(state->args, const uint8_t *));
+                return;
+            }
+        #endif
+
+        switch (ch) {
         case 'S':
             print_status(state, va_arg(state->args, status_t));
-            break;
+            return;
         case 'u':
             print_uuid(state, va_arg(state->args, const uint8_t *), false);
-            break;
+            return;
         case 'U':
             print_uuid(state, va_arg(state->args, const uint8_t *), true);
-            break;
+            return;
         }
     } else {
         /* Print lower-case and as though # was specified. */

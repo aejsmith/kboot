@@ -23,8 +23,11 @@
 
 #include <assert.h>
 #include <disk.h>
+#include <fs.h>
 #include <loader.h>
 #include <memory.h>
+
+static void probe_disk(disk_device_t *disk);
 
 /** Next disk IDs. */
 static uint8_t next_disk_ids[DISK_TYPE_FLOPPY + 1];
@@ -187,7 +190,6 @@ static void add_partition(disk_device_t *parent, uint8_t id, uint64_t lba, uint6
     partition = malloc(sizeof(*partition));
     partition->device.type = DEVICE_TYPE_DISK;
     partition->device.ops = &disk_device_ops;
-    partition->device.mount = NULL;
     partition->type = parent->type;
     partition->ops = &partition_disk_ops;
     partition->blocks = blocks;
@@ -210,25 +212,33 @@ static void add_partition(disk_device_t *parent, uint8_t id, uint64_t lba, uint6
         if (parent->ops->is_boot_partition(parent, id, lba))
             boot_device = &partition->device;
     }
+
+    probe_disk(partition);
 }
 
-/** Probe a disk device for partitions.
+/** Probe a disk device's contents.
  * @param disk          Disk device to probe. */
-static void probe_partitions(disk_device_t *disk) {
-    if (!disk->blocks || disk->device.mount)
+static void probe_disk(disk_device_t *disk) {
+    if (!disk->blocks)
         return;
 
-    /* Check for a partition table on the device. */
-    builtin_foreach(BUILTIN_TYPE_PARTITION, partition_ops_t, ops) {
-        if (ops->iterate(disk, add_partition)) {
-            disk->raw.partition_ops = ops;
-            return;
+    /* Probe for filesystems. */
+    disk->device.mount = fs_probe(&disk->device);
+
+    if (!disk->device.mount) {
+        /* Check for a partition table on the device. */
+        builtin_foreach(BUILTIN_TYPE_PARTITION, partition_ops_t, ops) {
+            if (ops->iterate(disk, add_partition)) {
+                disk->raw.partition_ops = ops;
+                break;
+            }
         }
     }
 }
 
 /** Register a disk device.
- * @param disk          Disk device to register (details should be filled in).
+ * @param disk          Disk device to register (fields marked in structure
+ *                      should be initialized).
  * @param boot          Whether the device is the boot device or contains the
  *                      boot partition. */
 void disk_device_register(disk_device_t *disk, bool boot) {
@@ -245,11 +255,10 @@ void disk_device_register(disk_device_t *disk, bool boot) {
     disk->device.type = DEVICE_TYPE_DISK;
     disk->device.ops = &disk_device_ops;
     disk->device.name = name;
-    disk->device.mount = NULL;
     device_register(&disk->device);
 
     if (boot)
         boot_device = &disk->device;
 
-    probe_partitions(disk);
+    probe_disk(disk);
 }

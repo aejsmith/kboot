@@ -44,6 +44,7 @@ sources = FeatureSources(config, [
     'fs.c',
     'main.c',
     'memory.c',
+    ('TARGET_HAS_NET', 'net.c'),
     ('TARGET_HAS_UI', 'menu.c'),
     'shell.c',
     'time.c',

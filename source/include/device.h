@@ -66,10 +66,9 @@ typedef struct device_ops {
 typedef struct device {
     list_t header;                      /**< Link to devices list. */
 
+    const char *name;                   /**< Name of the device. */
     device_type_t type;                 /**< Type of the device. */
     const device_ops_t *ops;            /**< Operations for the device (can be NULL). */
-
-    const char *name;                   /**< Name of the device. */
     struct fs_mount *mount;             /**< Filesystem on the device. */
 } device_t;
 

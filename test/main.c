@@ -184,21 +184,6 @@ static void dump_video_tag(kboot_tag_video_t *tag) {
     }
 }
 
-/** Print an IP address.
- * @param addr      Address to print.
- * @param flags     Behaviour flags. */
-static void print_ip_addr(kboot_ip_addr_t *addr, uint32_t flags) {
-    if (flags & KBOOT_NET_IPV6) {
-        printf("%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-            addr->v6[0], addr->v6[1], addr->v6[2], addr->v6[3],
-            addr->v6[4], addr->v6[5], addr->v6[6], addr->v6[7],
-            addr->v6[8], addr->v6[9], addr->v6[10], addr->v6[11],
-            addr->v6[12], addr->v6[13], addr->v6[14], addr->v6[15]);
-    } else {
-        printf("%u.%u.%u.%u\n", addr->v4[0], addr->v4[1], addr->v4[2], addr->v4[3]);
-    }
-}
-
 /** Dump a boot device tag. */
 static void dump_bootdev_tag(kboot_tag_bootdev_t *tag) {
     printf("KBOOT_TAG_BOOTDEV:\n");
@@ -215,16 +200,20 @@ static void dump_bootdev_tag(kboot_tag_bootdev_t *tag) {
     case KBOOT_BOOTDEV_NET:
         printf("  type         = %" PRIu32 " (KBOOT_BOOTDEV_NET)\n", tag->type);
         printf("  flags        = 0x%" PRIx32 "\n", tag->net.flags);
-        if (tag->net.flags & KBOOT_NET_IPV6)
+
+        if (tag->net.flags & KBOOT_NET_IPV6) {
             printf("    KBOOT_NET_IPV6\n");
-        printf("  server_ip    = "); print_ip_addr(&tag->net.server_ip, tag->net.flags);
+            printf("  client_ip    = %pI6\n", &tag->net.client_ip.v6);
+            printf("  gateway_ip   = %pI6\n", &tag->net.gateway_ip.v6);
+            printf("  server_ip    = %pI6\n", &tag->net.server_ip.v6);
+        } else {
+            printf("  client_ip    = %pI4\n", &tag->net.client_ip.v4);
+            printf("  gateway_ip   = %pI4\n", &tag->net.gateway_ip.v4);
+            printf("  server_ip    = %pI4\n", &tag->net.server_ip.v4);
+        }
+
         printf("  server_port  = %" PRIu16 "\n", tag->net.server_port);
-        printf("  gateway_ip   = "); print_ip_addr(&tag->net.gateway_ip, tag->net.flags);
-        printf("  client_ip    = "); print_ip_addr(&tag->net.client_ip, tag->net.flags);
-        printf("  client_mac   = %02x:%02x:%02x:%02x:%02x:%02x\n",
-            tag->net.client_mac[0], tag->net.client_mac[1],
-            tag->net.client_mac[2], tag->net.client_mac[3],
-            tag->net.client_mac[4], tag->net.client_mac[5]);
+        printf("  client_mac   = %pM\n", tag->net.client_mac);
         printf("  hw_addr_size = %u\n", tag->net.hw_addr_size);
         printf("  hw_type      = %u\n", tag->net.hw_type);
         break;

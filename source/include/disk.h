@@ -89,10 +89,13 @@ typedef struct disk_ops {
 typedef struct disk_device {
     device_t device;                    /**< Device header. */
 
+    /** Fields which must be initialized before registering. */
     disk_type_t type;                   /**< Type of the disk. */
     const disk_ops_t *ops;              /**< Disk operations structure. */
     size_t block_size;                  /**< Size of a block on the disk. */
     uint64_t blocks;                    /**< Total number of blocks on the disk. */
+
+    /** Fields set internally. */
     uint8_t id;                         /**< ID of the disk. */
 
     /** Partitioning information. */
