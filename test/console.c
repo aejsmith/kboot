@@ -179,6 +179,8 @@ void primary_console_init(kboot_tag_t *tags) {
 
     while (tags->type != KBOOT_TAG_NONE) {
         if (tags->type == KBOOT_TAG_VIDEO) {
+            console_out_t *console = NULL;
+
             video = (kboot_tag_video_t *)tags;
 
             if (video->type == KBOOT_VIDEO_LFB && video->lfb.flags & KBOOT_LFB_RGB) {
@@ -198,8 +200,7 @@ void primary_console_init(kboot_tag_t *tags) {
                 current_video_mode->mem_virt = video->lfb.fb_virt;
                 current_video_mode->mem_size = video->lfb.fb_size;
 
-                primary_console.out = fb_console_create();
-                primary_console.out->ops->init(primary_console.out);
+                console = fb_console_create();
             }
 
             #ifdef CONFIG_ARCH_X86
@@ -214,11 +215,14 @@ void primary_console_init(kboot_tag_t *tags) {
                     current_video_mode->mem_virt = video->vga.mem_virt;
                     current_video_mode->mem_size = video->vga.mem_size;
 
-                    primary_console.out = vga_console_create();
-                    primary_console.out->ops->init(primary_console.out);
+                    console = vga_console_create();
                 }
             #endif
 
+            if (console && console->ops->init)
+                console->ops->init(console);
+
+            primary_console.out = console;
             break;
         }
 
