@@ -245,6 +245,8 @@ void disk_device_register(disk_device_t *disk, bool boot) {
     char *name;
 
     list_init(&disk->raw.partitions);
+    disk->parent = NULL;
+    disk->raw.partition_ops = NULL;
 
     /* Assign an ID for the disk and name it. */
     disk->id = next_disk_ids[disk->type]++;
