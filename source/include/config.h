@@ -24,13 +24,20 @@
 
 #include <lib/list.h>
 
-#include <console.h>
+/** Structure defining operations for an OS loader. */
+typedef struct loader_ops {
+    /** Load the operating system.
+     * @param private       Loader private data. */
+    void (*load)(void *private) __noreturn;
 
-struct command;
-struct device;
-struct directory;
-struct loader_ops;
-struct value;
+    #ifdef CONFIG_TARGET_HAS_UI
+    /** Get a configuration window for the OS.
+     * @param private       Loader private data.
+     * @param title         Title to give the window.
+     * @return              Window for configuring the OS. */
+    struct ui_window *(*configure)(void *private, const char *title);
+    #endif
+} loader_ops_t;
 
 /** Structure containing an environment. */
 typedef struct environ {
@@ -40,7 +47,7 @@ typedef struct environ {
     /** Per-environment data used internally. */
     struct device *device;              /**< Current device. */
     struct fs_handle *directory;        /**< Current directory. */
-    struct loader_ops *loader;          /**< Operating system loader operations. */
+    loader_ops_t *loader;               /**< Operating system loader operations. */
     void *loader_private;               /**< Data used by the loader. */
 } environ_t;
 

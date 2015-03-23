@@ -662,6 +662,9 @@ static __noreturn void kboot_loader_load(void *_loader) {
         "kboot: entry point at 0x%" PRIxLOAD ", stack at 0x%" PRIx64 "\n",
         loader->entry, loader->core->stack_base);
 
+    /* Perform pre-boot tasks. */
+    loader_preboot();
+
     /* Perform platform setup. This has to be done late, and we cannot perform
      * any I/O afterwards, as for EFI we call ExitBootServices() here. */
     kboot_platform_setup(loader);

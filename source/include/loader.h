@@ -29,8 +29,6 @@
 #include <status.h>
 #include <types.h>
 
-struct ui_window;
-
 /**
  * Offset to apply to a physical address to get a virtual address.
  *
@@ -84,6 +82,12 @@ static inline ptr_t phys_to_virt(phys_ptr_t addr) {
     return (addr + TARGET_VIRT_OFFSET);
 }
 
+/** Operating modes for a loaded OS. */
+typedef enum load_mode {
+    LOAD_MODE_32BIT,                    /**< 32-bit. */
+    LOAD_MODE_64BIT,                    /**< 64-bit. */
+} load_mode_t;
+
 /** Builtin object definition structure. */
 typedef struct builtin {
     /** Type of the builtin. */
@@ -115,26 +119,8 @@ extern builtin_t __builtins_start[], __builtins_end[];
             var = (object_type *)__builtins_start[++__iter_##var].object) \
         if (__builtins_start[__iter_##var].type == builtin_type)
 
-/** Operating modes for a loaded OS. */
-typedef enum load_mode {
-    LOAD_MODE_32BIT,                    /**< 32-bit. */
-    LOAD_MODE_64BIT,                    /**< 64-bit. */
-} load_mode_t;
-
-/** Structure defining operations for an OS loader. */
-typedef struct loader_ops {
-    /** Load the operating system.
-     * @param private       Loader private data. */
-    void (*load)(void *private) __noreturn;
-
-    #ifdef CONFIG_TARGET_HAS_UI
-    /** Get a configuration window for the OS.
-     * @param private       Loader private data.
-     * @param title         Title to give the window.
-     * @return              Window for configuring the OS. */
-    struct ui_window *(*configure)(void *private, const char *title);
-    #endif
-} loader_ops_t;
+/** Type of a hook function to call before booting an OS. */
+typedef void (*preboot_hook_t)(void);
 
 extern void target_halt(void) __noreturn;
 extern void target_reboot(void) __noreturn;
@@ -162,6 +148,9 @@ extern int dprintf(const char *fmt, ...) __printf(1, 2);
 #define dprintf(fmt...)
 
 #endif
+
+extern void loader_register_preboot_hook(preboot_hook_t hook);
+extern void loader_preboot(void);
 
 extern void loader_main(void) __noreturn;
 

@@ -300,6 +300,16 @@ static bootp_packet_t *get_bootp_packet(void) {
     return (bootp_packet_t *)segoff_to_linear(ci.buffer);
 }
 
+/** Shut down PXE before booting an OS. */
+static void shutdown_pxe(void) {
+    if (pxe_call(PXENV_UNDI_SHUTDOWN, (void *)BIOS_MEM_BASE) != PXENV_EXIT_SUCCESS)
+        dprintf("pxe: warning: PXENV_UNDI_SHUTDOWN failed\n");
+    if (pxe_call(PXENV_UNLOAD_STACK, (void *)BIOS_MEM_BASE) != PXENV_EXIT_SUCCESS)
+        dprintf("pxe: warning: PXENV_UNLOAD_STACK failed\n");
+    if (pxe_call(PXENV_STOP_UNDI, (void *)BIOS_MEM_BASE) != PXENV_EXIT_SUCCESS)
+        dprintf("pxe: warning: PXENV_STOP_UNDI failed\n");
+}
+
 /** Initialize PXE. */
 void pxe_init(void) {
     bootp_packet_t *bootp;
@@ -334,5 +344,8 @@ void pxe_init(void) {
     pxe->mount.ops = &pxe_fs_ops;
     net_device_register_with_bootp(&pxe->net, bootp, true);
     pxe->net.device.mount = &pxe->mount;
+
+    /* Register a pre-boot hook to shut down the PXE stack. */
+    loader_register_preboot_hook(shutdown_pxe);
 }
 

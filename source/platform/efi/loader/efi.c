@@ -94,6 +94,8 @@ static __noreturn void efi_loader_load(void *_loader) {
     image->load_options = str;
     image->load_options_size = str_size;
 
+    loader_preboot();
+
     /* Reset everything to default state. */
     efi_video_reset();
     efi_console_reset();

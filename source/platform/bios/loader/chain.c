@@ -82,6 +82,9 @@ static __noreturn void chain_loader_load(void *_handle) {
     }
 
     dprintf("chain: chainloading device %s (id: 0x%x)\n", disk->device.name, disk_id);
+
+    loader_preboot();
+
     chain_loader_enter(disk_id, partition_addr);
 }
 

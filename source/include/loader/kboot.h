@@ -25,6 +25,7 @@
 #include <lib/allocator.h>
 #include <lib/list.h>
 
+#include <config.h>
 #include <fs.h>
 #include <kboot.h>
 #include <mmu.h>
