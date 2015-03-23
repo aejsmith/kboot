@@ -41,13 +41,13 @@
 #include <loader.h>
 #include <memory.h>
 
-/** Multiboot filesystem information. */
-typedef struct multiboot_mount {
-    fs_mount_t mount;                   /**< Mount header. */
+/** Multiboot device information. */
+typedef struct multiboot_device {
     device_t device;                    /**< Device header. */
+    fs_mount_t mount;                   /**< Mount header. */
 
-    list_t files;                       /**< List of files on the mount. */
-} multiboot_mount_t;
+    list_t files;                       /**< List of files. */
+} multiboot_device_t;
 
 /** Multiboot file information. */
 typedef struct multiboot_file {
@@ -117,11 +117,11 @@ static status_t multiboot_fs_open_entry(const fs_entry_t *entry, fs_handle_t **_
  * @param arg           Data to pass to callback.
  * @return              Status code describing the result of the operation. */
 static status_t multiboot_fs_iterate(fs_handle_t *handle, fs_iterate_cb_t cb, void *arg) {
-    multiboot_mount_t *mount = container_of(handle->mount, multiboot_mount_t, mount);
+    multiboot_device_t *multiboot = container_of(handle->mount, multiboot_device_t, mount);
 
     assert(handle == handle->mount->root);
 
-    list_foreach(&mount->files, iter) {
+    list_foreach(&multiboot->files, iter) {
         multiboot_file_t *file = list_entry(iter, multiboot_file_t, header);
 
         if (!cb(&file->entry, arg))
@@ -140,8 +140,8 @@ static fs_ops_t multiboot_fs_ops = {
 };
 
 /** Generate a configuration file.
- * @param mount         Multiboot mount. */
-static void generate_config(multiboot_mount_t *mount) {
+ * @param multiboot     Multiboot device. */
+static void generate_config(multiboot_device_t *multiboot) {
     size_t count, offset;
     char *buf;
     multiboot_file_t *file;
@@ -152,7 +152,7 @@ static void generate_config(multiboot_mount_t *mount) {
     buf = malloc(count);
 
     /* Get the kernel image. */
-    file = list_first(&mount->files, multiboot_file_t, header);
+    file = list_first(&multiboot->files, multiboot_file_t, header);
 
     /* Turn command line options into environment variables. */
     if (file->cmdline) {
@@ -198,10 +198,10 @@ static void generate_config(multiboot_mount_t *mount) {
     offset += snprintf(buf + offset, count - offset, "kboot \"%s\"", file->entry.name);
 
     /* Add all modules. */
-    if (file != list_last(&mount->files, multiboot_file_t, header)) {
+    if (file != list_last(&multiboot->files, multiboot_file_t, header)) {
         offset += snprintf(buf + offset, count - offset, " [\n");
 
-        while (file != list_last(&mount->files, multiboot_file_t, header)) {
+        while (file != list_last(&multiboot->files, multiboot_file_t, header)) {
             file = list_next(file, header);
             offset += snprintf(buf + offset, count - offset, "    \"%s\"\n", file->entry.name);
         }
@@ -213,22 +213,22 @@ static void generate_config(multiboot_mount_t *mount) {
 
     /* Create a file for the entry. */
     file = malloc(sizeof(*file));
-    file->handle.mount = &mount->mount;
+    file->handle.mount = &multiboot->mount;
     file->handle.type = FILE_TYPE_REGULAR;
     file->handle.size = offset;
     file->handle.count = 1;
-    file->entry.owner = mount->mount.root;
+    file->entry.owner = multiboot->mount.root;
     file->entry.name = "kboot.cfg";
     file->addr = buf;
     file->cmdline = NULL;
 
     list_init(&file->header);
-    list_append(&mount->files, &file->header);
+    list_append(&multiboot->files, &file->header);
 }
 
 /** Load Multiboot modules. */
 static void load_modules(void) {
-    multiboot_mount_t *mount;
+    multiboot_device_t *multiboot;
     multiboot_module_t *modules;
     bool found_config;
 
@@ -237,23 +237,22 @@ static void load_modules(void) {
 
     dprintf("multiboot: using modules for boot filesystem\n");
 
-    mount = malloc(sizeof(*mount));
-    mount->device.mount = &mount->mount;
-    mount->device.type = DEVICE_TYPE_VIRTUAL;
-    mount->device.ops = &multiboot_device_ops;
-    mount->device.name = "mb";
-    mount->mount.device = &mount->device;
-    mount->mount.case_insensitive = false;
-    mount->mount.ops = &multiboot_fs_ops;
-    mount->mount.label = NULL;
-    mount->mount.uuid = NULL;
-    list_init(&mount->files);
+    multiboot = malloc(sizeof(*multiboot));
+    multiboot->device.type = DEVICE_TYPE_VIRTUAL;
+    multiboot->device.ops = &multiboot_device_ops;
+    multiboot->device.name = "mb";
+    multiboot->mount.device = &multiboot->device;
+    multiboot->mount.case_insensitive = false;
+    multiboot->mount.ops = &multiboot_fs_ops;
+    multiboot->mount.label = NULL;
+    multiboot->mount.uuid = NULL;
+    list_init(&multiboot->files);
 
     /* Create the root directory. */
-    mount->mount.root = malloc(sizeof(*mount->mount.root));
-    mount->mount.root->mount = &mount->mount;
-    mount->mount.root->type = FILE_TYPE_DIR;
-    mount->mount.root->count = 1;
+    multiboot->mount.root = malloc(sizeof(*multiboot->mount.root));
+    multiboot->mount.root->mount = &multiboot->mount;
+    multiboot->mount.root->type = FILE_TYPE_DIR;
+    multiboot->mount.root->count = 1;
 
     modules = (multiboot_module_t *)((ptr_t)multiboot_info.mods_addr);
     found_config = false;
@@ -266,11 +265,11 @@ static void load_modules(void) {
             continue;
 
         file = malloc(sizeof(*file));
-        file->handle.mount = &mount->mount;
+        file->handle.mount = &multiboot->mount;
         file->handle.type = FILE_TYPE_REGULAR;
         file->handle.size = modules[i].mod_end - modules[i].mod_start;
         file->handle.count = 1;
-        file->entry.owner = mount->mount.root;
+        file->entry.owner = multiboot->mount.root;
 
         /* Get the name and command line. Strip off any path prefix. */
         file->cmdline = (char *)modules[i].cmdline;
@@ -290,21 +289,22 @@ static void load_modules(void) {
         memcpy(file->addr, (void *)phys_to_virt(modules[i].mod_start), file->handle.size);
 
         list_init(&file->header);
-        list_append(&mount->files, &file->header);
+        list_append(&multiboot->files, &file->header);
     }
 
     /* May have had empty command lines above. */
-    if (list_empty(&mount->files)) {
-        free(mount);
+    if (list_empty(&multiboot->files)) {
+        free(multiboot);
         return;
     }
 
     /* If we do not have a configuration file, generate one. */
     if (!found_config)
-        generate_config(mount);
+        generate_config(multiboot);
 
-    device_register(&mount->device);
-    boot_device = &mount->device;
+    device_register(&multiboot->device);
+    multiboot->device.mount = &multiboot->mount;
+    boot_device = &multiboot->device;
 }
 
 /** Handle Multiboot modules/arguments. */

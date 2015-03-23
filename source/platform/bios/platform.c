@@ -27,6 +27,7 @@
 #include <bios/bios.h>
 #include <bios/disk.h>
 #include <bios/multiboot.h>
+#include <bios/pxe.h>
 
 #include <console.h>
 #include <device.h>
@@ -48,6 +49,7 @@ __noreturn void bios_main(void) {
 void target_device_probe(void) {
     bios_disk_init();
     multiboot_init();
+    pxe_init();
 }
 
 /** Reboot the system. */

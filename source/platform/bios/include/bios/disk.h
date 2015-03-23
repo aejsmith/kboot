@@ -19,8 +19,8 @@
  * @brief               BIOS disk interface definitions.
  */
 
-#ifndef __PC_DISK_H
-#define __PC_DISK_H
+#ifndef __BIOS_DISK_H
+#define __BIOS_DISK_H
 
 /** INT13 function definitions. */
 #define INT13_GET_DRIVE_PARAMETERS      0x800   /**< Get Drive Parameters. */
@@ -72,4 +72,4 @@ extern uint8_t bios_disk_get_id(disk_device_t *disk);
 extern void bios_disk_init(void);
 
 #endif /* __ASM__ */
-#endif /* __PC_DISK_H */
+#endif /* __BIOS_DISK_H */

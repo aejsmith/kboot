@@ -19,6 +19,7 @@ include = {
         'PLATFORM': 'bios',
         'PLATFORM_BIOS': True,
         'TARGET_HAS_DISK': True,
+        'TARGET_HAS_NET': True,
         'TARGET_HAS_UI': True,
         'TARGET_HAS_VIDEO': True,
         'DRIVER_CONSOLE_VGA': True,

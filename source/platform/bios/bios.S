@@ -172,6 +172,40 @@ FUNCTION_START(bios_call)
     ret
 FUNCTION_END(bios_call)
 
+/** Call a PXE function.
+ * @param func          Function to call.
+ * @param segoff        Linear address of data argument.
+ * @return              Return code from call. */
+FUNCTION_START(bios_pxe_call)
+    movl    4(%esp), %ecx
+    movl    8(%esp), %edx
+    push    %ebx
+    movl    pxe_entry_point, %ebx
+
+    /* Switch to real mode. */
+    PROT_TO_REAL
+
+    /* Enable interrupts across the call. */
+    sti
+
+    /* Call the entry point. */
+    pushl   %ebx
+    pushl   %edx
+    pushw   %cx
+    movw    %sp, %bx
+    lcall   *%ss:6(%bx)
+    addw    $10, %sp
+    movw    %ax, %cx
+
+    /* Switch back to protected mode. */
+    REAL_TO_PROT
+
+    /* Save return code and return. */
+    movzwl  %cx, %eax
+    pop     %ebx
+    ret
+FUNCTION_END(bios_pxe_call)
+
 /** IDT pointer for the BIOS IVT. */
 SYMBOL(bios_idtp)
     .word   0x7ff

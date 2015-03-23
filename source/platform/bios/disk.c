@@ -243,6 +243,6 @@ void bios_disk_init(void) {
         add_disk(id);
 
     /* Add the boot device if it was not added by the above loop (e.g. a CD). */
-    if (bios_boot_device && (bios_boot_device < 0x80 || bios_boot_device >= count + 0x80))
+    if (bios_boot_device && (bios_boot_device < 0x7f || bios_boot_device >= count + 0x80))
         add_disk(bios_boot_device);
 }
