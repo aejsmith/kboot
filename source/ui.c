@@ -109,8 +109,8 @@ typedef struct ui_textview {
 } ui_textview_t;
 
 /** Properties of the UI console. */
-static uint16_t ui_console_width;
-static uint16_t ui_console_height;
+static size_t ui_console_width;
+static size_t ui_console_height;
 
 /** UI nesting count (nested calls to ui_display()). */
 static unsigned ui_nest_count;
@@ -555,7 +555,7 @@ void ui_list_insert(ui_window_t *window, ui_entry_t *entry, bool selected) {
 
     if (selected) {
         list->selected = pos;
-        if (pos >= (size_t)CONTENT_HEIGHT)
+        if (pos >= CONTENT_HEIGHT)
             list->offset = (pos - CONTENT_HEIGHT) + 1;
     }
 }
@@ -1079,7 +1079,7 @@ static void render_textview_line(ui_textview_t *textview, size_t line) {
     for (size_t i = 0; i < textview->lines[line].len; i++)
         console_putc(current_console, textview->buf[(textview->lines[line].start + i) % textview->size]);
 
-    if (textview->lines[line].len < (size_t)CONTENT_WIDTH)
+    if (textview->lines[line].len < CONTENT_WIDTH)
         console_putc(current_console, '\n');
 }
 
@@ -1101,7 +1101,7 @@ static void ui_textview_help(ui_window_t *window) {
     if (textview->offset)
         ui_print_action(CONSOLE_KEY_UP, "Scroll Up");
 
-    if ((textview->count - textview->offset) > (size_t)CONTENT_HEIGHT)
+    if ((textview->count - textview->offset) > CONTENT_HEIGHT)
         ui_print_action(CONSOLE_KEY_DOWN, "Scroll Down");
 
     ui_print_action('\e', "Back");
@@ -1120,14 +1120,20 @@ static input_result_t ui_textview_input(ui_window_t *window, uint16_t key) {
             console_scroll_up(current_console);
             console_set_cursor(current_console, 0, 0, false);
             render_textview_line(textview, --textview->offset);
+
+            if (!textview->offset)
+                return INPUT_RENDER_HELP;
         }
 
         return INPUT_HANDLED;
     case CONSOLE_KEY_DOWN:
-        if ((textview->count - textview->offset) > (size_t)CONTENT_HEIGHT) {
+        if (textview->count - textview->offset > CONTENT_HEIGHT) {
             console_scroll_down(current_console);
             console_set_cursor(current_console, 0, -1, false);
             render_textview_line(textview, textview->offset++ + CONTENT_HEIGHT);
+
+            if (textview->count - textview->offset <= CONTENT_HEIGHT)
+                return INPUT_RENDER_HELP;
         }
 
         return INPUT_HANDLED;
@@ -1152,7 +1158,7 @@ static ui_window_type_t ui_textview_window_type = {
  * @param len           Length of line. */
 static void add_textview_line(ui_textview_t *textview, size_t start, size_t len) {
     /* If the line is larger than the content width, split it. */
-    if (len > (size_t)CONTENT_WIDTH) {
+    if (len > CONTENT_WIDTH) {
         add_textview_line(textview, start, CONTENT_WIDTH);
         add_textview_line(textview, (start + CONTENT_WIDTH) % textview->size, len - CONTENT_WIDTH);
     } else {
