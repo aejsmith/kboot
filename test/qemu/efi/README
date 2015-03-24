@@ -4,3 +4,9 @@ This is a build of OVMF revision 14854, taken from the openSUSE binary package:
 
 The official prebuilt versions of OVMF are outdated and do not work on newer
 versions of QEMU, hence why this build was used instead.
+
+The firmware stores non-volatile settings in the ROM image itself (QEMU will
+write to the ROM), therefore the EFI test scripts take a copy of the image
+to prevent modifying the in-tree copy. We have multiple copies of the ROM
+image, one pre-configured to boot from HD and one to boot network, for the
+HD and PXE test scripts.
