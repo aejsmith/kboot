@@ -21,5 +21,5 @@ entry "Test (64-bit)" {
 }
 EOF
 
-qemu-system-x86_64 -bootp tftp://10.0.2.2//boot/pxekboot.img -tftp ${pxedir} -boot n -serial stdio -vga std -m 512 -monitor vc:1024x768 -s
+qemu-system-x86_64 -bootp boot/pxekboot.img -tftp ${pxedir} -boot n -serial stdio -vga std -m 512 -monitor vc:1024x768 -s
 rm -rf ${pxedir}

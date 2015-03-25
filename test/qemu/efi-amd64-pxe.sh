@@ -21,10 +21,13 @@ entry "Test (64-bit)" {
 }
 EOF
 
-if [ ! -e ".ovmf-x86_64-pxe.bin" ]; then
-    cp test/qemu/efi/ovmf-x86_64-pxe.bin .ovmf-x86_64-pxe.bin
+if [ ! -e ".ovmf-amd64-pxe.bin" ]; then
+    cp test/qemu/efi/ovmf-amd64-pxe.bin .ovmf-amd64-pxe.bin
 fi
 
-qemu-system-x86_64 -pflash .ovmf-x86_64-pxe.bin -tftp ${pxedir} -bootp tftp://10.0.2.2//efi/boot/bootx64.efi -serial stdio -m 512 -monitor vc:1024x768 -s
+qemu-system-x86_64 \
+    -pflash .ovmf-amd64-pxe.bin -L test/qemu/efi \
+    -tftp ${pxedir} -bootp efi/boot/bootx64.efi \
+    -m 512 -serial stdio -monitor vc:1024x768 -s
 
 rm -rf ${pxedir}
