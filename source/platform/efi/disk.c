@@ -23,6 +23,7 @@
 
 #include <efi/disk.h>
 #include <efi/efi.h>
+#include <efi/net.h>
 
 #include <loader.h>
 #include <memory.h>
@@ -197,6 +198,12 @@ void efi_disk_init(void) {
     for (efi_uintn_t i = 0; i < num_handles; i++) {
         efi_disk_t *disk;
         efi_block_io_media_t *media;
+
+        /* Some iPXE developer decided it would be a great idea to put a dummy
+         * block I/O protocol on network handles that just returns EFI_NO_MEDIA
+         * for any function. Skip devices that support SNP to work around this. */
+        if (efi_net_is_net_device(handles[i]))
+            continue;
 
         disk = malloc(sizeof(*disk));
         memset(disk, 0, sizeof(*disk));

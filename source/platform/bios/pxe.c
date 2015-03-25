@@ -61,7 +61,7 @@ static uint16_t pxe_call(uint16_t func, void *linear) {
     return bios_pxe_call(func, linear_to_segoff((ptr_t)linear));
 }
 
-/** Get identification information for the device.
+/** Get identification information for a PXE device.
  * @param net           Device to identify.
  * @param type          Type of the information to get.
  * @param buf           Where to store identification string.

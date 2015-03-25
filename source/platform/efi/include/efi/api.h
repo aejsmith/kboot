@@ -61,12 +61,29 @@ typedef void *efi_handle_t;
 typedef void *efi_event_t;
 typedef efi_uint64_t efi_lba_t;
 typedef efi_uintn_t efi_tpl_t;
-typedef uint8_t efi_mac_address_t[32];
-typedef uint8_t efi_ipv4_address_t[4];
-typedef uint8_t efi_ipv6_address_t[16];
-typedef uint8_t efi_ip_address_t[16] __aligned(4);
 typedef efi_uint64_t efi_physical_address_t;
 typedef efi_uint64_t efi_virtual_address_t;
+
+/** IPv4 address structure. */
+typedef struct efi_ipv4_address {
+    uint8_t addr[4];
+} efi_ipv4_address_t;
+
+/** IPv6 address structure. */
+typedef struct efi_ipv6_address {
+    uint8_t addr[16];
+} efi_ipv6_address_t;
+
+/** IP address structure. */
+typedef union efi_ip_address {
+    efi_ipv4_address_t v4;
+    efi_ipv6_address_t v6;
+} efi_ip_address_t;
+
+/** MAC address structure. */
+typedef struct efi_mac_address {
+    uint8_t addr[32];
+} efi_mac_address_t;
 
 /** EFI GUID structure. */
 typedef struct efi_guid {
@@ -473,6 +490,355 @@ typedef struct efi_block_io_protocol {
         efi_uintn_t buffer_size, const void *buffer) __efiapi;
     efi_status_t (*flush_blocks)(struct efi_block_io_protocol *this) __efiapi;
 } efi_block_io_protocol_t;
+
+/**
+ * EFI simple network protocol definitions.
+ */
+
+/** Simple network protocol GUID. */
+#define EFI_SIMPLE_NETWORK_PROTOCOL_GUID \
+    { 0xa19832b9, 0xac25, 0x11d3, 0x9a, 0x2d, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0x4d }
+
+/** Simple network protocol revisions. */
+#define EFI_SIMPLE_NETWORK_PROTOCOL_REVISION    0x10000
+
+/** Network state definitions. */
+typedef enum efi_simple_network_state {
+    EFI_SIMPLE_NETWORK_STOPPED,
+    EFI_SIMPLE_NETWORK_STARTED,
+    EFI_SIMPLE_NETWORK_INITIALIZED,
+    EFI_SIMPLE_NETWORK_MAX_STATE,
+} efi_simple_network_state_t;
+
+/** Bit mask values for receive_filter_setting. */
+#define EFI_SIMPLE_NETWORK_RECEIVE_UNICAST                  0x01
+#define EFI_SIMPLE_NETWORK_RECEIVE_MULTICAST                0x02
+#define EFI_SIMPLE_NETWORK_RECEIVE_BROADCAST                0x04
+#define EFI_SIMPLE_NETWORK_RECEIVE_PROMISCUOUS              0x08
+#define EFI_SIMPLE_NETWORK_RECEIVE_PROMISCUOUS_MULTICAST    0x10
+
+/** Network statistics structure. */
+typedef struct efi_network_statistics {
+    efi_uint64_t rx_total_frames;
+    efi_uint64_t rx_good_frames;
+    efi_uint64_t rx_undersize_frames;
+    efi_uint64_t rx_oversize_frames;
+    efi_uint64_t rx_dropped_frames;
+    efi_uint64_t rx_unicast_frames;
+    efi_uint64_t rx_broadcast_frames;
+    efi_uint64_t rx_multicast_frames;
+    efi_uint64_t rx_crc_error_frames;
+    efi_uint64_t rx_total_bytes;
+    efi_uint64_t tx_total_frames;
+    efi_uint64_t tx_good_frames;
+    efi_uint64_t tx_undersize_frames;
+    efi_uint64_t tx_oversize_frames;
+    efi_uint64_t tx_dropped_frames;
+    efi_uint64_t tx_unicast_frames;
+    efi_uint64_t tx_broadcast_frames;
+    efi_uint64_t tx_multicast_frames;
+    efi_uint64_t tx_crc_error_frames;
+    efi_uint64_t tx_total_bytes;
+    efi_uint64_t collisions;
+    efi_uint64_t unsupported_protocol;
+} efi_network_statistics_t;
+
+/** Network mode information. */
+typedef struct efi_simple_network_mode {
+    efi_uint32_t state;
+    efi_uint32_t hw_address_size;
+    efi_uint32_t media_header_size;
+    efi_uint32_t max_packet_size;
+    efi_uint32_t nvram_size;
+    efi_uint32_t nvram_access_size;
+    efi_uint32_t receive_filter_mask;
+    efi_uint32_t receive_filter_setting;
+    efi_uint32_t max_mcast_filter_count;
+    efi_uint32_t mcast_filter_count;
+    efi_mac_address_t mcast_filter[16];
+    efi_mac_address_t current_ddress;
+    efi_mac_address_t broadcast_address;
+    efi_mac_address_t permanent_address;
+    efi_uint8_t if_type;
+    efi_boolean_t mac_address_changeable;
+    efi_boolean_t multiple_tx_supported;
+    efi_boolean_t media_prresent_supported;
+    efi_boolean_t media_prresent;
+} efi_simple_network_mode_t;
+
+/** Simple network protocol. */
+typedef struct efi_simple_network_protocol {
+    efi_uint64_t revision;
+
+    efi_status_t (*start)(struct efi_simple_network_protocol *this) __efiapi;
+    efi_status_t (*stop)(struct efi_simple_network_protocol *this) __efiapi;
+    efi_status_t (*initialize)(
+        struct efi_simple_network_protocol *this,
+        efi_uintn_t extra_rx_buffer_size, efi_uintn_t extra_tx_buffer_size) __efiapi;
+    efi_status_t (*reset)(struct efi_simple_network_protocol *this, bool extended_verification) __efiapi;
+    efi_status_t (*shutdown)(struct efi_simple_network_protocol *this) __efiapi;
+    efi_status_t (*receive_filters)(
+        struct efi_simple_network_protocol *this,
+        efi_uint32_t enable, efi_uint32_t disable, efi_boolean_t reset_mcast_filter,
+        efi_uintn_t mcast_filter_cnt, efi_mac_address_t *mcast_filter) __efiapi;
+    efi_status_t (*station_address)(
+        struct efi_simple_network_protocol *this,
+        efi_boolean_t reset, efi_mac_address_t *new) __efiapi;
+    efi_status_t (*statistics)(
+        struct efi_simple_network_protocol *this,
+        efi_boolean_t reset, efi_uintn_t *statistics_size,
+        efi_network_statistics_t *statistics_table) __efiapi;
+    efi_status_t (*mcast_ip_to_mac)(
+        struct efi_simple_network_protocol *this,
+        efi_boolean_t ipv6, efi_ip_address_t *ip, efi_mac_address_t *mac) __efiapi;
+    efi_status_t (*nvdata)(
+        struct efi_simple_network_protocol *this,
+        efi_boolean_t read_write, efi_uintn_t offset, efi_uintn_t buffer_size, void *buffer) __efiapi;
+    efi_status_t (*get_status)(
+        struct efi_simple_network_protocol *this,
+        efi_uint32_t *interrupt_status, void **tx_buffer) __efiapi;
+    efi_status_t (*transmit)(
+        struct efi_simple_network_protocol *this,
+        efi_uintn_t header_size, efi_uintn_t buffer_size, void *buffer,
+        efi_mac_address_t *src_addr, efi_mac_address_t *dest_addr, efi_uint16_t *protocol) __efiapi;
+    efi_status_t (*receive)(
+        struct efi_simple_network_protocol *this,
+        efi_uintn_t *header_size, efi_uintn_t *buffer_size, void *buffer,
+        efi_mac_address_t *src_addr, efi_mac_address_t *dest_addr, efi_uint16_t *protocol) __efiapi;
+
+    efi_event_t wait_for_packet;
+    efi_simple_network_mode_t *mode;
+} efi_simple_network_protocol_t;
+
+/**
+ * EFI PXE base code protocol definitions.
+ */
+
+/** PXE base code protocol GUID. */
+#define EFI_PXE_BASE_CODE_PROTOCOL_GUID \
+    { 0x03c4e603, 0xac28, 0x11d3, 0x9a, 0x2d, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0x4d }
+
+/** PXE base code protocol revision numbers. */
+#define EFI_PXE_BASE_CODE_PROTOCOL_REVISION     0x10000
+
+/** Type of a UDP port number. */
+typedef efi_uint16_t efi_pxe_base_code_udp_port_t;
+
+/** ICMP error structure. */
+typedef struct efi_pxe_base_code_icmp_error {
+    efi_uint8_t type;
+    efi_uint8_t code;
+    efi_uint16_t checksum;
+    union {
+        efi_uint32_t reserved;
+        efi_uint32_t mtu;
+        efi_uint32_t pointer;
+        struct {
+              efi_uint16_t identifier;
+              efi_uint16_t sequence;
+        } echo;
+    } u;
+    efi_uint8_t data[494];
+} efi_pxe_base_code_icmp_error_t;
+
+/** TFTP error structure. */
+typedef struct efi_pxe_base_code_tftp_error {
+    efi_uint8_t error_code;
+    efi_char8_t error_string[127];
+} efi_pxe_base_code_tftp_error_t;
+
+/** IP receive filter structure. */
+typedef struct efi_pxe_base_code_ip_filter {
+    efi_uint8_t filters;
+    efi_uint8_t ip_cnt;
+    efi_uint16_t reserved;
+    efi_ip_address_t ip_list[8];
+} efi_pxe_base_code_ip_filter_t;
+
+/** ARP table entry structure. */
+typedef struct efi_pxe_base_code_arp_entry {
+    efi_ip_address_t ip_addr;
+    efi_mac_address_t mac_addr;
+} efi_pxe_base_code_arp_entry_t;
+
+/** Route table entry structure. */
+typedef struct efi_pxe_base_code_route_entry {
+    efi_ip_address_t ip_addr;
+    efi_ip_address_t subnet_mask;
+    efi_ip_address_t gw_addr;
+} efi_pxe_base_code_route_entry_t;
+
+/** Discover server list structure. */
+typedef struct efi_pxe_base_code_srvlist {
+    efi_uint16_t type;
+    efi_boolean_t accept_any_response;
+    efi_uint8_t reserved;
+    efi_ip_address_t ip_addr;
+} efi_pxe_base_code_srvlist_t;
+
+/** Discover information override structure. */
+typedef struct efi_pxe_base_code_discover_info {
+    efi_boolean_t use_mcast;
+    efi_boolean_t use_bcast;
+    efi_boolean_t use_ucast;
+    efi_boolean_t must_use_list;
+    efi_ip_address_t server_mcast_ip;
+    efi_uint16_t ip_cnt;
+    efi_pxe_base_code_srvlist_t srv_list[1];
+} efi_pxe_base_code_discover_info_t;
+
+/** TFTP opcode definitions. */
+typedef enum efi_pxe_base_code_tftp_opcode {
+    EFI_PXE_BASE_CODE_TFTP_FIRST,
+    EFI_PXE_BASE_CODE_TFTP_GET_FILE_SIZE,
+    EFI_PXE_BASE_CODE_TFTP_READ_FILE,
+    EFI_PXE_BASE_CODE_TFTP_WRITE_FILE,
+    EFI_PXE_BASE_CODE_TFTP_READ_DIRECTORY,
+    EFI_PXE_BASE_CODE_MTFTP_GET_FILE_SIZE,
+    EFI_PXE_BASE_CODE_MTFTP_READ_FILE,
+    EFI_PXE_BASE_CODE_MTFTP_READ_DIRECTORY,
+    EFI_PXE_BASE_CODE_MTFTP_LAST,
+} efi_pxe_base_code_tftp_opcode_t;
+
+/** MTFTP information. */
+typedef struct efi_pxe_base_code_mtftp_info {
+    efi_ip_address_t mcast_ip;
+    efi_pxe_base_code_udp_port_t client_port;
+    efi_pxe_base_code_udp_port_t server_port;
+    efi_uint16_t listen_timeout;
+    efi_uint16_t transmit_timeout;
+} efi_pxe_base_code_mtftp_info_t;
+
+/** DHCPv4 packet structure. */
+typedef struct efi_pxe_base_code_dhcpv4_packet {
+    efi_uint8_t bootp_opcode;
+    efi_uint8_t bootp_hw_type;
+    efi_uint8_t bootp_hw_addr_len;
+    efi_uint8_t bootp_gate_hops;
+    efi_uint32_t bootp_ident;
+    efi_uint16_t bootp_seconds;
+    efi_uint16_t bootp_flags;
+    efi_uint8_t bootp_ci_addr[4];
+    efi_uint8_t bootp_yi_addr[4];
+    efi_uint8_t bootp_si_addr[4];
+    efi_uint8_t bootp_gi_addr[4];
+    efi_uint8_t bootp_hw_addr[16];
+    efi_uint8_t bootp_srv_name[64];
+    efi_uint8_t bootp_boot_file[128];
+    efi_uint32_t dhcp_magic;
+    efi_uint8_t dhcp_options[56];
+} efi_pxe_base_code_dhcpv4_packet_t;
+
+/** DHCPv6 packet structure. */
+typedef struct efi_pxe_base_code_dhcpv6_packet {
+    efi_uint32_t message_type : 8;
+    efi_uint32_t transaction_id : 24;
+    efi_uint8_t dhcp_options[1024];
+} efi_pxe_base_code_dhcpv6_packet_t;
+
+/** DHCP packet structure. */
+typedef union efi_pxe_base_code_packet {
+    efi_uint8_t raw[1472];
+    efi_pxe_base_code_dhcpv4_packet_t dhcpv4;
+    efi_pxe_base_code_dhcpv6_packet_t dhcpv6;
+} efi_pxe_base_code_packet_t;
+
+/** PXE base code mode information. */
+typedef struct efi_pxe_base_code_mode {
+    efi_boolean_t started;
+    efi_boolean_t ipv6_available;
+    efi_boolean_t ipv6_supported;
+    efi_boolean_t using_ipv6;
+    efi_boolean_t bis_supported;
+    efi_boolean_t bis_detected;
+    efi_boolean_t auto_arp;
+    efi_boolean_t send_guid;
+    efi_boolean_t dhcp_discover_valid;
+    efi_boolean_t dhcp_ack_received;
+    efi_boolean_t proxy_offer_received;
+    efi_boolean_t pxe_discover_valid;
+    efi_boolean_t pxe_reply_received;
+    efi_boolean_t pxe_bis_reply_received;
+    efi_boolean_t icmp_error_received;
+    efi_boolean_t tftp_error_received;
+    efi_boolean_t make_callbacks;
+    efi_uint8_t ttl;
+    efi_uint8_t tos;
+    efi_ip_address_t station_ip;
+    efi_ip_address_t subnet_mask;
+    efi_pxe_base_code_packet_t dhcp_discover;
+    efi_pxe_base_code_packet_t dhcp_ack;
+    efi_pxe_base_code_packet_t proxy_offer;
+    efi_pxe_base_code_packet_t pxe_discover;
+    efi_pxe_base_code_packet_t pxe_reply;
+    efi_pxe_base_code_packet_t pxe_bis_reply;
+    efi_pxe_base_code_ip_filter_t ip_filter;
+    efi_uint32_t arp_cache_entries;
+    efi_pxe_base_code_arp_entry_t arp_cache[8];
+    efi_uint32_t route_table_entries;
+    efi_pxe_base_code_route_entry_t route_table[8];
+    efi_pxe_base_code_icmp_error_t icmp_error;
+    efi_pxe_base_code_tftp_error_t tftp_error;
+} efi_pxe_base_code_mode_t;
+
+/** PXE base code protocol. */
+typedef struct efi_pxe_base_code_protocol {
+    efi_uint64_t revision;
+
+    efi_status_t (*start)(struct efi_pxe_base_code_protocol *this, efi_boolean_t use_ipv6) __efiapi;
+    efi_status_t (*stop)(struct efi_pxe_base_code_protocol *this) __efiapi;
+    efi_status_t (*dhcp)(struct efi_pxe_base_code_protocol *this, efi_boolean_t sort_offers) __efiapi;
+    efi_status_t (*discover)(
+        struct efi_pxe_base_code_protocol *this,
+        efi_uint16_t type, efi_uint16_t *layer, efi_boolean_t use_bis,
+        efi_pxe_base_code_discover_info_t *info) __efiapi;
+    efi_status_t (*mtftp)(
+        struct efi_pxe_base_code_protocol *this,
+        efi_pxe_base_code_tftp_opcode_t operation, void *buffer_ptr,
+        efi_boolean_t overwrite, efi_uint64_t *buffer_size, efi_uintn_t *block_size,
+        efi_ip_address_t *server_ip, efi_char8_t *filename,
+        efi_pxe_base_code_mtftp_info_t *info, efi_boolean_t dont_use_buffer) __efiapi;
+    efi_status_t (*udp_write)(
+        struct efi_pxe_base_code_protocol *this,
+        efi_uint16_t op_flags, efi_ip_address_t *dest_ip,
+        efi_pxe_base_code_udp_port_t *dest_port, efi_ip_address_t *gateway_ip,
+        efi_ip_address_t *src_ip, efi_pxe_base_code_udp_port_t *src_port,
+        efi_uintn_t *header_size, void *header_ptr, efi_uintn_t *buffer_size,
+        void *buffer_ptr) __efiapi;
+    efi_status_t (*udp_read)(
+        struct efi_pxe_base_code_protocol *this,
+        efi_uint16_t op_flags, efi_ip_address_t *dest_ip,
+        efi_pxe_base_code_udp_port_t *dest_port, efi_ip_address_t *src_ip,
+        efi_pxe_base_code_udp_port_t *src_port, efi_uintn_t *header_size,
+        void *header_ptr, efi_uintn_t *buffer_size, void *buffer_ptr) __efiapi;
+    efi_status_t (*set_ip_filter)(
+        struct efi_pxe_base_code_protocol *this,
+        efi_pxe_base_code_ip_filter_t *new_filter) __efiapi;
+    efi_status_t (*arp)(
+        struct efi_pxe_base_code_protocol *this,
+        efi_ip_address_t *ip_addr, efi_mac_address_t *mac_addr) __efiapi;
+    efi_status_t (*set_parameters)(
+        struct efi_pxe_base_code_protocol *this,
+        efi_boolean_t *new_auto_arp, efi_boolean_t *new_send_guid,
+        efi_uint8_t *new_ttl, efi_uint8_t *new_tos,
+        efi_boolean_t *new_make_callback) __efiapi;
+    efi_status_t (*set_station_ip)(
+        struct efi_pxe_base_code_protocol *this,
+        efi_ip_address_t *new_station_ip, efi_ip_address_t *new_subnet_mask) __efiapi;
+    efi_status_t (*set_packets)(
+        struct efi_pxe_base_code_protocol *this,
+        efi_boolean_t *new_dhcp_discover_valid, efi_boolean_t *new_dhcp_ack_received,
+        efi_boolean_t *new_proxy_offer_received, efi_boolean_t *new_pxe_discover_valid,
+        efi_boolean_t *new_pxe_reply_received, efi_boolean_t *new_pxe_bis_reply_received,
+        efi_pxe_base_code_packet_t *new_dhcp_discover,
+        efi_pxe_base_code_packet_t *new_dhcp_ack,
+        efi_pxe_base_code_packet_t *new_proxy_offer,
+        efi_pxe_base_code_packet_t *new_pxe_discover,
+        efi_pxe_base_code_packet_t *new_pxe_reply,
+        efi_pxe_base_code_packet_t *new_pxe_bis_reply) __efiapi;
+
+    efi_pxe_base_code_mode_t *mode;
+} efi_pxe_base_code_protocol_t;
 
 /**
  * EFI boot services definitions.

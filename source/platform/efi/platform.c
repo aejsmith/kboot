@@ -22,6 +22,7 @@
 #include <efi/disk.h>
 #include <efi/efi.h>
 #include <efi/memory.h>
+#include <efi/net.h>
 #include <efi/video.h>
 
 #include <lib/string.h>
@@ -77,6 +78,7 @@ __noreturn void efi_main(efi_handle_t image_handle, efi_system_table_t *system_t
 /** Detect and register all devices. */
 void target_device_probe(void) {
     efi_disk_init();
+    efi_net_init();
 }
 
 /** Reboot the system. */

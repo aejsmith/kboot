@@ -16,15 +16,15 @@
 
 /**
  * @file
- * @brief               EFI video functions.
+ * @brief               EFI network device support.
  */
 
-#ifndef __EFI_VIDEO_H
-#define __EFI_VIDEO_H
+#ifndef __EFI_NET_H
+#define __EFI_NET_H
 
-#include <video.h>
+#include <net.h>
 
-extern void efi_video_init(void);
-extern void efi_video_reset(void);
+extern bool efi_net_is_net_device(efi_handle_t handle);
+extern void efi_net_init(void);
 
-#endif /* __EFI_VIDEO_H */
+#endif /* __EFI_NET_H */
