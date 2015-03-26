@@ -89,10 +89,10 @@ static void handle_extended(disk_device_t *disk, uint32_t lba, partition_iterate
         mbr_partition_t *partition, *next;
 
         if (!read_mbr(disk, ebr, curr_ebr)) {
-            dprintf("disk: failed to read EBR at %" PRIu32 "\n", curr_ebr);
+            dprintf("mbr: failed to read EBR at %" PRIu32 "\n", curr_ebr);
             break;
         } else if (ebr->signature != MBR_SIGNATURE) {
-            dprintf("disk: warning: invalid EBR, corrupt partition table\n");
+            dprintf("mbr: warning: invalid EBR, corrupt partition table\n");
             break;
         }
 
@@ -148,7 +148,7 @@ static bool mbr_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
 
         if (is_extended(partition)) {
             if (seen_extended) {
-                dprintf("disk: warning: ignoring multiple extended partitions\n");
+                dprintf("mbr: warning: ignoring multiple extended partitions\n");
                 continue;
             }
 

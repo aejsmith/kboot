@@ -80,7 +80,7 @@ static bool gpt_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
         uint64_t lba, count;
 
         if (device_read(&disk->device, buf, entry_size, offset) != STATUS_SUCCESS) {
-            dprintf("disk: failed to read GPT partition entry at %" PRIu64 "\n", offset);
+            dprintf("gpt: failed to read GPT partition entry at %" PRIu64 "\n", offset);
             return false;
         }
 
@@ -92,7 +92,7 @@ static bool gpt_partition_iterate(disk_device_t *disk, partition_iterate_cb_t cb
         count = (le64_to_cpu(entry->last_lba) - lba) + 1;
 
         if (lba >= disk->blocks || lba + count > disk->blocks) {
-            dprintf("disk: warning: GPT partition %" PRIu32 " outside range of device", i);
+            dprintf("gpt: warning: GPT partition %" PRIu32 " outside range of device", i);
             continue;
         }
 

@@ -543,7 +543,7 @@ static void fb_console_deinit(console_out_t *console) {
 }
 
 /** Framebuffer console output operations. */
-console_out_ops_t fb_console_out_ops = {
+static console_out_ops_t fb_console_out_ops = {
     .set_region = fb_console_set_region,
     .get_region = fb_console_get_region,
     .set_colour = fb_console_set_colour,
