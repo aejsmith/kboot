@@ -21,8 +21,6 @@ sources = FeatureSources(config, [
     'loader/kboot.c',
     'loader/kboot_enter.S',
 
-    'lib/string.c',
-
     'arch.c',
     'backtrace.c',
     'descriptor.c',

@@ -21,7 +21,6 @@ Import('env', 'config')
 if config['ARCH'] == 'x86':
     x86_sources = [
         'platform/pc/console.c',
-        '../source/arch/x86/lib/string.c',
         '../source/drivers/serial/ns16550.c',
         '../source/drivers/console/vga.c',
     ]

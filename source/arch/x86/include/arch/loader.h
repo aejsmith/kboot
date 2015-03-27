@@ -24,10 +24,6 @@
 
 #include <types.h>
 
-/** Properties of the architecture (functions we provide etc.). */
-#define TARGET_HAS_MEMCPY   1
-#define TARGET_HAS_MEMSET   2
-
 /** Spin loop hint. */
 static inline void arch_pause(void) {
     __asm__ __volatile__("pause");

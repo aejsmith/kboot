@@ -45,10 +45,44 @@
  * @return              Destination location.
  */
 void *memcpy(void *__restrict dest, const void *__restrict src, size_t count) {
-    const unsigned char *s = src;
-    unsigned char *d = dest;
+    const char *s = (const char *)src;
+    const unsigned long *ns;
+    char *d = (char *)dest;
+    unsigned long *nd;
 
-    for (; count != 0; count--)
+    /* Align the destination. */
+    while ((ptr_t)d & (sizeof(unsigned long) - 1)) {
+        if (count--) {
+            *d++ = *s++;
+        } else {
+            return dest;
+        }
+    }
+
+    /* Write in native-sized blocks if we can. */
+    if (count >= sizeof(unsigned long)) {
+        nd = (unsigned long *)d;
+        ns = (const unsigned long *)s;
+
+        /* Unroll the loop if possible. */
+        while (count >= (sizeof(unsigned long) * 4)) {
+            *nd++ = *ns++;
+            *nd++ = *ns++;
+            *nd++ = *ns++;
+            *nd++ = *ns++;
+            count -= sizeof(unsigned long) * 4;
+        }
+        while (count >= sizeof(unsigned long)) {
+            *nd++ = *ns++;
+            count -= sizeof(unsigned long);
+        }
+
+        d = (char *)nd;
+        s = (const char *)ns;
+    }
+
+    /* Write remaining bytes. */
+    while (count--)
         *d++ = *s++;
 
     return dest;
@@ -64,10 +98,49 @@ void *memcpy(void *__restrict dest, const void *__restrict src, size_t count) {
  * @param count         The number of bytes to fill.
  * @return              Destination location. */
 void *memset(void *dest, int val, size_t count) {
-    unsigned char *d = dest;
+    unsigned char c = val & 0xff;
+    unsigned long *nd, nval;
+    char *d = (char *)dest;
 
-    for (; count != 0; count--)
-        *d++ = (unsigned char)val;
+    /* Align the destination. */
+    while ((ptr_t)d & (sizeof(unsigned long) - 1)) {
+        if (count--) {
+            *d++ = c;
+        } else {
+            return dest;
+        }
+    }
+
+    /* Write in native-sized blocks if we can. */
+    if (count >= sizeof(unsigned long)) {
+        nd = (unsigned long *)d;
+
+        /* Compute the value we will write. */
+        #ifdef __LP64__
+            nval = c * 0x0101010101010101ul;
+        #else
+            nval = c * 0x01010101ul;
+        #endif
+
+        /* Unroll the loop if possible. */
+        while (count >= (sizeof(unsigned long) * 4)) {
+            *nd++ = nval;
+            *nd++ = nval;
+            *nd++ = nval;
+            *nd++ = nval;
+            count -= sizeof(unsigned long) * 4;
+        }
+        while (count >= sizeof(unsigned long)) {
+            *nd++ = nval;
+            count -= sizeof(unsigned long);
+        }
+
+        d = (char *)nd;
+    }
+
+    /* Write remaining bytes. */
+    while (count--)
+        *d++ = val;
 
     return dest;
 }
