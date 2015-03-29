@@ -20,10 +20,12 @@
  */
 
 #include <lib/list.h>
+#include <lib/printf.h>
 #include <lib/string.h>
 #include <lib/utility.h>
 
 #include <assert.h>
+#include <config.h>
 #include <loader.h>
 #include <memory.h>
 
@@ -289,43 +291,60 @@ void memory_map_insert(list_t *map, phys_ptr_t start, phys_size_t size, uint8_t 
     merge_ranges(map, range);
 }
 
-/** Dump a list of physical memory ranges.
- * @param map           Memory map to dump. */
-void memory_map_dump(list_t *map) {
+/** Print a memory map.
+ * @param map           Memory map to print.
+ * @param func          Print function to use.
+ * @param indent        Indentation level. */
+static void print_memory_map(list_t *map, printf_t func, size_t indent) {
     memory_range_t *range;
 
     list_foreach(map, iter) {
         range = list_entry(iter, memory_range_t, header);
 
-        dprintf(
-            " 0x%016" PRIxPHYS "-0x%016" PRIxPHYS " (%" PRIu64 " KiB) -> ",
-            range->start, range->start + range->size, range->size / 1024);
+        func(
+            "%-*s0x%016" PRIxPHYS "-0x%016" PRIxPHYS " (%" PRIu64 " KiB) -> ",
+            indent, "", range->start, range->start + range->size, range->size / 1024);
 
         switch (range->type) {
         case MEMORY_TYPE_FREE:
-            dprintf("Free\n");
+            func("Free\n");
             break;
         case MEMORY_TYPE_ALLOCATED:
-            dprintf("Allocated\n");
+            func("Allocated\n");
             break;
         case MEMORY_TYPE_RECLAIMABLE:
-            dprintf("Reclaimable\n");
+            func("Reclaimable\n");
             break;
         case MEMORY_TYPE_PAGETABLES:
-            dprintf("Pagetables\n");
+            func("Pagetables\n");
             break;
         case MEMORY_TYPE_STACK:
-            dprintf("Stack\n");
+            func("Stack\n");
             break;
         case MEMORY_TYPE_MODULES:
-            dprintf("Modules\n");
+            func("Modules\n");
             break;
         case MEMORY_TYPE_INTERNAL:
-            dprintf("Internal\n");
+            func("Internal\n");
             break;
-        default:
-            internal_error("Bad memory type %d", range->type);
         }
+    }
+}
+
+/** Dump a list of physical memory ranges.
+ * @param map           Memory map to dump. */
+void memory_map_dump(list_t *map) {
+    print_memory_map(map, dprintf, 1);
+}
+
+/** Free the contents of a memory map.
+ * @param map           Memory map to free. */
+void memory_map_free(list_t *map) {
+    while (!list_empty(map)) {
+        memory_range_t *range = list_first(map, memory_range_t, header);
+
+        list_remove(&range->header);
+        free(range);
     }
 }
 
@@ -524,20 +543,40 @@ void memory_init(void) {
 }
 
 /**
+ * Get a snapshot of the current memory map.
+ *
+ * Get a copy of the current memory map. The returned memory map is a copy and
+ * therefore must be freed with memory_map_free() once no longer needed.
+ *
+ * @param map           List to populate with current memory map (will be
+ *                      re-initialized).
+ */
+void memory_snapshot(list_t *map) {
+    list_init(map);
+
+    list_foreach(&memory_ranges, iter) {
+        memory_range_t *range = list_entry(iter, memory_range_t, header);
+        memory_range_t *dup = memdup(range, sizeof(memory_range_t));
+
+        list_init(&dup->header);
+        list_append(map, &dup->header);
+    }
+}
+
+/**
  * Finalize the memory map.
  *
  * This should be called once all memory allocations have been performed. It
  * marks all internal memory ranges as free and returns the final memory map
- * to be passed to the OS.
+ * to be passed to the OS. After this has completed all memory_* functions are
+ * no longer usable.
  *
  * @param map           Head of list to place the memory map into.
  */
 void memory_finalize(list_t *map) {
-    memory_range_t *range;
-
     /* Reclaim all internal memory ranges. */
     list_foreach(&memory_ranges, iter) {
-        range = list_entry(iter, memory_range_t, header);
+        memory_range_t *range = list_entry(iter, memory_range_t, header);
 
         if (range->type == MEMORY_TYPE_INTERNAL) {
             range->type = MEMORY_TYPE_FREE;
@@ -550,3 +589,26 @@ void memory_finalize(list_t *map) {
 }
 
 #endif /* TARGET_HAS_MM */
+
+/**
+ * Configuration commands.
+ */
+
+/** List known memory ranges.
+ * @param args          Argument list.
+ * @return              Whether successful. */
+static bool config_cmd_lsmemory(value_list_t *args) {
+    list_t map;
+
+    if (args->count != 0) {
+        config_error("Invalid arguments");
+        return false;
+    }
+
+    memory_snapshot(&map);
+    print_memory_map(&map, printf, 0);
+    memory_map_free(&map);
+    return true;
+}
+
+BUILTIN_COMMAND("lsmemory", "List known memory ranges", config_cmd_lsmemory);

@@ -45,6 +45,7 @@
 #include <efi/memory.h>
 
 #include <assert.h>
+#include <config.h>
 #include <loader.h>
 #include <memory.h>
 
@@ -304,16 +305,10 @@ void memory_free(void *addr, phys_size_t size) {
     internal_error("Bad memory_free address 0x%" PRIxPHYS, phys);
 }
 
-/**
- * Finalize the memory map.
- *
- * This should be called once all memory allocations have been performed. It
- * marks all internal memory ranges as free and returns the final memory map
- * to be passed to the OS.
- *
- * @param map           Head of list to place the memory map into.
- */
-void memory_finalize(list_t *map) {
+/** Get a memory map.
+ * @param map           Map to fill in.
+ * @param finalize      Whether to free internal entries. */
+static void get_memory_map(list_t *map, bool finalize) {
     efi_memory_descriptor_t *efi_map __cleanup_free = NULL;
     efi_uintn_t num_entries, map_key;
     efi_status_t ret;
@@ -347,14 +342,26 @@ void memory_finalize(list_t *map) {
 
         memory_map_insert(
             map, range->start, range->size,
-            (range->type == MEMORY_TYPE_INTERNAL) ? MEMORY_TYPE_FREE : range->type);
+            (range->type == MEMORY_TYPE_INTERNAL && finalize) ? MEMORY_TYPE_FREE : range->type);
     }
+}
+
+/** Get a snapshot of the current memory map.
+ * @param map           List to populate with current memory map. */
+void memory_snapshot(list_t *map) {
+    get_memory_map(map, false);
+}
+
+/** Finalize the memory map.
+ * @param map           Head of list to place the memory map into. */
+void memory_finalize(list_t *map) {
+    get_memory_map(map, true);
 }
 
 /** Initialize the EFI memory allocator. */
 void efi_memory_init(void) {
-    efi_memory_descriptor_t *memory_map;
-    efi_uintn_t num_entries, map_key, i;
+    efi_memory_descriptor_t *memory_map __cleanup_free;
+    efi_uintn_t num_entries, map_key;
     efi_status_t ret;
 
     /* For informational purposes, we print out a list of all the usable memory
@@ -366,7 +373,7 @@ void efi_memory_init(void) {
         internal_error("Failed to get memory map (0x%zx)", ret);
 
     dprintf("efi: usable memory ranges (%zu total):\n", num_entries);
-    for (i = 0; i < num_entries; i++) {
+    for (efi_uintn_t i = 0; i < num_entries; i++) {
         if (memory_map[i].type != EFI_CONVENTIONAL_MEMORY)
             continue;
 
@@ -376,8 +383,6 @@ void efi_memory_init(void) {
             memory_map[i].physical_start + (memory_map[i].num_pages * EFI_PAGE_SIZE),
             (memory_map[i].num_pages * EFI_PAGE_SIZE) / 1024);
     }
-
-    free(memory_map);
 }
 
 /** Release all allocated memory. */

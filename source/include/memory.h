@@ -67,11 +67,14 @@ static inline void freep(void *p) {
 
 extern void memory_map_insert(list_t *map, phys_ptr_t start, phys_size_t size, uint8_t type);
 extern void memory_map_dump(list_t *map);
+extern void memory_map_free(list_t *map);
 
 extern void *memory_alloc(
     phys_size_t size, phys_size_t align, phys_ptr_t min_addr, phys_ptr_t max_addr,
     uint8_t type, unsigned flags, phys_ptr_t *_phys);
 extern void memory_free(void *addr, phys_size_t size);
+
+extern void memory_snapshot(list_t *map);
 extern void memory_finalize(list_t *map);
 
 #ifndef TARGET_HAS_MM
