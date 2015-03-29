@@ -60,6 +60,8 @@ FUNCTION_START(linux_platform_enter)
 1:  jmp     1b
 FUNCTION_END(linux_platform_enter)
 
+.section .data, "aw", @progbits
+
 /** GDT pointer. */
 linux_gdtp:
     .word .L__gdt_end - __linux_gdt - 1
