@@ -210,6 +210,7 @@ typedef struct linux_params {
 #define LINUX_VIDEO_TYPE_VGA        0x1
 #define LINUX_VIDEO_TYPE_VESA       0x23
 
+extern void linux_platform_check(linux_loader_t *loader, linux_params_t *params);
 extern void linux_platform_load(linux_loader_t *loader, linux_params_t *params) __noreturn;
 
 #endif /* __X86_LINUX_H */

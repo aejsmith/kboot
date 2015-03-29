@@ -30,17 +30,22 @@ extern void linux_platform_enter(
     efi_handle_t handle, efi_system_table_t *table, linux_params_t *params,
     ptr_t entry) __noreturn;
 
-/** Enter a Linux kernel.
+/** Check for platform-specific requirements.
  * @param loader        Loader internal data.
  * @param params        Kernel parameters structure. */
-void linux_platform_load(linux_loader_t *loader, linux_params_t *params) {
-    ptr_t entry;
-
+void linux_platform_check(linux_loader_t *loader, linux_params_t *params) {
     if (params->hdr.version < 0x20b || !params->hdr.handover_offset)
         boot_error("Kernel does not support EFI handover");
 
     if (params->hdr.version >= 0x20c && !(params->hdr.xloadflags & LINUX_XLOAD_EFI_HANDOVER_64))
         boot_error("Kernel does not support 64-bit EFI handover");
+}
+
+/** Enter a Linux kernel.
+ * @param loader        Loader internal data.
+ * @param params        Kernel parameters structure. */
+void linux_platform_load(linux_loader_t *loader, linux_params_t *params) {
+    ptr_t entry;
 
     /* Reset the EFI console in case the kernel wants to use it. */
     efi_console_reset();
