@@ -21,6 +21,7 @@
 
 #include <x86/linux.h>
 
+#include <efi/console.h>
 #include <efi/efi.h>
 
 #include <loader.h>
@@ -40,6 +41,9 @@ void linux_platform_load(linux_loader_t *loader, linux_params_t *params) {
 
     if (params->hdr.version >= 0x20c && !(params->hdr.xloadflags & LINUX_XLOAD_EFI_HANDOVER_64))
         boot_error("Kernel does not support 64-bit EFI handover");
+
+    /* Reset the EFI console in case the kernel wants to use it. */
+    efi_console_reset();
 
     /* 64-bit entry point is 512 bytes after the 32-bit one. */
     entry = params->hdr.code32_start + params->hdr.handover_offset + 512;
