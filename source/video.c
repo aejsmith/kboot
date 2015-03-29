@@ -54,7 +54,7 @@ static void set_current_mode(video_mode_t *mode, bool set_console) {
 
         primary_console.out = console;
 
-        if (current_console == &primary_console && console && console->ops->init)
+        if (primary_console.active && console && console->ops->init)
             console->ops->init(console);
     }
 }
@@ -66,7 +66,7 @@ void video_set_mode(video_mode_t *mode, bool set_console) {
     video_mode_t *prev = current_video_mode;
 
     if (prev && prev->ops->create_console && primary_console.out) {
-        if (current_console == &primary_console && primary_console.out->ops->deinit)
+        if (primary_console.active && primary_console.out->ops->deinit)
             primary_console.out->ops->deinit(primary_console.out);
 
         free(primary_console.out);
@@ -351,7 +351,7 @@ static bool config_cmd_video(value_list_t *args) {
     video_set_mode(mode, true);
 
     /* If currently outputting to this console, need output support. */
-    if (current_console == &primary_console && !current_console->out) {
+    if (primary_console.active && !primary_console.out) {
         video_set_mode(prev, true);
         config_error("Mode '%s' does not support console output", args->values[0].string);
         return false;

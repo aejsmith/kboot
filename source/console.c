@@ -43,7 +43,7 @@ static LIST_DECLARE(console_list);
 console_t primary_console = { .name = "con" };
 
 /** Current main console. */
-console_t *current_console = &primary_console;
+console_t *current_console;
 
 /** Debug output console. */
 console_t *debug_console;
@@ -326,6 +326,8 @@ void console_register(console_t *console) {
 
     list_init(&console->header);
     list_append(&console_list, &console->header);
+
+    console->active = 0;
 }
 
 /** Make a console active.
@@ -335,7 +337,7 @@ static void set_console(console_t **var, console_t *console) {
     console_t *prev = *var;
 
     if (console != prev) {
-        if (prev) {
+        if (prev && --prev->active == 0) {
             if (prev->out && prev->out->ops->deinit)
                 prev->out->ops->deinit(prev->out);
             if (prev->in && prev->in->ops->deinit)
@@ -344,7 +346,7 @@ static void set_console(console_t **var, console_t *console) {
 
         *var = console;
 
-        if (console) {
+        if (console && ++console->active == 1) {
             if (console->out && console->out->ops->init)
                 console->out->ops->init(console->out);
             if (console->in && console->in->ops->init)
@@ -369,6 +371,7 @@ void console_set_debug(console_t *console) {
 void console_init(void) {
     console_register(&primary_console);
     target_console_init();
+    console_set_current(&primary_console);
 }
 
 /**
@@ -447,6 +450,34 @@ static bool config_cmd_console(value_list_t *args) {
 }
 
 BUILTIN_COMMAND("console", "Set the current console", config_cmd_console);
+
+/** Set the debug console.
+ * @param args          Argument list.
+ * @return              Whether successful. */
+static bool config_cmd_debug(value_list_t *args) {
+    console_t *console;
+
+    if (args->count != 1 || args->values[0].type != VALUE_TYPE_STRING) {
+        config_error("Invalid arguments");
+        return false;
+    }
+
+    console = console_lookup(args->values[0].string);
+    if (!console) {
+        config_error("Console '%s' not found", args->values[0].string);
+        return false;
+    }
+
+    if (!console->out) {
+        config_error("Console '%s' does not support output", args->values[0].string);
+        return false;
+    }
+
+    console_set_debug(console);
+    return true;
+}
+
+BUILTIN_COMMAND("debug", "Set the debug console", config_cmd_debug);
 
 /** Print the debug log.
  * @param args          Argument list.

@@ -226,6 +226,7 @@ typedef struct console {
     const char *name;                   /**< Name of the console. */
     console_out_t *out;                 /**< Output device. */
     console_in_t *in;                   /**< Input device. */
+    unsigned active;                    /**< Active count. */
 } console_t;
 
 /** Console capabilities. */
