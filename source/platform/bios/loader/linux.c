@@ -166,11 +166,13 @@ static void get_video_info(linux_loader_t *loader, linux_params_t *params) {
         params->screen_info.orig_x = mode->x;
         params->screen_info.orig_y = mode->y;
 
+        /* Font height from BIOS data area. */
+        params->screen_info.orig_video_points = *(uint16_t *)0x485;
+
         bios_regs_init(&regs);
         regs.ax = 0x1200;
         regs.bx = 0x10;
         bios_call(0x10, &regs);
-
         params->screen_info.orig_video_ega_bx = regs.bx;
         break;
     case VIDEO_MODE_LFB:
@@ -193,7 +195,6 @@ static void get_video_info(linux_loader_t *loader, linux_params_t *params) {
     bios_regs_init(&regs);
     regs.ax = 0xf00;
     bios_call(0x10, &regs);
-
     params->screen_info.orig_video_mode = regs.ax & 0x7f;
     params->screen_info.orig_video_page = regs.bx >> 8;
 }
