@@ -841,13 +841,11 @@ static char *parse_string(void) {
             temp_buf[temp_buf_idx] = 0;
             temp_buf_idx = 0;
             return strdup(temp_buf);
+        } else if (!escaped && ch == '\\' && !escaped) {
+            escaped = true;
         } else {
-            if (ch == '\\' && !escaped) {
-                escaped = true;
-            } else {
-                temp_buf[temp_buf_idx++] = ch;
-                escaped = false;
-            }
+            temp_buf[temp_buf_idx++] = ch;
+            escaped = false;
         }
     }
 }

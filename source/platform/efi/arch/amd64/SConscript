@@ -18,6 +18,8 @@ Import('config', 'defaults', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
+    'loader/linux.c',
+
     'relocate.c',
     'start.S',
 ])

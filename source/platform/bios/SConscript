@@ -21,6 +21,8 @@ sources = FeatureSources(config, [
     'loader/chain.c',
     'loader/chain_enter.S',
     'loader/kboot.c',
+    'loader/linux.c',
+    'loader/linux_enter.S',
 
     'bios.S',
     'console.c',

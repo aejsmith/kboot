@@ -297,6 +297,28 @@ PRIVATE_FUNCTION_START(__efi_call)
     ret
 FUNCTION_END(__efi_call)
 
+/** Enter a Linux kernel using the handover entry point.
+ * @param handle        Handle to the loader image.
+ * @param table         Pointer to EFI system table.
+ * @param params        Kernel parameters structure.
+ * @param entry         Entry point address. */
+FUNCTION_START(linux_platform_enter)
+    /* Switch to the EFI GDT/IDT. */
+    leaq    efi_gdtp(%rip), %rax
+    lgdt    (%rax)
+    leaq    efi_cs(%rip), %rax
+    movzxw  (%rax), %rax
+    push    %rax
+    leaq    1f(%rip), %rax
+    push    %rax
+    lretq
+1:  leaq    efi_idtp(%rip), %rax
+    lidt    (%rax)
+
+    /* Jump to the entry point. */
+    call    *%rcx
+FUNCTION_END(linux_platform_enter)
+
 .section .data, "aw", @progbits
 
 /** EFI function call address. */

@@ -32,6 +32,7 @@ sources = FeatureSources(config, [
     'lib/string.c',
 
     ('TARGET_HAS_KBOOT64', 'TARGET_HAS_KBOOT32', 'loader/kboot.c'),
+    ('TARGET_HAS_LINUX', 'loader/linux.c'),
 
     ('TARGET_HAS_DISK', 'partition/gpt.c'),
     ('TARGET_HAS_DISK', 'partition/mbr.c'),

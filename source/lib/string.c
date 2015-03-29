@@ -17,9 +17,6 @@
 /**
  * @file
  * @brief               String handling functions.
- *
- * @note                These functions are written with code size rather than
- *                      speed in mind.
  */
 
 #include <lib/ctype.h>

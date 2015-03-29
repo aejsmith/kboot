@@ -676,6 +676,8 @@ static __noreturn void kboot_loader_load(void *_loader) {
     kboot_arch_enter(loader);
 }
 
+#ifdef CONFIG_TARGET_HAS_UI
+
 /** Get a configuration window.
  * @param _loader       Pointer to loader internal data.
  * @param title         Title to give the window.
@@ -713,10 +715,14 @@ static ui_window_t *kboot_loader_configure(void *_loader, const char *title) {
     return window;
 }
 
+#endif
+
 /** KBoot loader operations. */
 static loader_ops_t kboot_loader_ops = {
     .load = kboot_loader_load,
+    #ifdef CONFIG_TARGET_HAS_UI
     .configure = kboot_loader_configure,
+    #endif
 };
 
 /**
