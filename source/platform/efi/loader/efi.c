@@ -20,7 +20,6 @@
  */
 
 #include <efi/console.h>
-#include <efi/disk.h>
 #include <efi/efi.h>
 #include <efi/memory.h>
 #include <efi/video.h>
@@ -49,7 +48,6 @@ static __noreturn void efi_loader_load(void *_loader) {
     void *buf;
     efi_handle_t image_handle;
     efi_loaded_image_t *image;
-    device_t *device;
     efi_char16_t *str;
     efi_uintn_t str_size;
     efi_status_t status;
@@ -77,10 +75,7 @@ static __noreturn void efi_loader_load(void *_loader) {
         boot_error("Error getting loaded image protocol (0x%zx)", status);
 
     /* Try to identify the handle of the device the image was on. */
-    device = loader->handle->mount->device;
-    image->device_handle = (device->type == DEVICE_TYPE_DISK)
-        ? efi_disk_get_handle((disk_device_t *)device)
-        : NULL;
+    image->device_handle = efi_device_get_handle(loader->handle->mount->device);
     image->file_path = loader->path;
 
     fs_close(loader->handle);

@@ -42,6 +42,7 @@ typedef struct efi_net {
     fs_mount_t mount;                   /**< Mount header. */
 
     efi_pxe_base_code_protocol_t *bc;   /**< PXE base code protocol. */
+    efi_handle_t handle;                /**< Handle to network device. */
     efi_device_path_t *path;            /**< Device path. */
 } efi_net_t;
 
@@ -60,23 +61,6 @@ static efi_guid_t simple_network_guid = EFI_SIMPLE_NETWORK_PROTOCOL_GUID;
 
 /** PXE base code protocol GUID. */
 static efi_guid_t pxe_base_code_guid = EFI_PXE_BASE_CODE_PROTOCOL_GUID;
-
-/** Check if a handle is a network device.
- * @param handle        Handle to check.
- * @return              Whether the handle supports the simple network protocol. */
-bool efi_net_is_net_device(efi_handle_t handle) {
-    void *protocol;
-    efi_status_t ret;
-
-    ret = efi_open_protocol(handle, &simple_network_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL, &protocol);
-    if (ret != EFI_SUCCESS) {
-        ret = efi_open_protocol(handle, &pxe_base_code_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL, &protocol);
-        if (ret != EFI_SUCCESS)
-            return false;
-    }
-
-    return true;
-}
 
 /** Get identification information for an EFI network device.
  * @param _net          Device to identify.
@@ -225,6 +209,36 @@ static fs_ops_t efi_net_fs_ops = {
     .close = efi_net_fs_close,
 };
 
+/** Check if a handle is a network device.
+ * @param handle        Handle to check.
+ * @return              Whether the handle supports the simple network protocol. */
+bool efi_net_is_net_device(efi_handle_t handle) {
+    void *protocol;
+    efi_status_t ret;
+
+    ret = efi_open_protocol(handle, &simple_network_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL, &protocol);
+    if (ret != EFI_SUCCESS) {
+        ret = efi_open_protocol(handle, &pxe_base_code_guid, EFI_OPEN_PROTOCOL_GET_PROTOCOL, &protocol);
+        if (ret != EFI_SUCCESS)
+            return false;
+    }
+
+    return true;
+}
+
+/** Gets an EFI handle from a network device.
+ * @param _net          Network device to get handle for.
+ * @return              Handle to disk, or NULL if not found. */
+efi_handle_t efi_net_get_handle(net_device_t *_net) {
+    efi_net_t *net;
+
+    if (_net->ops != &efi_net_ops)
+        return NULL;
+
+    net = (efi_net_t *)_net;
+    return net->handle;
+}
+
 /** Detect EFI network devices. */
 void efi_net_init(void) {
     efi_handle_t *handles __cleanup_free = NULL;
@@ -247,6 +261,7 @@ void efi_net_init(void) {
         net->net.server_port = TFTP_PORT;
         net->mount.device = &net->net.device;
         net->mount.ops = &efi_net_fs_ops;
+        net->handle = handles[i];
 
         net->path = efi_get_device_path(handles[i]);
         if (!net->path) {

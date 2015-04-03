@@ -20,8 +20,10 @@
  */
 
 #include <efi/console.h>
+#include <efi/disk.h>
 #include <efi/efi.h>
 #include <efi/memory.h>
+#include <efi/net.h>
 #include <efi/video.h>
 
 #include <lib/charset.h>
@@ -230,6 +232,27 @@ bool efi_is_child_device_node(efi_device_path_t *parent, efi_device_path_t *chil
     }
 
     return child != NULL;
+}
+
+/**
+ * Gets an EFI handle from a device.
+ *
+ * If the given device is an EFI disk, a partition on an EFI disk, or an EFI
+ * network device, tries to find a handle corresponding to that device.
+ *
+ * @param device        Device to get handle for.
+ *
+ * @return              Handle to device, or NULL if not found.
+ */
+efi_handle_t efi_device_get_handle(device_t *device) {
+    switch (device->type) {
+    case DEVICE_TYPE_DISK:
+        return efi_disk_get_handle((disk_device_t *)device);
+    case DEVICE_TYPE_NET:
+        return efi_net_get_handle((net_device_t *)device);
+    default:
+        return NULL;
+    }
 }
 
 /** Exit the loader.

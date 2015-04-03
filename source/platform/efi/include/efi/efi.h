@@ -28,6 +28,8 @@
 
 #include <status.h>
 
+struct device;
+
 extern char __text_start[], __data_start[], __bss_start[];
 
 extern efi_handle_t efi_image_handle;
@@ -71,6 +73,8 @@ static inline efi_device_path_t *efi_last_device_node(efi_device_path_t *path) {
 
     return path;
 }
+
+extern efi_handle_t efi_device_get_handle(struct device *device);
 
 extern void efi_main(efi_handle_t image_handle, efi_system_table_t *system_table) __noreturn;
 extern void efi_exit(efi_status_t status, efi_char16_t *data, efi_uintn_t data_size) __noreturn;
