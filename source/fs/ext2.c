@@ -382,7 +382,17 @@ static status_t ext2_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle)
     ext2_handle_t *owner = (ext2_handle_t *)_entry->owner;
     ext2_mount_t *mount = (ext2_mount_t *)_entry->owner->mount;
 
-    return open_inode(mount, entry->num, owner, _handle);
+    if (entry->num == owner->num) {
+        fs_retain(&owner->handle);
+        *_handle = &owner->handle;
+        return STATUS_SUCCESS;
+    } else if (entry->num == EXT2_ROOT_INO) {
+        fs_retain(mount->mount.root);
+        *_handle = mount->mount.root;
+        return STATUS_SUCCESS;
+    } else {
+        return open_inode(mount, entry->num, owner, _handle);
+    }
 }
 
 /** Iterate over ext2 directory entries.

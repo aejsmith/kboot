@@ -186,18 +186,31 @@ static status_t fat_read(fs_handle_t *_handle, void *buf, size_t count, offset_t
  * @return              Status code describing the result of the operation. */
 static status_t fat_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle) {
     fat_iterate_state_t *state = (fat_iterate_state_t *)_entry;
-    fat_handle_t *handle;
+    fat_handle_t *owner = (fat_handle_t *)_entry->owner;
+    fat_handle_t *root = (fat_handle_t *)_entry->owner->mount->root;
+    uint32_t cluster
+        = (le16_to_cpu(state->entry.first_cluster_high) << 16) | le16_to_cpu(state->entry.first_cluster_low);
 
-    handle = malloc(sizeof(*handle));
-    handle->handle.mount = _entry->owner->mount;
-    handle->handle.type =
-        (state->entry.attributes & FAT_ATTRIBUTE_DIRECTORY) ? FILE_TYPE_DIR : FILE_TYPE_REGULAR;
-    handle->handle.size = le32_to_cpu(state->entry.file_size);
-    handle->handle.count = 1;
-    handle->cluster =
-        (le16_to_cpu(state->entry.first_cluster_high) << 16) | le16_to_cpu(state->entry.first_cluster_low);
+    if (cluster == owner->cluster) {
+        fs_retain(&owner->handle);
+        *_handle = &owner->handle;
+    } else if (cluster == root->cluster) {
+        fs_retain(&root->handle);
+        *_handle = &root->handle;
+    } else {
+        fat_handle_t *handle = malloc(sizeof(*handle));
 
-    *_handle = &handle->handle;
+        handle->handle.mount = _entry->owner->mount;
+        handle->handle.type = (state->entry.attributes & FAT_ATTRIBUTE_DIRECTORY)
+            ? FILE_TYPE_DIR
+            : FILE_TYPE_REGULAR;
+        handle->handle.size = le32_to_cpu(state->entry.file_size);
+        handle->handle.count = 1;
+        handle->cluster = cluster;
+
+        *_handle = &handle->handle;
+    }
+
     return STATUS_SUCCESS;
 }
 

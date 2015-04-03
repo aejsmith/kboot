@@ -86,9 +86,21 @@ static fs_handle_t *open_record(iso9660_mount_t *mount, iso9660_directory_record
  * @return              Status code describing the result of the operation. */
 static status_t iso9660_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle) {
     iso9660_entry_t *entry = (iso9660_entry_t *)_entry;
+    iso9660_handle_t *owner = (iso9660_handle_t *)_entry->owner;
+    iso9660_handle_t *root = (iso9660_handle_t *)_entry->owner->mount->root;
     iso9660_mount_t *mount = (iso9660_mount_t *)_entry->owner->mount;
+    uint32_t extent = le32_to_cpu(entry->record->extent_loc_le);
 
-    *_handle = open_record(mount, entry->record);
+    if (extent == owner->extent) {
+        fs_retain(&owner->handle);
+        *_handle = &owner->handle;
+    } else if (extent == root->extent) {
+        fs_retain(&root->handle);
+        *_handle = &root->handle;
+    } else {
+        *_handle = open_record(mount, entry->record);
+    }
+
     return STATUS_SUCCESS;
 }
 
