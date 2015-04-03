@@ -41,7 +41,7 @@ static __noreturn void linux_loader_load(void *_loader) {
     size_t size;
 
     /* Combine the path string and arguments back into a single string. */
-    size = strlen("BOOT_IMAGE=") + strlen(loader->path) + strlen(loader->args.string) + 1;
+    size = strlen("BOOT_IMAGE=") + strlen(loader->path) + strlen(loader->args.string) + 2;
     loader->cmdline = malloc(size);
     strcpy(loader->cmdline, "BOOT_IMAGE=");
     strcat(loader->cmdline, loader->path);
