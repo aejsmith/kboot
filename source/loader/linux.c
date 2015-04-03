@@ -85,49 +85,6 @@ static loader_ops_t linux_loader_ops = {
     #endif
 };
 
-/** Split a command line string into path and arguments.
- * @param str           String to split.
- * @param _path         Where to store malloc()'d path string.
- * @param _cmdline      Where to store malloc()'d arguments string. */
-static void split_cmdline(const char *str, char **_path, char **_cmdline) {
-    size_t len = 0;
-    bool escaped = false;
-    char *path;
-
-    for (size_t i = 0; str[i]; i++) {
-        if (!escaped && str[i] == '\\') {
-            escaped = true;
-        } else if (!escaped && str[i] == ' ') {
-            break;
-        } else {
-            len++;
-            escaped = false;
-        }
-    }
-
-    path = malloc(len + 1);
-    path[len] = 0;
-
-    escaped = false;
-    for (size_t i = 0; i < len; str++) {
-        if (!escaped && *str == '\\') {
-            escaped = true;
-        } else if (!escaped && *str == ' ') {
-            break;
-        } else {
-            path[i++] = *str;
-            escaped = false;
-        }
-    }
-
-    /* Skip a space. */
-    if (*str)
-        str++;
-
-    *_path = path;
-    *_cmdline = strdup(str);
-}
-
 /** Load Linux kernel initrd data.
  * @param loader        Loader internal data.
  * @param addr          Allocated address to load to. */

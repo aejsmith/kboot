@@ -36,8 +36,9 @@
 /** EFI loader data. */
 typedef struct efi_loader {
     fs_handle_t *handle;                /**< Handle to EFI image. */
-    value_t cmdline;                    /**< Command line to the image. */
-    efi_device_path_t *path;            /**< EFI file path. */
+    char *path;                         /**< Path to image. */
+    value_t args;                       /**< Arguments to the image. */
+    efi_device_path_t *efi_path;        /**< EFI file path. */
 } efi_loader_t;
 
 /** Load an EFI executable.
@@ -76,15 +77,15 @@ static __noreturn void efi_loader_load(void *_loader) {
 
     /* Try to identify the handle of the device the image was on. */
     image->device_handle = efi_device_get_handle(loader->handle->mount->device);
-    image->file_path = loader->path;
+    image->file_path = loader->efi_path;
 
     fs_close(loader->handle);
 
     /* Convert the arguments to UTF-16. FIXME: UTF-8 internally? */
-    str_size = (strlen(loader->cmdline.string) + 1) * sizeof(*str);
+    str_size = (strlen(loader->args.string) + 1) * sizeof(*str);
     str = malloc(str_size);
     for (size_t i = 0; i < str_size / sizeof(*str); i++)
-        str[i] = loader->cmdline.string[i];
+        str[i] = loader->args.string[i];
 
     image->load_options = str;
     image->load_options_size = str_size;
@@ -117,7 +118,7 @@ static ui_window_t *efi_loader_configure(void *_loader, const char *title) {
     ui_entry_t *entry;
 
     window = ui_list_create(title, true);
-    entry = ui_entry_create("Command line", &loader->cmdline);
+    entry = ui_entry_create("Command line", &loader->args);
     ui_list_insert(window, entry, false);
     return window;
 }
@@ -197,43 +198,37 @@ static efi_device_path_t *convert_file_path(fs_handle_t *handle, const char *pat
  * @return              Whether successful. */
 static bool config_cmd_efi(value_list_t *args) {
     efi_loader_t *loader;
-    const char *path;
     status_t ret;
 
-    if ((args->count != 1 && args->count != 2)
-        || args->values[0].type != VALUE_TYPE_STRING
-        || (args->count == 2 && args->values[1].type != VALUE_TYPE_STRING))
-    {
+    if (args->count != 1 || args->values[0].type != VALUE_TYPE_STRING) {
         config_error("Invalid arguments");
         return false;
     }
 
     loader = malloc(sizeof(*loader));
 
-    path = args->values[0].string;
-    ret = fs_open(path, NULL, FILE_TYPE_REGULAR, &loader->handle);
+    loader->args.type = VALUE_TYPE_STRING;
+    split_cmdline(args->values[0].string, &loader->path, &loader->args.string);
+
+    ret = fs_open(loader->path, NULL, FILE_TYPE_REGULAR, &loader->handle);
     if (ret != STATUS_SUCCESS) {
-        config_error("Error opening '%s': %pS", path, ret);
+        config_error("Error opening '%s': %pS", loader->path, ret);
         goto err_free;
     }
 
-    loader->path = convert_file_path(loader->handle, path);
-    if (!loader->path)
+    loader->efi_path = convert_file_path(loader->handle, loader->path);
+    if (!loader->efi_path)
         goto err_close;
-
-    /* Copy the command line. */
-    if (args->count == 2) {
-        value_move(&args->values[1], &loader->cmdline);
-    } else {
-        value_init(&loader->cmdline, VALUE_TYPE_STRING);
-    }
 
     environ_set_loader(current_environ, &efi_loader_ops, loader);
     return true;
 
 err_close:
     fs_close(loader->handle);
+
 err_free:
+    value_destroy(&loader->args);
+    free(loader->path);
     free(loader);
     return false;
 }

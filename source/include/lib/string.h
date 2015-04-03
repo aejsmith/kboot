@@ -54,4 +54,6 @@ extern int vsprintf(char *buf, const char *fmt, va_list args);
 extern int snprintf(char *buf, size_t size, const char *fmt, ...);
 extern int sprintf(char *buf, const char *fmt, ...);
 
+extern void split_cmdline(const char *str, char **_path, char **_cmdline);
+
 #endif /* __LIB_STRING_H */
