@@ -34,6 +34,14 @@
 
 extern void linux_platform_enter(ptr_t entry, linux_params_t *params) __noreturn;
 
+/** Check for platform-specific requirements.
+ * @param loader        Loader internal data.
+ * @param header        Kernel image header.
+ * @return              Whether the kernel image is valid. */
+bool linux_platform_check(linux_loader_t *loader, linux_header_t *header) {
+    return true;
+}
+
 /** Get memory information.
  * @param params        Kernel parameters structure.
  * @return              Whether any method succeeded. */

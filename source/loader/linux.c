@@ -213,6 +213,10 @@ static bool config_cmd_linux(value_list_t *args) {
         }
     }
 
+    /* Check whether the kernel image is valid. */
+    if (!linux_arch_check(loader))
+        goto err_initrd;
+
     #ifdef CONFIG_TARGET_HAS_VIDEO
         video_env_init(current_environ, "video_mode", LINUX_VIDEO_TYPES, NULL);
     #endif

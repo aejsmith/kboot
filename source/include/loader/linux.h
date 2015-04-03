@@ -43,6 +43,7 @@ typedef struct linux_initrd {
     fs_handle_t *handle;                /**< Handle to initrd. */
 } linux_initrd_t;
 
+extern bool linux_arch_check(linux_loader_t *loader);
 extern void linux_arch_load(linux_loader_t *loader) __noreturn;
 
 extern void linux_initrd_load(linux_loader_t *loader, void *addr);

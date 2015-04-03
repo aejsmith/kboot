@@ -32,13 +32,18 @@ extern void linux_platform_enter(
 
 /** Check for platform-specific requirements.
  * @param loader        Loader internal data.
- * @param params        Kernel parameters structure. */
-void linux_platform_check(linux_loader_t *loader, linux_params_t *params) {
-    if (params->hdr.version < 0x20b || !params->hdr.handover_offset)
-        boot_error("Kernel does not support EFI handover");
+ * @param header        Kernel image header.
+ * @return              Whether the kernel image is valid. */
+bool linux_platform_check(linux_loader_t *loader, linux_header_t *header) {
+    if (header->version < 0x20b || !header->handover_offset) {
+        config_error("'%s' does not support EFI handover", loader->path);
+        return false;
+    } else if (header->version >= 0x20c && !(header->xloadflags & LINUX_XLOAD_EFI_HANDOVER_64)) {
+        config_error("'%s' does not support 64-bit EFI handover", loader->path);
+        return false;
+    }
 
-    if (params->hdr.version >= 0x20c && !(params->hdr.xloadflags & LINUX_XLOAD_EFI_HANDOVER_64))
-        boot_error("Kernel does not support 64-bit EFI handover");
+    return true;
 }
 
 /** Enter a Linux kernel.

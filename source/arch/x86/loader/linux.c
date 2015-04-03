@@ -37,6 +37,38 @@
 #include <loader.h>
 #include <memory.h>
 
+/** Check whether a Linux kernel image is valid.
+ * @param loader        Loader internal data.
+ * @return              Whether the kernel image is valid. */
+bool linux_arch_check(linux_loader_t *loader) {
+    linux_header_t header;
+    status_t ret;
+
+    /* Read in the kernel header. */
+    ret = fs_read(loader->kernel, &header, sizeof(header), offsetof(linux_params_t, hdr));
+    if (ret != STATUS_SUCCESS) {
+        config_error("Error reading '%s': %pS", loader->path, ret);
+        return false;
+    }
+
+    /* Check that this is a valid kernel image and that the version is
+     * sufficient. We require at least protocol 2.03, earlier kernels don't
+     * support the 32-bit boot protocol. */
+    if (header.boot_flag != 0xaa55 || header.header != LINUX_MAGIC_SIGNATURE) {
+        config_error("'%s' is not a Linux kernel image", loader->path);
+        return false;
+    } else if (header.version < 0x0203) {
+        config_error("'%s' is too old (boot protocol 2.03 required)", loader->path);
+        return false;
+    } else if (!(header.loadflags & LINUX_LOAD_LOADED_HIGH)) {
+        config_error("'%s' is not a bzImage kernel", loader->path);
+        return false;
+    }
+
+    /* Check platform requirements. */
+    return linux_platform_check(loader, &header);
+}
+
 /** Allocate memory to load the kernel to.
  * @param params        Kernel parameters structure.
  * @param size          Total load size required.
@@ -134,20 +166,6 @@ __noreturn void linux_arch_load(linux_loader_t *loader) {
     if (ret != STATUS_SUCCESS)
         boot_error("Error reading kernel header: %pS", ret);
 
-    /* Check that this is a valid kernel image and that the version is
-     * sufficient. We require at least protocol 2.03, earlier kernels don't
-     * support the 32-bit boot protocol. */
-    if (params->hdr.boot_flag != 0xaa55 || params->hdr.header != LINUX_MAGIC_SIGNATURE) {
-        boot_error("File is not a Linux kernel image");
-    } else if (params->hdr.version < 0x0203) {
-        boot_error("Kernel version is too old");
-    } else if (!(params->hdr.loadflags & LINUX_LOAD_LOADED_HIGH)) {
-        boot_error("zImage kernels are not supported");
-    }
-
-    /* Check platform requirements. */
-    linux_platform_check(loader, params);
-
     /* Start populating required fields in the header. Don't set heap_end_ptr or
      * the CAN_USE_HEAP flag, as these appear to only be required by the 16-bit
      * entry point which we do not use. */
@@ -228,11 +246,4 @@ __noreturn void linux_arch_load(linux_loader_t *loader) {
      * entry point. For EFI, this will enter the kernel using the handover
      * protocol. */
     linux_platform_load(loader, params);
-}
-
-/** Check for platform-specific requirements.
- * @param loader        Loader internal data.
- * @param params        Kernel parameters structure. */
-__weak void linux_platform_check(linux_loader_t *loader, linux_params_t *params) {
-    /* Nothing happens. */
 }
