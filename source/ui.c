@@ -41,6 +41,13 @@ typedef struct ui_list {
     size_t selected;                    /**< Index of selected entry. */
 } ui_list_t;
 
+/** Structure for a label. */
+typedef struct ui_label {
+    ui_entry_t entry;                   /**< Entry header. */
+
+    const char *text;                   /**< Text for the label. */
+} ui_label_t;
+
 /** Structure for a link. */
 typedef struct ui_link {
     ui_entry_t entry;                   /**< Entry header. */
@@ -135,6 +142,13 @@ void ui_entry_destroy(ui_entry_t *entry) {
         entry->type->destroy(entry);
 
     free(entry);
+}
+
+/** Return whether an entry is selectable.
+ * @param entry         Entry to check.
+ * @return              Whether the entry is selectable. */
+static inline bool ui_entry_selectable(ui_entry_t *entry) {
+    return entry->type->input || entry->type->help;
 }
 
 /** Print an action (for help text).
@@ -454,47 +468,80 @@ static input_result_t ui_list_input(ui_window_t *window, uint16_t key) {
     ui_list_t *list = (ui_list_t *)window;
     ui_entry_t *entry;
     input_result_t ret;
+    size_t target;
 
     switch (key) {
     case CONSOLE_KEY_UP:
-        if (list->selected == 0)
-            return INPUT_HANDLED;
+        /* Find next selectable entry. */
+        target = list->selected;
+        while (true) {
+            bool selectable;
 
-        /* Redraw current entry as not selected. */
-        entry = list->entries[list->selected];
-        render_entry(entry, list->selected - list->offset, false);
+            if (!target)
+                return INPUT_HANDLED;
 
-        /* If selected becomes less than the offset, must scroll up. */
-        list->selected--;
-        if (list->selected < list->offset) {
-            list->offset--;
-            console_scroll_up(current_console);
+            target--;
+            selectable = ui_entry_selectable(list->entries[target]);
+
+            /* Scroll up if off the visible area. Doing it here means we will
+             * show non-selectable entries even at the top of the list. */
+            if (target < list->offset) {
+                list->offset--;
+                console_scroll_up(current_console);
+
+                /* If not selectable, we're going to scroll over this which
+                 * means it won't be rendered by the highlight below. Render it
+                 * unhighlighted. */
+                if (!selectable)
+                    render_entry(list->entries[target], target - list->offset, false);
+            }
+
+            if (selectable)
+                break;
         }
 
+        /* Redraw current entry as not selected. */
+        if (list->selected < list->offset + CONTENT_HEIGHT)
+            render_entry(list->entries[list->selected], list->selected - list->offset, false);
+
+        list->selected = target;
+
         /* Draw the new entry highlighted. */
-        entry = list->entries[list->selected];
-        render_entry(entry, list->selected - list->offset, true);
+        render_entry(list->entries[list->selected], list->selected - list->offset, true);
 
         /* Possible actions may have changed, re-render help. */
         return INPUT_RENDER_HELP;
     case CONSOLE_KEY_DOWN:
-        if (list->selected >= list->count - 1)
-            return INPUT_HANDLED;
+        target = list->selected;
+        while (true) {
+            bool selectable;
 
-        /* Redraw current entry as not selected. */
-        entry = list->entries[list->selected];
-        render_entry(entry, list->selected - list->offset, false);
+            if (target >= list->count - 1)
+                return INPUT_HANDLED;
 
-        /* If selected is now off screen, must scroll down. */
-        list->selected++;
-        if (list->selected >= list->offset + CONTENT_HEIGHT) {
-            list->offset++;
-            console_scroll_down(current_console);
+            target++;
+            selectable = ui_entry_selectable(list->entries[target]);
+
+            if (target >= list->offset + CONTENT_HEIGHT) {
+                list->offset++;
+                console_scroll_down(current_console);
+
+                if (!selectable)
+                    render_entry(list->entries[target], target - list->offset, false);
+            }
+
+            if (selectable)
+                break;
         }
 
+        /* Redraw current entry as not selected. */
+        if (list->selected >= list->offset)
+            render_entry(list->entries[list->selected], list->selected - list->offset, false);
+
+        list->selected = target;
+
         /* Draw the new entry highlighted. */
-        entry = list->entries[list->selected];
-        render_entry(entry, list->selected - list->offset, true);
+        render_entry(list->entries[list->selected], list->selected - list->offset, true);
 
         /* Possible actions may have changed, re-render help. */
         return INPUT_RENDER_HELP;
@@ -553,11 +600,48 @@ void ui_list_insert(ui_window_t *window, ui_entry_t *entry, bool selected) {
     list->entries = realloc(list->entries, sizeof(*list->entries) * list->count);
     list->entries[pos] = entry;
 
-    if (selected) {
+    /* Make this selected if the first entry is not selectable (can happen if
+     * the first thing added is a section header). */
+    if (selected || (!list->selected && !ui_entry_selectable(list->entries[0]))) {
+        assert(ui_entry_selectable(entry));
+
         list->selected = pos;
         if (pos >= CONTENT_HEIGHT)
             list->offset = (pos - CONTENT_HEIGHT) + 1;
     }
+}
+
+/** Render a label.
+ * @param entry         Entry to render. */
+static void ui_label_render(ui_entry_t *entry) {
+    ui_label_t *label = (ui_label_t *)entry;
+
+    console_set_colour(current_console, COLOUR_WHITE, COLOUR_BLACK);
+    printf("%s", label->text);
+    console_set_colour(current_console, COLOUR_LIGHT_GREY, COLOUR_BLACK);
+}
+
+/** Label entry type. */
+static ui_entry_type_t ui_label_entry_type = {
+    .render = ui_label_render,
+};
+
+/** Add a section header to a list window.
+ * @param window        Window to add to.
+ * @param text          Text for section header. */
+void ui_list_add_section(ui_window_t *window, const char *text) {
+    ui_label_t *label;
+
+    /* Just create 2 labels, one blank, to add a separator. Avoids having to
+     * implement variable height entries just for this one special case. */
+    label = malloc(sizeof(*label));
+    label->entry.type = &ui_label_entry_type;
+    label->text = "";
+    ui_list_insert(window, &label->entry, false);
+    label = malloc(sizeof(*label));
+    label->entry.type = &ui_label_entry_type;
+    label->text = text;
+    ui_list_insert(window, &label->entry, false);
 }
 
 /** Return whether a list is empty.

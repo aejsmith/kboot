@@ -114,6 +114,7 @@ extern void ui_display(ui_window_t *window, unsigned timeout);
 
 extern ui_window_t *ui_list_create(const char *title, bool exitable);
 extern void ui_list_insert(ui_window_t *window, ui_entry_t *entry, bool selected);
+extern void ui_list_add_section(ui_window_t *window, const char *text);
 extern bool ui_list_empty(ui_window_t *window);
 
 extern ui_entry_t *ui_link_create(ui_window_t *window);
