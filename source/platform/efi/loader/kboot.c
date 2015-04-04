@@ -26,7 +26,6 @@
 #include <loader/kboot.h>
 
 #include <assert.h>
-#include <console.h>
 #include <memory.h>
 
 #ifdef __LP64__
@@ -38,47 +37,21 @@
 /** Perform platform-specific setup for a KBoot kernel.
  * @param loader        Loader internal data. */
 void kboot_platform_setup(kboot_loader_t *loader) {
-    efi_status_t ret;
+    void *memory_map __cleanup_free;
+    efi_uintn_t num_entries, desc_size, size;
+    efi_uint32_t desc_version;
+    kboot_tag_efi_t *tag;
 
-    /* Try multiple times to call ExitBootServices, it can change the memory map
-     * the first time. This should not happen more than once however, so only
-     * do it twice. */
-    for (unsigned i = 0; i < 2; i++) {
-        efi_uintn_t size, map_key, desc_size;
-        efi_uint32_t desc_version;
-        void *buf __cleanup_free = NULL;
+    /* Exit boot services mode and get the final memory map. */
+    efi_exit_boot_services(&memory_map, &num_entries, &desc_size, &desc_version);
 
-        /* Call a first time to get the needed buffer size. */
-        size = 0;
-        ret = efi_call(efi_boot_services->get_memory_map, &size, NULL, &map_key, &desc_size, &desc_version);
-        if (ret != EFI_BUFFER_TOO_SMALL)
-            internal_error("Failed to get memory map size (0x%zx)", ret);
-
-        buf = malloc(size);
-
-        ret = efi_call(efi_boot_services->get_memory_map, &size, buf, &map_key, &desc_size, &desc_version);
-        if (ret != EFI_SUCCESS)
-            internal_error("Failed to get memory map (0x%zx)", ret);
-
-        /* Try to exit boot services. */
-        ret = efi_call(efi_boot_services->exit_boot_services, efi_image_handle, map_key);
-        if (ret == EFI_SUCCESS) {
-            kboot_tag_efi_t *tag;
-
-            /* Disable the debug console, it could now be invalid. */
-            console_set_debug(NULL);
-
-            tag = kboot_alloc_tag(loader, KBOOT_TAG_EFI, sizeof(*tag) + size);
-            tag->type = KBOOT_EFI_TYPE;
-            tag->system_table = virt_to_phys((ptr_t)efi_system_table);
-            tag->num_memory_descs = size / desc_size;
-            tag->memory_desc_size = desc_size;
-            tag->memory_desc_version = desc_version;
-            memcpy(tag->memory_map, buf, size);
-
-            return;
-        }
-    }
-
-    internal_error("Failed to exit boot services (0x%zx)", ret);
+    /* Pass the memory map to the kernel. */
+    size = num_entries * desc_size;
+    tag = kboot_alloc_tag(loader, KBOOT_TAG_EFI, sizeof(*tag) + size);
+    tag->type = KBOOT_EFI_TYPE;
+    tag->system_table = virt_to_phys((ptr_t)efi_system_table);
+    tag->num_memory_descs = num_entries;
+    tag->memory_desc_size = desc_size;
+    tag->memory_desc_version = desc_version;
+    memcpy(tag->memory_map, memory_map, size);
 }
