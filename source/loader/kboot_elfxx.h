@@ -183,6 +183,7 @@ static void FUNC(load_sections)(kboot_loader_t *loader) {
     /* Iterate through the headers and load in additional loadable sections. */
     for (size_t i = 0; i < ehdr->e_shnum; i++) {
         kboot_elf_shdr_t *shdr = (kboot_elf_shdr_t *)&tag->sections[i * ehdr->e_shentsize];
+        size_t align;
         phys_ptr_t phys;
         void *dest;
 
@@ -201,7 +202,8 @@ static void FUNC(load_sections)(kboot_loader_t *loader) {
 
         /* Allocate memory to load the section data to. */
         size = round_up(shdr->sh_size, PAGE_SIZE);
-        dest = memory_alloc(size, 0, 0, 0, MEMORY_TYPE_ALLOCATED, MEMORY_ALLOC_HIGH, &phys);
+        align = round_up(shdr->sh_addralign, PAGE_SIZE);
+        dest = memory_alloc(size, align, 0, 0, MEMORY_TYPE_ALLOCATED, MEMORY_ALLOC_HIGH, &phys);
         shdr->sh_addr = phys;
 
         dprintf("kboot: loading ELF section %zu to 0x%" PRIxPHYS " (size: %zu)\n", i, phys, (size_t)shdr->sh_size);
