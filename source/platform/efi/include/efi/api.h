@@ -844,6 +844,9 @@ typedef struct efi_pxe_base_code_protocol {
  * EFI boot services definitions.
  */
 
+/** EFI specifies page size as 4KB regardless of the system. */
+#define EFI_PAGE_SIZE       0x1000
+
 /** Type of allocation to perform. */
 typedef enum efi_allocate_type {
     EFI_ALLOCATE_ANY_PAGES,

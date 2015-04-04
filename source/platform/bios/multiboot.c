@@ -229,7 +229,7 @@ static void generate_config(multiboot_device_t *multiboot) {
 /** Load Multiboot modules. */
 static void load_modules(void) {
     multiboot_device_t *multiboot;
-    multiboot_module_t *modules;
+    multiboot_module_info_t *modules;
     bool found_config;
 
     if (!multiboot_info.mods_count)
@@ -254,7 +254,7 @@ static void load_modules(void) {
     multiboot->mount.root->type = FILE_TYPE_DIR;
     multiboot->mount.root->count = 1;
 
-    modules = (multiboot_module_t *)((ptr_t)multiboot_info.mods_addr);
+    modules = (multiboot_module_info_t *)((ptr_t)multiboot_info.mods_addr);
     found_config = false;
     for (uint32_t i = 0; i < multiboot_info.mods_count; i++) {
         multiboot_file_t *file;

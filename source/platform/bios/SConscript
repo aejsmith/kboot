@@ -23,6 +23,7 @@ sources = FeatureSources(config, [
     'loader/kboot.c',
     'loader/linux.c',
     'loader/linux_enter.S',
+    'loader/multiboot.c',
 
     'bios.S',
     'console.c',

@@ -49,9 +49,6 @@
 #include <loader.h>
 #include <memory.h>
 
-/** EFI specifies page size as 4KB regardless of the system. */
-#define EFI_PAGE_SIZE       0x1000
-
 /** List of allocated memory ranges. */
 static LIST_DECLARE(efi_memory_ranges);
 
