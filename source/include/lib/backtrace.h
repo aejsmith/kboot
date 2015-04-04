@@ -22,13 +22,8 @@
 #ifndef __LIB_BACKTRACE_H
 #define __LIB_BACKTRACE_H
 
-#include <types.h>
+#include <lib/printf.h>
 
-/** Type of a backtrace callback.
- * @param private       Private data argument.
- * @param addr          Address from the backtrace. */
-typedef void (*backtrace_cb_t)(void *private, ptr_t addr);
-
-extern void backtrace(backtrace_cb_t cb, void *private);
+extern void backtrace(printf_t func);
 
 #endif /* __LIB_BACKTRACE_H */
