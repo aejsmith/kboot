@@ -25,66 +25,82 @@
 #include <bios/bios.h>
 #include <bios/memory.h>
 
+#include <assert.h>
 #include <loader.h>
 #include <memory.h>
 
-/** Detect physical memory. */
-void target_memory_probe(void) {
+/** Get a copy of the BIOS memory map.
+ * @param _buf          Where to store buffer address.
+ * @param _num_entries  Where to store number of entries.
+ * @param _entry_size   Where to store size of each entry. */
+void bios_memory_get_mmap(void **_buf, size_t *_num_entries, size_t *_entry_size) {
     bios_regs_t regs;
-    size_t count = 0, i;
-    e820_entry_t *mmap;
-    phys_ptr_t start, end;
+    uint32_t num_entries = 0, entry_size = 0;
 
     bios_regs_init(&regs);
 
-    /* Obtain a memory map using interrupt 15h, function E820h. */
+    /* Get the E820 memory map. */
     do {
         regs.eax = 0xe820;
         regs.edx = E820_SMAP;
         regs.ecx = 64;
-        regs.edi = BIOS_MEM_BASE + (count * sizeof(e820_entry_t));
+        regs.edi = BIOS_MEM_BASE + (num_entries * entry_size);
         bios_call(0x15, &regs);
 
-        /* If CF is set, the call was not successful. BIOSes are allowed to
-         * return a non-zero continuation value in EBX and return an error on
-         * next call to indicate that the end of the list has been reached. */
         if (regs.eflags & X86_FLAGS_CF)
             break;
 
-        count++;
+        if (!num_entries) {
+            entry_size = regs.ecx;
+        } else {
+            assert(entry_size == regs.ecx);
+        }
+
+        num_entries++;
     } while (regs.ebx != 0);
 
     /* FIXME: Should handle BIOSen that don't support this. */
-    if (count == 0)
+    if (!num_entries)
         boot_error("BIOS does not support E820 memory map");
 
-    /* Iterate over the obtained memory map and add the entries. */
-    mmap = (e820_entry_t *)BIOS_MEM_BASE;
-    for (i = 0; i < count; i++) {
+    *_buf = memdup((void *)BIOS_MEM_BASE, num_entries * entry_size);
+    *_num_entries = num_entries;
+    *_entry_size = entry_size;
+}
+
+/** Detect physical memory. */
+void target_memory_probe(void) {
+    void *buf __cleanup_free;
+    size_t num_entries, entry_size;
+
+    /* Add memory ranges. */
+    bios_memory_get_mmap(&buf, &num_entries, &entry_size);
+    for (size_t i = 0; i < num_entries; i++) {
+        e820_entry_t *entry = buf + (i * entry_size);
+        phys_ptr_t start, end;
+
         /* We only care about free ranges. */
-        if (mmap[i].type != E820_TYPE_FREE)
+        if (entry->type != E820_TYPE_FREE)
             continue;
 
         /* The E820 memory map can contain regions that aren't page-aligned.
-         * However, we want to deal with page-aligned regions. Therefore, we
-         * round start up and end down to the page size, to ensure that we don't
-         * resize the region to include memory we shouldn't access. If this
-         * results in a zero-length entry, then we ignore it. */
-        start = round_up(mmap[i].start, PAGE_SIZE);
-        end = round_down(mmap[i].start + mmap[i].length, PAGE_SIZE);
-
-        /* What we did above may have made the region too small, warn
-         * and ignore it if this is the case. */
+         * However, we want to deal with page-aligned regions. Therefore, we round
+         * start up and end down to the page size, to ensure that we don't resize
+         * the region to include memory we shouldn't access. If this results in a
+         * zero-length entry, then we ignore it. */
+        start = round_up(entry->start, PAGE_SIZE);
+        end = round_down(entry->start + entry->length, PAGE_SIZE);
         if (end <= start) {
-            dprintf("memory: broken memory map entry: [0x%" PRIx64 ",0x%" PRIx64 ") (%" PRIu32 ")\n",
-                mmap[i].start, mmap[i].start + mmap[i].length, mmap[i].type);
+            dprintf(
+                "bios: broken memory map entry: [0x%" PRIx64 ",0x%" PRIx64 ") (%" PRIu32 ")\n",
+                entry->start, entry->start + entry->length, entry->type);
             continue;
         }
 
-        /* Ensure that the BIOS data area is not marked as free. BIOSes don't
-         * mark it as reserved in the memory map as it can be overwritten if it
-         * is no longer needed, but it may be needed by the kernel, for example
-         * to call BIOS interrupts. */
+        /* Ensure that the BIOS data area is not marked as free. BIOSes don't mark
+         * it as reserved in the memory map as it can be overwritten if it is no
+         * longer needed, but it may be needed by the kernel, for example to call
+         * BIOS interrupts. */
         if (start == 0) {
             start = PAGE_SIZE;
             if (start >= end)

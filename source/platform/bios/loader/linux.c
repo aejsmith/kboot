@@ -43,62 +43,29 @@ bool linux_platform_check(linux_loader_t *loader, linux_header_t *header) {
 }
 
 /** Get memory information.
- * @param params        Kernel parameters structure.
- * @return              Whether any method succeeded. */
-static bool get_memory_info(linux_params_t *params) {
-    bool success = false;
-    bios_regs_t regs;
+ * @param params        Kernel parameters structure. */
+static void get_memory_info(linux_params_t *params) {
+    void *buf __cleanup_free;
+    size_t num_entries, entry_size;
 
-    /* First try function AX=E820h. */
+    /* Add memory ranges. */
     params->e820_entries = 0;
-    bios_regs_init(&regs);
-    do {
-        regs.eax = 0xe820;
-        regs.edx = E820_SMAP;
-        regs.ecx = 20;
-        regs.edi = BIOS_MEM_BASE;
-        bios_call(0x15, &regs);
+    bios_memory_get_mmap(&buf, &num_entries, &entry_size);
+    for (size_t i = 0; i < num_entries; i++) {
+        e820_entry_t *entry = buf + (i * entry_size);
 
-        if (regs.eflags & X86_FLAGS_CF)
-            break;
+        if (entry->start <= 0x100000 && entry->start + entry->length > 0x100000) {
+            uint64_t upper = (entry->start + entry->length - 0x100000) / 1024;
 
-        memcpy(&params->e820_map[params->e820_entries], (void *)BIOS_MEM_BASE, sizeof(params->e820_map[0]));
-        params->e820_entries++;
-        success = true;
-    } while (regs.ebx != 0 && params->e820_entries < array_size(params->e820_map));
-
-    /* Try function AX=E801h. */
-    bios_regs_init(&regs);
-    regs.eax = 0xe801;
-    bios_call(0x15, &regs);
-    if (!(regs.eflags & X86_FLAGS_CF)) {
-        if (regs.cx || regs.dx) {
-            regs.ax = regs.cx;
-            regs.bx = regs.dx;
+            params->alt_mem_k = min(upper, 0xffffffff);
+            params->screen_info.ext_mem_k = min(upper, 0xfc00);
         }
 
-        /* Maximum value is 15MB. */
-        if (regs.ax <= 0x3c00) {
-            success = true;
-            if (regs.ax == 0x3c00) {
-                params->alt_mem_k += (regs.bx << 6) + regs.ax;
-            } else {
-                params->alt_mem_k = regs.ax;
-            }
+        if (params->e820_entries < array_size(params->e820_map)) {
+            memcpy(&params->e820_map[params->e820_entries], entry, sizeof(params->e820_map[0]));
+            params->e820_entries++;
         }
     }
-
-    /* Finally try AH=88h. */
-    bios_regs_init(&regs);
-    regs.eax = 0x8800;
-    bios_call(0x15, &regs);
-    if (!(regs.eflags & X86_FLAGS_CF)) {
-        /* Why this is under screen_info is beyond me... */
-        params->screen_info.ext_mem_k = regs.ax;
-        success = true;
-    }
-
-    return success;
 }
 
 /** Get APM BIOS information.
@@ -211,9 +178,7 @@ static void get_video_info(linux_loader_t *loader, linux_params_t *params) {
  * @param loader        Loader internal data.
  * @param params        Kernel parameters structure. */
 void linux_platform_load(linux_loader_t *loader, linux_params_t *params) {
-    if (!get_memory_info(params))
-        boot_error("Failed to get memory information");
-
+    get_memory_info(params);
     get_apm_info(params);
     get_ist_info(params);
     get_video_info(loader, params);

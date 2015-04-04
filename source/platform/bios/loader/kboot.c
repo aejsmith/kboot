@@ -25,43 +25,20 @@
 #include <loader/kboot.h>
 
 #include <assert.h>
+#include <memory.h>
 
 /** Perform platform-specific setup for a KBoot kernel.
  * @param loader        Loader internal data. */
 void kboot_platform_setup(kboot_loader_t *loader) {
-    bios_regs_t regs;
-    uint32_t num_entries, entry_size;
+    void *buf __cleanup_free;
+    size_t num_entries, entry_size, size;
+    kboot_tag_bios_e820_t *tag;
 
-    bios_regs_init(&regs);
-
-    num_entries = 0;
-    entry_size = 0;
-    do {
-        regs.eax = 0xe820;
-        regs.edx = E820_SMAP;
-        regs.ecx = 64;
-        regs.edi = BIOS_MEM_BASE + (num_entries * entry_size);
-        bios_call(0x15, &regs);
-
-        if (regs.eflags & X86_FLAGS_CF)
-            break;
-
-        if (!num_entries) {
-            entry_size = regs.ecx;
-        } else {
-            assert(entry_size == regs.ecx);
-        }
-
-        num_entries++;
-    } while (regs.ebx != 0);
-
-    if (num_entries) {
-        size_t size = num_entries * entry_size;
-        kboot_tag_bios_e820_t *tag = kboot_alloc_tag(loader, KBOOT_TAG_BIOS_E820, sizeof(*tag) + size);
-
-        tag->num_entries = num_entries;
-        tag->entry_size = entry_size;
-
-        memcpy(tag->entries, (void *)BIOS_MEM_BASE, size);
-    }
+    /* Get a copy of the E820 memory map. */
+    bios_memory_get_mmap(&buf, &num_entries, &entry_size);
+    size = num_entries * entry_size;
+    tag = kboot_alloc_tag(loader, KBOOT_TAG_BIOS_E820, sizeof(*tag) + size);
+    tag->num_entries = num_entries;
+    tag->entry_size = entry_size;
+    memcpy(tag->entries, buf, size);
 }
