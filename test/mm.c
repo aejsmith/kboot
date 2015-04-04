@@ -194,6 +194,14 @@ void *malloc(size_t size) {
     return (void *)(heap + offset);
 }
 
+/** Resize a memory allocation.
+ * @param addr          Address of old allocation.
+ * @param size          New size of allocation.
+ * @return              Address of new allocation, or NULL if size is 0. */
+void *realloc(void *addr, size_t size) {
+    return NULL;
+}
+
 /** Free memory from the heap.
  * @param addr          Address to free. */
 void free(void *addr) {
