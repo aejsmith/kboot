@@ -25,6 +25,7 @@
 
 #include <efi/efi.h>
 #include <efi/video.h>
+#include <efi/services.h>
 
 #include <console.h>
 #include <loader.h>

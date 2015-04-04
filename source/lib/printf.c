@@ -25,7 +25,7 @@
 #include <lib/utility.h>
 
 #ifdef CONFIG_PLATFORM_EFI
-#   include <efi/efi.h>
+#   include <efi/device.h>
 #endif
 
 #include <endian.h>

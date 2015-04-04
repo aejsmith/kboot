@@ -20,8 +20,10 @@
  */
 
 #include <efi/console.h>
+#include <efi/device.h>
 #include <efi/efi.h>
 #include <efi/memory.h>
+#include <efi/services.h>
 #include <efi/video.h>
 
 #include <lib/string.h>

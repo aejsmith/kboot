@@ -22,7 +22,7 @@
  *  - Video mode setting.
  */
 
-#include <efi/efi.h>
+#include <efi/services.h>
 
 #include <lib/string.h>
 #include <lib/utility.h>

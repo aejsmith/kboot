@@ -24,11 +24,12 @@ sources = FeatureSources(config, [
     'loader/kboot.c',
 
     'console.c',
+    'device.c',
     'disk.c',
-    'efi.c',
     'memory.c',
     'net.c',
     'platform.c',
+    'services.c',
     'video.c',
 ])
 

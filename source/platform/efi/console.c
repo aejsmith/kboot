@@ -25,6 +25,7 @@
 
 #include <efi/console.h>
 #include <efi/efi.h>
+#include <efi/services.h>
 
 #include <assert.h>
 #include <console.h>
