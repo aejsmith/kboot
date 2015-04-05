@@ -229,6 +229,7 @@ status_t decompress_read(fs_handle_t *_handle, void *buf, uint32_t count, uint32
         /* Seek back to the beginning. */
         payload_offset = dict_offset = dict_avail = output_offset = 0;
         tinfl_init(&decompressor);
+        current_decompress_handle = handle;
     }
 
     while (true) {
