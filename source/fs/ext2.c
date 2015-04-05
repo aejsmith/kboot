@@ -299,10 +299,10 @@ static status_t ext2_read(fs_handle_t *_handle, void *buf, size_t count, offset_
  * @param _handle       Where to store pointer to handle.
  * @return              Status code describing the result of the operation. */
 static status_t open_inode(ext2_mount_t *mount, uint32_t id, ext2_handle_t *owner, fs_handle_t **_handle) {
-    size_t group, size;
-    offset_t offset;
-    ext2_handle_t *handle;
+    size_t group, inode_size;
+    offset_t inode_offset, size;
     uint16_t type;
+    ext2_handle_t *handle;
     status_t ret;
 
     /* Get the group descriptor table containing the inode. */
@@ -312,18 +312,16 @@ static status_t open_inode(ext2_mount_t *mount, uint32_t id, ext2_handle_t *owne
         return STATUS_CORRUPT_FS;
     }
 
-    handle = malloc(sizeof(*handle));
-    handle->handle.mount = &mount->mount;
-    handle->handle.count = 1;
-    handle->num = id;
-
     /* Get the size of the inode and its offset in the group's inode table. */
-    size = min(mount->inode_size, sizeof(ext2_inode_t));
-    offset =
+    inode_size = min(mount->inode_size, sizeof(ext2_inode_t));
+    inode_offset =
         ((offset_t)le32_to_cpu(mount->group_tbl[group].bg_inode_table) * mount->block_size) +
         ((offset_t)((id - 1) % mount->inodes_per_group) * mount->inode_size);
 
-    ret = device_read(mount->mount.device, &handle->inode, size, offset);
+    handle = malloc(sizeof(*handle));
+    handle->num = id;
+
+    ret = device_read(mount->mount.device, &handle->inode, inode_size, inode_offset);
     if (ret != STATUS_SUCCESS) {
         dprintf("ext2: failed to read inode %" PRIu32 ": %pS\n", id, ret);
         free(handle);
@@ -331,10 +329,13 @@ static status_t open_inode(ext2_mount_t *mount, uint32_t id, ext2_handle_t *owne
     }
 
     type = le16_to_cpu(handle->inode.i_mode) & EXT2_S_IFMT;
-    handle->handle.type = (type == EXT2_S_IFDIR) ? FILE_TYPE_DIR : FILE_TYPE_REGULAR;
-    handle->handle.size = le32_to_cpu(handle->inode.i_size);
+    size = le32_to_cpu(handle->inode.i_size);
     if (type == EXT2_S_IFREG)
-        handle->handle.size |= (offset_t)le32_to_cpu(handle->inode.i_size_high) << 32;
+        size |= (offset_t)le32_to_cpu(handle->inode.i_size_high) << 32;
+
+    fs_handle_init(
+        &handle->handle, &mount->mount,
+        (type == EXT2_S_IFDIR) ? FILE_TYPE_DIR : FILE_TYPE_REGULAR, size);
 
     /* Check for a symbolic link. */
     if (type == EXT2_S_IFLNK) {
@@ -343,12 +344,12 @@ static status_t open_inode(ext2_mount_t *mount, uint32_t id, ext2_handle_t *owne
         assert(owner);
 
         /* Read in the link and try to open that path. */
-        dest = malloc(handle->handle.size + 1);
-        dest[handle->handle.size] = 0;
+        dest = malloc(size + 1);
+        dest[size] = 0;
         if (le32_to_cpu(handle->inode.i_blocks) == 0) {
-            memcpy(dest, handle->inode.i_block, handle->handle.size);
+            memcpy(dest, handle->inode.i_block, size);
         } else {
-            ret = ext2_read(&handle->handle, dest, handle->handle.size, 0);
+            ret = ext2_read(&handle->handle, dest, size, 0);
             if (ret != STATUS_SUCCESS) {
                 free(handle);
                 return ret;

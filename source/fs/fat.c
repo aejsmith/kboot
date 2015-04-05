@@ -188,8 +188,11 @@ static status_t fat_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle) 
     fat_iterate_state_t *state = (fat_iterate_state_t *)_entry;
     fat_handle_t *owner = (fat_handle_t *)_entry->owner;
     fat_handle_t *root = (fat_handle_t *)_entry->owner->mount->root;
-    uint32_t cluster
-        = (le16_to_cpu(state->entry.first_cluster_high) << 16) | le16_to_cpu(state->entry.first_cluster_low);
+    uint32_t cluster_high, cluster_low, cluster;
+
+    cluster_high = le16_to_cpu(state->entry.first_cluster_high);
+    cluster_low = le16_to_cpu(state->entry.first_cluster_low);
+    cluster = (cluster_high << 16) | cluster_low;
 
     if (cluster == owner->cluster) {
         fs_retain(&owner->handle);
@@ -200,12 +203,11 @@ static status_t fat_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle) 
     } else {
         fat_handle_t *handle = malloc(sizeof(*handle));
 
-        handle->handle.mount = _entry->owner->mount;
-        handle->handle.type = (state->entry.attributes & FAT_ATTRIBUTE_DIRECTORY)
-            ? FILE_TYPE_DIR
-            : FILE_TYPE_REGULAR;
-        handle->handle.size = le32_to_cpu(state->entry.file_size);
-        handle->handle.count = 1;
+        fs_handle_init(
+            &handle->handle, _entry->owner->mount,
+            (state->entry.attributes & FAT_ATTRIBUTE_DIRECTORY) ? FILE_TYPE_DIR : FILE_TYPE_REGULAR,
+            le32_to_cpu(state->entry.file_size));
+
         handle->cluster = cluster;
 
         *_handle = &handle->handle;
@@ -559,10 +561,7 @@ static status_t fat_mount(device_t *device, fs_mount_t **_mount) {
      * not have a fixed region, so use the specified cluster number, else set
      * it to 0 which fat_read() takes to refer to the root directory. */
     root = malloc(sizeof(*root));
-    root->handle.mount = &mount->mount;
-    root->handle.type = FILE_TYPE_DIR;
-    root->handle.size = root_sectors * sector_size;
-    root->handle.count = 1;
+    fs_handle_init(&root->handle, &mount->mount, FILE_TYPE_DIR, root_sectors * sector_size);
     root->cluster = (mount->fat_type == 32) ? le32_to_cpu(bpb.fat32.root_cluster) : 0;
     mount->mount.root = &root->handle;
 

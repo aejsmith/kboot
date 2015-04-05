@@ -72,11 +72,14 @@ static fs_handle_t *open_record(iso9660_mount_t *mount, iso9660_directory_record
     iso9660_handle_t *handle;
 
     handle = malloc(sizeof(*handle));
-    handle->handle.mount = &mount->mount;
-    handle->handle.type = (record->file_flags & (1 << 1)) ? FILE_TYPE_DIR : FILE_TYPE_REGULAR;
-    handle->handle.size = le32_to_cpu(record->data_len_le);
-    handle->handle.count = 1;
+
+    fs_handle_init(
+        &handle->handle, &mount->mount,
+        (record->file_flags & (1 << 1)) ? FILE_TYPE_DIR : FILE_TYPE_REGULAR,
+        le32_to_cpu(record->data_len_le));
+
     handle->extent = le32_to_cpu(record->extent_loc_le);
+
     return &handle->handle;
 }
 

@@ -122,8 +122,12 @@ typedef struct fs_handle {
     fs_mount_t *mount;                  /**< Mount the entry is on. */
     file_type_t type;                   /**< Type of the entry. */
     offset_t size;                      /**< Size of the file. */
-    unsigned count;                     /**< Reference count. */
+    uint8_t flags;                      /**< Flags for the handle. */
+    uint8_t count;                      /**< Reference count. */
 } fs_handle_t;
+
+/** Behaviour flags for a handle. */
+#define FS_HANDLE_COMPRESSED    (1<<0)  /**< Handle is a compressed wrapper. */
 
 /** Filesystem entry information structure. */
 typedef struct fs_entry {
@@ -131,7 +135,7 @@ typedef struct fs_entry {
     const char *name;                   /**< Name of the entry. */
 } fs_entry_t;
 
-extern fs_mount_t *fs_probe(struct device *device);
+extern void fs_handle_init(fs_handle_t *handle, fs_mount_t *mount, file_type_t type, offset_t size);
 
 /** Increase the reference count of a filesystem handle.
  * @param handle        Handle to retain. */
@@ -145,6 +149,8 @@ extern void fs_close(fs_handle_t *handle);
 
 extern status_t fs_read(fs_handle_t *handle, void *buf, size_t count, offset_t offset);
 extern status_t fs_iterate(fs_handle_t *handle, fs_iterate_cb_t cb, void *arg);
+
+extern fs_mount_t *fs_probe(struct device *device);
 
 /** Helper for __cleanup_close. */
 static inline void fs_closep(void *p) {

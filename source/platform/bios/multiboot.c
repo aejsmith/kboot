@@ -213,10 +213,7 @@ static void generate_config(multiboot_device_t *multiboot) {
 
     /* Create a file for the entry. */
     file = malloc(sizeof(*file));
-    file->handle.mount = &multiboot->mount;
-    file->handle.type = FILE_TYPE_REGULAR;
-    file->handle.size = offset;
-    file->handle.count = 1;
+    fs_handle_init(&file->handle, &multiboot->mount, FILE_TYPE_REGULAR, offset);
     file->entry.owner = multiboot->mount.root;
     file->entry.name = "kboot.cfg";
     file->addr = buf;
@@ -265,10 +262,11 @@ static void load_modules(void) {
             continue;
 
         file = malloc(sizeof(*file));
-        file->handle.mount = &multiboot->mount;
-        file->handle.type = FILE_TYPE_REGULAR;
-        file->handle.size = modules[i].mod_end - modules[i].mod_start;
-        file->handle.count = 1;
+
+        fs_handle_init(
+            &file->handle, &multiboot->mount, FILE_TYPE_REGULAR,
+            modules[i].mod_end - modules[i].mod_start);
+
         file->entry.owner = multiboot->mount.root;
 
         /* Get the name and command line. Strip off any path prefix. */

@@ -19,6 +19,8 @@
  * @brief               Filesystem support.
  */
 
+#include <fs/decompress.h>
+
 #include <lib/string.h>
 #include <lib/utility.h>
 
@@ -28,33 +30,39 @@
 #include <fs.h>
 #include <memory.h>
 
-/** Probe a device for filesystems.
- * @param device        Device to probe.
- * @return              Pointer to mount if found, NULL if not. */
-fs_mount_t *fs_probe(device_t *device) {
-    builtin_foreach(BUILTIN_TYPE_FS, fs_ops_t, ops) {
-        fs_mount_t *mount;
-        status_t ret;
+/** Initialize a file handle.
+ * @param handle        Handle to initialize.
+ * @param mount         Mount that the handle resides on.
+ * @param type          Type of the entry.
+ * @param size          Size of the entry. */
+void fs_handle_init(fs_handle_t *handle, fs_mount_t *mount, file_type_t type, offset_t size) {
+    handle->mount = mount;
+    handle->type = type;
+    handle->size = size;
+    handle->flags = 0;
+    handle->count = 1;
+}
 
-        ret = ops->mount(device, &mount);
-        switch (ret) {
-        case STATUS_SUCCESS:
-            dprintf("fs: mounted %s on %s ('%s') (uuid: %s)\n", ops->name, device->name, mount->label, mount->uuid);
-
-            mount->ops = ops;
-            mount->device = device;
-            return mount;
-        case STATUS_UNKNOWN_FS:
-        case STATUS_END_OF_FILE:
-            /* End of file usually means no media. */
-            break;
-        default:
-            dprintf("fs: error while probing device %s: %pS\n", device->name, ret);
-            return NULL;
-        }
+/** Perform post-open tasks.
+ * @param handle        Handle that has been opened.
+ * @param type          Required type of the entry, or FILE_TYPE_NONE for any.
+ * @param _handle       Where to store pointer to actual opened handle.
+ * @return              Status code describing the result of the operation. On
+ *                      failure the handle will be closed. */
+static status_t post_open(fs_handle_t *handle, file_type_t type, fs_handle_t **_handle) {
+    if (type != FILE_TYPE_NONE && handle->type != type) {
+        fs_close(handle);
+        return (type == FILE_TYPE_DIR) ? STATUS_NOT_DIR : STATUS_NOT_FILE;
     }
 
-    return NULL;
+    /* Check if the file is compressed. */
+    if (handle->type == FILE_TYPE_REGULAR) {
+        if (decompress_open(handle, _handle))
+            return STATUS_SUCCESS;
+    }
+
+    *_handle = handle;
+    return STATUS_SUCCESS;
 }
 
 /**
@@ -72,23 +80,18 @@ fs_mount_t *fs_probe(device_t *device) {
  * @return              Status code describing the result of the operation.
  */
 status_t fs_open_entry(const fs_entry_t *entry, file_type_t type, fs_handle_t **_handle) {
+    fs_ops_t *ops = entry->owner->mount->ops;
     fs_handle_t *handle;
     status_t ret;
 
-    if (!entry->owner->mount->ops->open_entry)
+    if (!ops->open_entry)
         return STATUS_NOT_SUPPORTED;
 
-    ret = entry->owner->mount->ops->open_entry(entry, &handle);
+    ret = ops->open_entry(entry, &handle);
     if (ret != STATUS_SUCCESS)
         return ret;
 
-    if (type != FILE_TYPE_NONE && handle->type != type) {
-        fs_close(handle);
-        return (type == FILE_TYPE_DIR) ? STATUS_NOT_DIR : STATUS_NOT_FILE;
-    }
-
-    *_handle = handle;
-    return STATUS_SUCCESS;
+    return post_open(handle, type, _handle);
 }
 
 /** Structure containing data for fs_open(). */
@@ -104,14 +107,15 @@ typedef struct fs_open_data {
  * @return              Whether to continue iteration. */
 static bool fs_open_cb(const fs_entry_t *entry, void *_data) {
     fs_open_data_t *data = _data;
+    fs_mount_t *mount = entry->owner->mount;
     int result;
 
-    result = (entry->owner->mount->case_insensitive)
+    result = (mount->case_insensitive)
         ? strcasecmp(entry->name, data->name)
         : strcmp(entry->name, data->name);
 
     if (!result) {
-        data->ret = fs_open_entry(entry, FILE_TYPE_NONE, &data->handle);
+        data->ret = mount->ops->open_entry(entry, &data->handle);
         return false;
     } else {
         return true;
@@ -231,13 +235,7 @@ status_t fs_open(const char *path, fs_handle_t *from, file_type_t type, fs_handl
         }
     }
 
-    if (type != FILE_TYPE_NONE && handle->type != type) {
-        fs_close(handle);
-        return (type == FILE_TYPE_DIR) ? STATUS_NOT_DIR : STATUS_NOT_FILE;
-    }
-
-    *_handle = handle;
-    return STATUS_SUCCESS;
+    return post_open(handle, type, _handle);
 }
 
 /** Close a filesystem handle.
@@ -247,8 +245,11 @@ void fs_close(fs_handle_t *handle) {
 
     handle->count--;
     if (!handle->count) {
-        if (handle->mount->ops->close)
+        if (handle->flags & FS_HANDLE_COMPRESSED) {
+            decompress_close(handle);
+        } else if (handle->mount->ops->close) {
             handle->mount->ops->close(handle);
+        }
 
         free(handle);
     }
@@ -270,7 +271,11 @@ status_t fs_read(fs_handle_t *handle, void *buf, size_t count, offset_t offset) 
     if (!count)
         return STATUS_SUCCESS;
 
-    return handle->mount->ops->read(handle, buf, count, offset);
+    if (handle->flags & FS_HANDLE_COMPRESSED) {
+        return decompress_read(handle, buf, count, offset);
+    } else {
+        return handle->mount->ops->read(handle, buf, count, offset);
+    }
 }
 
 /** Iterate over entries in a directory.
@@ -286,6 +291,35 @@ status_t fs_iterate(fs_handle_t *handle, fs_iterate_cb_t cb, void *arg) {
     }
 
     return handle->mount->ops->iterate(handle, cb, arg);
+}
+
+/** Probe a device for filesystems.
+ * @param device        Device to probe.
+ * @return              Pointer to mount if found, NULL if not. */
+fs_mount_t *fs_probe(device_t *device) {
+    builtin_foreach(BUILTIN_TYPE_FS, fs_ops_t, ops) {
+        fs_mount_t *mount;
+        status_t ret;
+
+        ret = ops->mount(device, &mount);
+        switch (ret) {
+        case STATUS_SUCCESS:
+            dprintf("fs: mounted %s on %s ('%s') (uuid: %s)\n", ops->name, device->name, mount->label, mount->uuid);
+
+            mount->ops = ops;
+            mount->device = device;
+            return mount;
+        case STATUS_UNKNOWN_FS:
+        case STATUS_END_OF_FILE:
+            /* End of file usually means no media. */
+            break;
+        default:
+            dprintf("fs: error while probing device %s: %pS\n", device->name, ret);
+            return NULL;
+        }
+    }
+
+    return NULL;
 }
 
 /**

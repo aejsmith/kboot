@@ -20,6 +20,7 @@ Import(*vars)
 from util import FeatureSources
 
 sources = FeatureSources(config, [
+    'fs/decompress.c',
     ('TARGET_HAS_DISK', 'fs/ext2.c'),
     ('TARGET_HAS_DISK', 'fs/fat.c'),
     ('TARGET_HAS_DISK', 'fs/iso9660.c'),
@@ -30,6 +31,7 @@ sources = FeatureSources(config, [
     'lib/printf.c',
     'lib/qsort.c',
     'lib/string.c',
+    'lib/tinfl.c',
 
     ('TARGET_HAS_KBOOT64', 'TARGET_HAS_KBOOT32', 'loader/kboot.c'),
     ('TARGET_HAS_LINUX', 'loader/linux.c'),

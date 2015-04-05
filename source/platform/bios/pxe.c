@@ -215,10 +215,7 @@ static status_t pxe_fs_open_path(fs_mount_t *mount, char *path, fs_handle_t *fro
     }
 
     handle = malloc(sizeof(*handle) + len + 1);
-    handle->handle.mount = mount;
-    handle->handle.type = FILE_TYPE_REGULAR;
-    handle->handle.size = fsize.file_size;
-    handle->handle.count = 1;
+    fs_handle_init(&handle->handle, mount, FILE_TYPE_REGULAR, fsize.file_size);
     strcpy(handle->path, path);
 
     /* Try to open the file as the current. */
