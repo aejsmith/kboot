@@ -23,7 +23,7 @@
 
 #include <bios/bios.h>
 #include <bios/console.h>
-#include <bios/vbe.h>
+#include <bios/video.h>
 
 #include <drivers/serial/ns16550.h>
 

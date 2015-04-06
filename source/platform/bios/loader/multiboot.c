@@ -19,13 +19,13 @@
  * @brief               BIOS Multiboot loader functions.
  *
  * TODO:
- *  - Video mode setting/VBE info.
  *  - APM/config table/drive info.
  */
 
 #include <bios/bios.h>
 #include <bios/disk.h>
 #include <bios/memory.h>
+#include <bios/video.h>
 
 #include <lib/utility.h>
 
@@ -73,5 +73,24 @@ void multiboot_platform_load(multiboot_loader_t *loader) {
         loader->info->boot_device = (uint32_t)bios_disk_get_id(disk) << 24;
         if (disk_device_is_partition(disk))
             loader->info->boot_device |= (uint32_t)disk->id << 16;
+    }
+
+    /* Pass video mode information if required. */
+    if (loader->mode) {
+        vbe_info_t *control;
+        vbe_mode_info_t *mode;
+        uint32_t phys;
+
+        loader->info->flags |= MULTIBOOT_INFO_VIDEO_INFO;
+
+        control = multiboot_alloc_info(loader, sizeof(*control), &phys);
+        if (bios_video_get_controller_info(control))
+            loader->info->vbe_control_info = phys;
+
+        mode = multiboot_alloc_info(loader, sizeof(*mode), &phys);
+        if (bios_video_get_mode_info(loader->mode, mode))
+            loader->info->vbe_mode_info = phys;
+
+        loader->info->vbe_mode = bios_video_get_mode_num(loader->mode);
     }
 }

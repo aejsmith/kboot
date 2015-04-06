@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief               BIOS video mode detection.
+ * @brief               BIOS platform video support.
  */
 
 #include <lib/utility.h>
@@ -24,7 +24,7 @@
 #include <drivers/console/vga.h>
 
 #include <bios/bios.h>
-#include <bios/vbe.h>
+#include <bios/video.h>
 
 #include <console.h>
 #include <loader.h>
@@ -52,7 +52,7 @@ static void bios_video_set_mode(video_mode_t *_mode) {
     regs.eax = VBE_FUNCTION_SET_MODE;
     regs.ebx = mode->num;
     bios_call(0x10, &regs);
-    if ((regs.ax & 0xff00) != 0)
+    if (regs.ax & 0xff00)
         internal_error("Failed to set VBE mode 0x%" PRIx16 " (0x%" PRIx16 ")", mode->num, regs.ax);
 }
 
@@ -70,6 +70,70 @@ static video_ops_t bios_video_ops = {
     .set_mode = &bios_video_set_mode,
     .create_console = &bios_video_create_console,
 };
+
+/** Get VBE controller info.
+ * @param info          Information structure to fill in.
+ * @return              Whether information was successfully obtained. */
+bool bios_video_get_controller_info(vbe_info_t *info) {
+    vbe_info_t *dest = (vbe_info_t *)BIOS_MEM_BASE;
+    bios_regs_t regs;
+
+    strncpy(dest->vbe_signature, VBE_SIGNATURE, 4);
+    bios_regs_init(&regs);
+    regs.eax = VBE_FUNCTION_CONTROLLER_INFO;
+    regs.edi = (ptr_t)dest;
+    bios_call(0x10, &regs);
+
+    if ((regs.eax & 0xff) != 0x4f) {
+        return false;
+    } else if (regs.ax & 0xff00) {
+        return false;
+    }
+
+    memcpy(info, dest, sizeof(*info));
+    return true;
+}
+
+/** Get VBE mode information.
+ * @param _mode         Mode to get information for.
+ * @param info          Information structure to fill in.
+ * @return              Whether information was successfully obtained. */
+bool bios_video_get_mode_info(video_mode_t *_mode, vbe_mode_info_t *info) {
+    bios_video_mode_t *mode = (bios_video_mode_t *)_mode;
+
+    if (mode->num == 3) {
+        /* Mode information is not supported on VGA text mode. */
+        memset(info, 0, sizeof(*info));
+        info->memory_model = VBE_MEMORY_MODEL_TEXT;
+        info->x_resolution = mode->mode.width;
+        info->y_resolution = mode->mode.height;
+    } else {
+        vbe_mode_info_t *dest = (vbe_mode_info_t *)BIOS_MEM_BASE;
+        bios_regs_t regs;
+
+        bios_regs_init(&regs);
+        regs.eax = VBE_FUNCTION_MODE_INFO;
+        regs.ecx = mode->num;
+        regs.edi = (ptr_t)dest;
+        bios_call(0x10, &regs);
+
+        if (regs.eax & 0xff00)
+            return false;
+
+        memcpy(info, dest, sizeof(*info));
+    }
+
+    return true;
+}
+
+/** Get the VBE mode number for a mode.
+ * @param _mode         Mode to get number for.
+ * @return              VBE mode number. */
+uint16_t bios_video_get_mode_num(video_mode_t *_mode) {
+    bios_video_mode_t *mode = (bios_video_mode_t *)_mode;
+
+    return mode->num;
+}
 
 /** Detect available video modes. */
 void bios_video_init(void) {
@@ -91,7 +155,7 @@ void bios_video_init(void) {
     video_mode_register(&mode->mode, true);
 
     /* Try to get VBE controller information. */
-    strncpy(info->vbe_signature, VBE_SIGNATURE, 4);
+    memcpy(info->vbe_signature, VBE_SIGNATURE, sizeof(info->vbe_signature));
     bios_regs_init(&regs);
     regs.eax = VBE_FUNCTION_CONTROLLER_INFO;
     regs.edi = (ptr_t)info;
@@ -99,7 +163,7 @@ void bios_video_init(void) {
     if ((regs.eax & 0xff) != 0x4f) {
         dprintf("bios: VBE is not supported\n");
         return;
-    } else if ((regs.ax & 0xff00) != 0) {
+    } else if (regs.ax & 0xff00) {
         dprintf("bios: failed to obtain VBE information (0x%" PRIx16 ")\n", regs.ax);
         return;
     }
@@ -114,13 +178,13 @@ void bios_video_init(void) {
         regs.ecx = location[i];
         regs.edi = (ptr_t)mode_info;
         bios_call(0x10, &regs);
-        if ((regs.eax & 0xFF00) != 0) {
+        if (regs.eax & 0xff00) {
             dprintf("bios: failed to obtain VBE mode information (0x%" PRIx16 ")\n", regs.ax);
             continue;
         }
 
         /* Check if the mode is suitable. TODO: Indexed modes. */
-        if (mode_info->memory_model != 6) {
+        if (mode_info->memory_model != VBE_MEMORY_MODEL_DIRECT_COLOUR) {
             continue;
         } else if ((mode_info->mode_attributes & (1<<0)) == 0) {
             /* Not supported. */

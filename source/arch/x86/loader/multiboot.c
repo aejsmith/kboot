@@ -40,7 +40,11 @@
 #define INFO_ALLOC_MAX_ADDR     0x100000
 
 /** Supported header flags. */
-#define SUPPORTED_FLAGS         (MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO | MULTIBOOT_AOUT_KLUDGE)
+#define SUPPORTED_FLAGS         \
+    (MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO | MULTIBOOT_VIDEO_MODE | MULTIBOOT_AOUT_KLUDGE)
+
+/** Video mode types to support. */
+#define MULTIBOOT_VIDEO_TYPES   (VIDEO_MODE_VGA | VIDEO_MODE_LFB)
 
 /** Allocate from the information area.
  * @param loader        Loader internal data.
@@ -328,6 +332,11 @@ static __noreturn void multiboot_loader_load(void *_loader) {
         }
     }
 
+    /* Set the video mode. */
+    loader->mode = (loader->header.flags & MULTIBOOT_VIDEO_MODE)
+        ? video_env_set(current_environ, "video_mode")
+        : NULL;
+
     /* Print out a memory map for informational purposes. */
     dprintf("multiboot: final physical memory map:\n");
     memory_finalize(&memory_map);
@@ -360,6 +369,11 @@ static ui_window_t *multiboot_loader_configure(void *_loader, const char *title)
     window = ui_list_create(title, true);
     entry = ui_entry_create("Command line", &loader->args);
     ui_list_insert(window, entry, false);
+
+    if (loader->header.flags & MULTIBOOT_VIDEO_MODE) {
+        entry = video_env_chooser(current_environ, "video_mode", MULTIBOOT_VIDEO_TYPES);
+        ui_list_insert(window, entry, false);
+    }
 
     if (!list_empty(&loader->modules)) {
         ui_list_add_section(window, "Modules");
@@ -517,6 +531,23 @@ static bool config_cmd_multiboot(value_list_t *args) {
 
             loader->num_modules++;
         }
+    }
+
+    /* Set up the video mode environment variable. */
+    if (loader->header.flags & MULTIBOOT_VIDEO_MODE) {
+        video_mode_t *mode;
+
+        if (loader->header.mode_type == 1) {
+            /* Requesting a VGA text mode. */
+            mode = video_find_mode(VIDEO_MODE_VGA, loader->header.width, loader->header.height, 0);
+        } else {
+            /* Requesting a linear framebuffer. */
+            mode = video_find_mode(
+                VIDEO_MODE_LFB, loader->header.width, loader->header.height,
+                loader->header.depth);
+        }
+
+        video_env_init(current_environ, "video_mode", MULTIBOOT_VIDEO_TYPES, mode);
     }
 
     environ_set_loader(current_environ, &multiboot_loader_ops, loader);

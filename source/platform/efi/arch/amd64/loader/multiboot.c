@@ -17,9 +17,6 @@
 /**
  * @file
  * @brief               EFI Multiboot loader functions.
- *
- * TODO:
- *  - Video mode setting.
  */
 
 #include <efi/services.h>
@@ -32,6 +29,8 @@
 #include <assert.h>
 #include <loader.h>
 #include <memory.h>
+
+#include "../../../../bios/include/bios/vbe.h"
 
 /** Get platform-specific Multiboot information.
  * @param loader        Loader internal data. */
@@ -104,5 +103,39 @@ void multiboot_platform_load(multiboot_loader_t *loader) {
                 loader->info->mem_lower = min(mmap[i].len, 0x100000) / 1024;
             }
         }
+    }
+
+    /* Pass video mode information if required. */
+    if (loader->mode) {
+        vbe_info_t *control;
+        vbe_mode_info_t *mode;
+
+        loader->info->flags |= MULTIBOOT_INFO_VIDEO_INFO;
+
+        /* Try to fudge together something that looks vaguely VBE-ish... */
+        control = multiboot_alloc_info(loader, sizeof(*control), &loader->info->vbe_control_info);
+        memcpy(control->vbe_signature, "VESA", sizeof(control->vbe_signature));
+        control->vbe_version_major = 2;
+        control->vbe_version_minor = 0;
+        control->video_mode_ptr = loader->mode->mem_phys;
+        control->total_memory = loader->mode->mem_size;
+
+        mode = multiboot_alloc_info(loader, sizeof(*mode), &loader->info->vbe_mode_info);
+        mode->mode_attributes = 0x9b;
+        mode->bytes_per_scan_line = loader->mode->pitch;
+        mode->x_resolution = loader->mode->width;
+        mode->y_resolution = loader->mode->height;
+        mode->bits_per_pixel = loader->mode->bpp;
+        mode->memory_model = VBE_MEMORY_MODEL_DIRECT_COLOUR;
+        mode->reserved1 = 1;
+        mode->red_mask_size = loader->mode->red_size;
+        mode->red_field_position = loader->mode->red_pos;
+        mode->green_mask_size = loader->mode->green_size;
+        mode->green_field_position = loader->mode->green_pos;
+        mode->blue_mask_size = loader->mode->blue_size;
+        mode->blue_field_position = loader->mode->blue_pos;
+        mode->phys_base_ptr = loader->mode->mem_phys;
+
+        loader->info->vbe_mode = 0x100 | VBE_MODE_LFB;
     }
 }

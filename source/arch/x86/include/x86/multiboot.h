@@ -79,6 +79,7 @@
 #include <config.h>
 #include <elf.h>
 #include <fs.h>
+#include <video.h>
 
 /** Multiboot header structure. */
 typedef struct multiboot_header {
@@ -188,6 +189,7 @@ typedef struct multiboot_loader {
     void *info_base;                        /**< Information area base address. */
     size_t info_offset;                     /**< Current information area offset. */
     multiboot_info_t *info;                 /**< Main information structure. */
+    video_mode_t *mode;                     /**< Video mode set for the OS, if any. */
 } multiboot_loader_t;
 
 /** Details of a module to load. */

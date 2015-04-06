@@ -27,7 +27,6 @@
 #include <bios/bios.h>
 #include <bios/console.h>
 #include <bios/memory.h>
-#include <bios/vbe.h>
 
 #include <loader.h>
 #include <memory.h>

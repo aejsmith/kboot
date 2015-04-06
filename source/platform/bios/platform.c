@@ -28,6 +28,7 @@
 #include <bios/disk.h>
 #include <bios/multiboot.h>
 #include <bios/pxe.h>
+#include <bios/video.h>
 
 #include <console.h>
 #include <device.h>
