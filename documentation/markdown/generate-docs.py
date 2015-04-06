@@ -26,7 +26,7 @@ def main():
 
     # Get a list of documents and parse their content.
     documents = []
-    for doc in glob.glob(os.path.join(sys.argv[1], '*.txt')):
+    for doc in glob.glob(os.path.join(sys.argv[1], '*.md')):
         # Assume that the first line is the title, and that there are two lines
         # after it before the actual content. Skip any document that does not
         # have a H1 at the start.
