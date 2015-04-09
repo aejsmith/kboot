@@ -24,6 +24,7 @@
 #include <efi/efi.h>
 #include <efi/memory.h>
 #include <efi/net.h>
+#include <efi/services.h>
 #include <efi/video.h>
 
 #include <lib/charset.h>

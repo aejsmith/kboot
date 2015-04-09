@@ -26,8 +26,6 @@
 
 #include <status.h>
 
-extern char __text_start[], __data_start[], __bss_start[];
-
 extern status_t efi_convert_status(efi_status_t status);
 
 extern efi_status_t efi_allocate_pool(efi_memory_type_t pool_type, efi_uintn_t size, void **_buffer);

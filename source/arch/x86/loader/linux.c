@@ -181,7 +181,7 @@ __noreturn void linux_arch_load(linux_loader_t *loader) {
     cmdline = memory_alloc(cmdline_size, 0, 0x10000, 0x90000, MEMORY_TYPE_RECLAIMABLE, 0, NULL);
     strncpy(cmdline, loader->cmdline, cmdline_size);
     cmdline[cmdline_size] = 0;
-    params->hdr.cmd_line_ptr = (uint32_t)cmdline;
+    params->hdr.cmd_line_ptr = (uint32_t)((ptr_t)cmdline);
 
     /* Determine the setup code size. */
     if (params->hdr.setup_sects) {
