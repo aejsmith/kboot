@@ -36,16 +36,32 @@ sources = FeatureSources(config, [
     'video.c',
 ])
 
+# List of boot sectors (second value is whether to copy to output directory).
+bootsects = [
+    ('cdboot', False),
+    ('ext2boot', True),
+    ('pxeboot', False),
+]
+
 # Set the linker script path.
 env['LDSCRIPT'] = env.LDScript('link.ld', 'link.ld.in')
 
+# Build the final loader binary.
+kboot = env.Command(
+    env['OUTDIR'].File('kboot.bin'),
+    env['KBOOT'],
+    Action('$OBJCOPY -O binary --strip-all $SOURCE $TARGET', '$GENCOMSTR'))
+defaults.append(kboot)
+
 # Build the boot sectors.
 env.LDScript('bootsect/bootsect.ld', 'bootsect/bootsect.ld.in')
-bootsects = ['cdboot', 'pxeboot']
-for f in bootsects:
+for bs in bootsects:
+    name = bs[0]
+    copy = bs[1]
+
     # Build an ELF image.
     linkflags = env['LINKFLAGS'] + ['-Wl,-T,${TARGET.dir}/bootsect.ld', '-Wl,-N']
-    target = env.Program('bootsect/%s.elf' % (f), 'bootsect/%s.S' % (f), LINKFLAGS = linkflags)
+    target = env.Program('bootsect/%s.elf' % (name), 'bootsect/%s.S' % (name), LINKFLAGS = linkflags)
     Depends(target, File('bootsect/bootsect.ld'))
 
     # Create a disassembly.
@@ -55,18 +71,12 @@ for f in bootsects:
 
     # Create the final stripped binary.
     target = env.Command(
-        'bootsect/%s.bin' % (f),
+        env['OUTDIR'].File('%s.bin' % (name)) if copy else File('bootsect/%s.bin' % (name)),
         target,
         Action('$OBJCOPY -O binary --strip-all $SOURCE $TARGET', '$GENCOMSTR'))
 
-    defaults.append(target)
-
-# Build the final loader binary.
-kboot = env.Command(
-    env['OUTDIR'].File('kboot.bin'),
-    env['KBOOT'],
-    Action('$OBJCOPY -O binary --strip-all $SOURCE $TARGET', '$GENCOMSTR'))
-defaults.append(kboot)
+    if copy:
+        defaults.append(target)
 
 # Create CD/PXE boot images by concatenating the boot sector with the loader.
 target = env.Command(
