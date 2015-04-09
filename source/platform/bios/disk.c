@@ -188,6 +188,7 @@ static void add_disk(uint8_t id) {
     bios_call(0x13, &regs);
     if (regs.eflags & X86_FLAGS_CF || (regs.ebx & 0xffff) != 0xaa55 || !(regs.ecx & (1<<0))) {
         dprintf("bios: device 0x%x does not support extensions, ignoring\n", id);
+        free(disk);
         return;
     }
 
@@ -203,6 +204,7 @@ static void add_disk(uint8_t id) {
     bios_call(0x13, &regs);
     if (regs.eflags & X86_FLAGS_CF || !params->sector_count || !params->sector_size) {
         dprintf("bios: failed to obtain drive parameters for device 0x%x\n", id);
+        free(disk);
         return;
     }
 
