@@ -206,7 +206,7 @@ FUNCTION_END(read_disk_sectors)
 PRIVATE_FUNCTION_START(read_inode)
     pushal
 
-    /* Compute the group number in EAX, and inode table offset in EDX. */
+    /* Compute the group number in EBX, and push the inode table offset. */
     decl    %eax
     xorl    %edx, %edx
     divl    (superblock + EXT2_SUPERBLOCK_OFF_INODES_PER_GROUP)
@@ -214,29 +214,29 @@ PRIVATE_FUNCTION_START(read_inode)
     movl    %edx, %eax
     movzxw  (superblock + EXT2_SUPERBLOCK_OFF_INODE_SIZE), %ecx
     mull    %ecx
-    popl    %edx
+    popl    %ebx
     pushl   %eax
 
     /* Read in the group table entry. Work out which sector of the table it is
-     * in (EAX), and the offset into that entry (EDX), and read it in. */
-    shll    $EXT2_GROUP_DESC_SHIFT, %edx
-    movl    %edx, %eax
+     * in (EAX), and the offset into that entry (EBX), and read it in. */
+    shll    $EXT2_GROUP_DESC_SHIFT, %ebx
+    movl    %ebx, %eax
     shrl    $9, %eax
-    andl    $511, %edx
+    andw    $511, %bx
     addl    group_table_offset, %eax
     movw    $temp_buffer, %di
     call    read_disk_sector
 
     /* Retrieve the inode table block, then work out the sector that the inode
-     * is in (EAX) and the offset into that sector (EDX), and read it in. */
-    movl    (temp_buffer + EXT2_GROUP_DESC_OFF_INODE_TABLE)(%edx), %ebx
+     * is in (EAX) and the offset into that sector (EBX), and read it in. */
+    movl    (temp_buffer + EXT2_GROUP_DESC_OFF_INODE_TABLE)(%bx), %edx
     movb    block_to_sector, %cl
-    shll    %cl, %ebx
+    shll    %cl, %edx
     popl    %eax
-    movl    %eax, %edx
+    movl    %eax, %ebx
     shrl    $9, %eax
-    andl    $511, %edx
-    addl    %ebx, %eax
+    andw    $511, %bx
+    addl    %edx, %eax
     movw    $temp_buffer, %di
     call    read_disk_sector
 
@@ -245,7 +245,7 @@ PRIVATE_FUNCTION_START(read_inode)
     movw    $EXT2_INODE_SIZE, %cx
     movw    $inode, %di
     movw    $temp_buffer, %si
-    addw    %dx, %si
+    addw    %bx, %si
     rep movsb
 
     popal
