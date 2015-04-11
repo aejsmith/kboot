@@ -423,7 +423,7 @@ static status_t ext2_iterate(fs_handle_t *_handle, fs_iterate_cb_t cb, void *arg
     while (cont && offset < handle->handle.size) {
         ext2_dir_entry_t *entry = (ext2_dir_entry_t *)(buf + offset);
 
-        if (entry->file_type != EXT2_FT_UNKNOWN && entry->name_len != 0) {
+        if (entry->inode && entry->file_type != EXT2_FT_UNKNOWN && entry->name_len != 0) {
             ext2_entry_t child;
 
             strncpy(name, entry->name, entry->name_len);
