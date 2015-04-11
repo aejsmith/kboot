@@ -134,12 +134,14 @@ FUNCTION_START(_start)
     shll    %cl, %eax
     movl    %eax, group_table_offset
 
-    /* Compute and save the block size. */
+    /* Compute and save the block size. Maximum of 32K supported. */
     addb    $9, %cl
-    xorl    %eax, %eax
+    cmpb    $15, %cl
+    ja      .Lunsupported
+    xorw    %ax, %ax
     incb    %al
-    shll    %cl, %eax
-    movl    %eax, block_size
+    shlw    %cl, %ax
+    movw    %ax, block_size
 
     /* Find the boot loader inode. */
     call    find_inode
@@ -157,6 +159,9 @@ FUNCTION_START(_start)
 
 .Lbad_fs:
     ERROR(msg_not_ext2)
+
+.Lunsupported:
+    ERROR(msg_unsupported)
 FUNCTION_END(_start)
 
 /** Read a single sector from the boot partition.
@@ -271,17 +276,19 @@ PRIVATE_FUNCTION_START(read_block)
     movl    %edx, %ecx
     call    read_disk_sectors
     jmp     .Lret
+
 .Lsparse_block:
     pushw   %es
     pushw   %di
 
     /* Fill block with zeros. */
-    movl    block_size, %ecx
+    movw    block_size, %cx
     xorb    %al, %al
     rep stosb
 
     popw    %di
     popw    %es
+
 .Lret:
     popl    %ecx
     popl    %eax
@@ -295,7 +302,8 @@ FUNCTION_END(read_block)
 PRIVATE_FUNCTION_START(get_total_blocks)
     movl    (inode + EXT2_INODE_OFF_SIZE), %eax
     xorl    %edx, %edx
-    divl    block_size
+    movzxw  block_size, %ecx
+    divl    %ecx
 
     /* Increment if there is a remainder to cover final chunk of data. */
     testl   %edx, %edx
@@ -394,10 +402,12 @@ PRIVATE_FUNCTION_START(get_raw_block)
     shlw    $2, %bp
     movl    (inode + EXT2_INODE_OFF_BLOCK)(%bp), %eax
     ret
+
 .Lindirect:
     subl    $EXT2_NDIR_BLOCKS, %ebp
     shll    $2, %ebp
-    cmpl    block_size, %ebp
+    movzxw  block_size, %edx
+    cmpl    %edx, %ebp
     jae     .Lbi_indirect
 
     /* Read in the indirect block. ES:DI should point to the location where
@@ -407,10 +417,12 @@ PRIVATE_FUNCTION_START(get_raw_block)
     call    read_block
     movl    %es:(%bp,%di), %eax
     ret
+
 .Lbi_indirect:
     /* Don't bother supporting this. We only have to load the loader here,
      * which shouldn't be too big. */
     ERROR(msg_too_large)
+
 .Lextents:
     /* Find the leaf. First iteration we want to operate on i_block. All other
      * iterations we want to operate on the current buffer location. Safe for us
@@ -457,6 +469,7 @@ PRIVATE_FUNCTION_START(get_raw_block)
     pushw   %di
     xorw    %dx, %dx
     jmp     1b
+
 .Lfound_extent:
     /* %es:%di points at the header of the leaf. Loop through to find the extent
      * covering the block (%dx == 0). TODO: Could possibly merge this with the
@@ -494,6 +507,7 @@ PRIVATE_FUNCTION_START(get_raw_block)
 3:  popw    %di
     popw    %es
     ret
+
 .Lbad_extent:
     ERROR(msg_bad_extent)
 FUNCTION_END(get_raw_block)
@@ -542,6 +556,7 @@ PRIVATE_FUNCTION_START(find_inode)
     pushw   %si
     addw    $EXT2_DIR_ENTRY_OFF_NAME, %di
     cld
+
 .Lcompare_begin:
     /* Check if we are at the end of the current path component. */
     movb    (%si), %ah
@@ -615,11 +630,13 @@ PRIVATE_FUNCTION_START(find_inode)
 
 .Lnot_found:
     ERROR(msg_not_found)
+
 .Lbad_type:
     ERROR(msg_bad_type)
 FUNCTION_END(find_inode)
 
 /** More error strings. */
+msg_unsupported:    .asciz "Unsupported"
 msg_too_large:      .asciz "Too large"
 msg_bad_extent:     .asciz "Bad extent"
 msg_not_found:      .asciz "Not found"
@@ -653,8 +670,8 @@ dap_lba_high:       .long 0
 partition_lba:      .long 0
 
 /** Pre-computed FS information. */
-block_size:         .long 0
 group_table_offset: .long 0
+block_size:         .word 0
 block_to_sector:    .byte 0
 
 /** Saved BIOS drive ID. */
