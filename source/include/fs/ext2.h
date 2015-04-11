@@ -112,9 +112,15 @@
 #define EXT2_SUPERBLOCK_OFF_MAGIC               56
 #define EXT2_SUPERBLOCK_OFF_INODE_SIZE          88
 #define EXT2_GROUP_DESC_OFF_INODE_TABLE         8
+#define EXT2_INODE_OFF_MODE                     0
 #define EXT2_INODE_OFF_SIZE                     4
 #define EXT2_INODE_OFF_FLAGS                    32
 #define EXT2_INODE_OFF_BLOCK                    40
+#define EXT2_DIR_ENTRY_OFF_INODE                0
+#define EXT2_DIR_ENTRY_OFF_REC_LEN              4
+#define EXT2_DIR_ENTRY_OFF_NAME_LEN             6
+#define EXT2_DIR_ENTRY_OFF_FILE_TYPE            7
+#define EXT2_DIR_ENTRY_OFF_NAME                 8
 #define EXT4_EXTENT_HEADER_OFF_MAGIC            0
 #define EXT4_EXTENT_HEADER_OFF_ENTRIES          2
 #define EXT4_EXTENT_HEADER_OFF_DEPTH            6

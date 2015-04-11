@@ -26,9 +26,10 @@
  * and we load the second half early on in the main function (along with the FS
  * superblock).
  *
- * The inode number of the loader binary should be written to offset 506.
- * Partition location is determined using the partition table entry passed by
- * the MBR.
+ * The path to the loader binary (null-terminated, separated with single '/'
+ * characters, with no leading '/', all redundant elements removed and no
+ * symlinks involved) should be written at offset 992, a maximum of 32 bytes
+ * including the null terminator.
  *
  * Current limitations:
  *  - Only uses INT13 Extensions. This is also the case with the loader itself,
@@ -46,15 +47,14 @@
 
 #include <fs/ext2.h>
 
+#include <partition/mbr.h>
+
 #include <platform/loader.h>
 
 #include <x86/asm.h>
 
 /** Address of the stack. */
 #define STACK_OFFSET        0x6000
-
-/** Segment that inode data is loaded to. */
-#define LOAD_SEGMENT        (LOADER_LOAD_ADDR >> 4)
 
 /** Print a message. */
 #define PRINT(s) \
@@ -90,12 +90,12 @@ FUNCTION_START(_start)
     jae     1f
 
     /* Check if the partition is marked active. */
-    movb    %ds:(%si), %al
+    movb    %ds:MBR_PARTITION_OFF_BOOTABLE(%si), %al
     cmpb    $0x80, %al
     jne     1f
 
     /* Looks like we're a partition. Get the LBA. */
-    movl    %ds:8(%si), %ecx
+    movl    %ds:MBR_PARTITION_OFF_START_LBA(%si), %ecx
 1:
     /* Set up the stack and data segment. */
     xorw    %ax, %ax
@@ -141,9 +141,8 @@ FUNCTION_START(_start)
     shll    %cl, %eax
     movl    %eax, block_size
 
-    /* Read in our inode. */
-    movl    inode_number, %eax
-    call    read_inode
+    /* Find the boot loader inode. */
+    call    find_inode
 
     /* Read in the inode data. */
     call    read_inode_data
@@ -154,7 +153,7 @@ FUNCTION_START(_start)
     movb    drive_id, %dl
     movl    partition_lba, %ebx
     xorl    %ecx, %ecx
-    ljmp    $LOAD_SEGMENT, $0
+    ljmp    $LOADER_LOAD_SEGMENT, $0
 
 .Lbad_fs:
     ERROR(msg_not_ext2)
@@ -190,7 +189,7 @@ PRIVATE_FUNCTION_START(read_disk_sectors)
 
     /* Perform the read. */
     movb    drive_id, %dl
-    movw    $dap_size, %si
+    movw    $dap, %si
     movb    $0x42, %ah
     int     $0x13
     jc      .Lfailed
@@ -202,7 +201,8 @@ PRIVATE_FUNCTION_START(read_disk_sectors)
 FUNCTION_END(read_disk_sectors)
 
 /** Read an inode into the inode buffer.
- * @param %eax          Inode to read. */
+ * @param %eax          Inode to read.
+ * @param %es:%di       Temporary location for reads. */
 PRIVATE_FUNCTION_START(read_inode)
     pushal
 
@@ -224,12 +224,11 @@ PRIVATE_FUNCTION_START(read_inode)
     shrl    $9, %eax
     andw    $511, %bx
     addl    group_table_offset, %eax
-    movw    $temp_buffer, %di
     call    read_disk_sector
 
     /* Retrieve the inode table block, then work out the sector that the inode
      * is in (EAX) and the offset into that sector (EBX), and read it in. */
-    movl    (temp_buffer + EXT2_GROUP_DESC_OFF_INODE_TABLE)(%bx), %edx
+    movl    %es:EXT2_GROUP_DESC_OFF_INODE_TABLE(%bx,%di), %edx
     movb    block_to_sector, %cl
     shll    %cl, %edx
     popl    %eax
@@ -237,16 +236,17 @@ PRIVATE_FUNCTION_START(read_inode)
     shrl    $9, %eax
     andw    $511, %bx
     addl    %edx, %eax
-    movw    $temp_buffer, %di
     call    read_disk_sector
 
-    /* Copy the inode to the inode buffer. */
-    cld
-    movw    $EXT2_INODE_SIZE, %cx
-    movw    $inode, %di
-    movw    $temp_buffer, %si
-    addw    %bx, %si
-    rep movsb
+    /* Copy the inode to the inode buffer. Do it manually rather than using
+     * rep movsb because it avoids having to swap around ES/DS/SI/DI. */
+    addw    %bx, %di
+    xorw    %bx, %bx
+1:  movb    %es:(%bx,%di), %al
+    movb    %al, %ds:inode(%bx)
+    incw    %bx
+    cmpw    $EXT2_INODE_SIZE, %bx
+    jb      1b
 
     popal
     ret
@@ -311,8 +311,7 @@ PRIVATE_FUNCTION_START(read_inode_data)
     call    get_total_blocks
 
     /* Set the new segment and start data address. */
-    pushw   %es
-    pushw   $LOAD_SEGMENT
+    pushw   $LOADER_LOAD_SEGMENT
     popw    %es
     xorw    %di, %di
 
@@ -332,7 +331,6 @@ PRIVATE_FUNCTION_START(read_inode_data)
     decl    %ecx
     jnz     1b
 
-    popw    %es
     ret
 FUNCTION_END(read_inode_data)
 
@@ -362,20 +360,16 @@ PRIVATE_FUNCTION_START(error)
 FUNCTION_END(error)
 
 /** Error strings. */
-msg_loading:        .asciz "Loading: "
+msg_loading:        .asciz "Loading... "
 msg_read_failed:    .asciz "Failed"
 msg_not_ext2:       .asciz "Bad FS"
 msg_ok:             .asciz "OK\r\n"
 
 first_half_end:
 
-/* Pad up to the end of the first 512 bytes, with space for the inode number
- * and boot signature at the end. We default to EXT2_BOOT_LOADER_INO, which
- * means no change is required when we have the ability to install the boot
- * loader into that inode. */
-. = _start + 0x1fa
-inode_number:       .long EXT2_BOOT_LOADER_INO
-boot_signature:     .word 0xaa55
+/* Pad up to the end of the first 512 bytes. */
+. = _start + 0x1fe
+boot_signature:     .word MBR_SIGNATURE
 
 second_half:
 
@@ -504,15 +498,138 @@ PRIVATE_FUNCTION_START(get_raw_block)
     ERROR(msg_bad_extent)
 FUNCTION_END(get_raw_block)
 
+/** Find and read in the boot loader inode. */
+PRIVATE_FUNCTION_START(find_inode)
+    /* Point ES:DI to the loader load address, which is used as a temporary
+     * location to read directory contents to. */
+    pushw   $LOADER_LOAD_SEGMENT
+    popw    %es
+    xorw    %di, %di
+
+    /* Point DS:SI to the loader path string. */
+    movw    $path, %si
+
+    /* Start at the root inode. */
+    xorl    %eax, %eax
+    movb    $EXT2_ROOT_INO, %al
+    call    read_inode
+
+.Linode_begin:
+    /* Read through each block of the directory in turn. An entry cannot span
+     * a block boundary. Current block number is stored in EBX, ECX is the
+     * total number of blocks in the directory, decremented as we go to check
+     * when we reach the end of the directory. */
+    call    get_total_blocks
+    xorl    %ebx, %ebx
+
+.Lblock_begin:
+    /* Read in this block. */
+    call    get_raw_block
+    call    read_block
+
+.Lentry_begin:
+    /* Check if the current directory entry is used. */
+    cmpl    $0, %es:EXT2_DIR_ENTRY_OFF_INODE(%di)
+    je      .Lnext_entry
+    cmpb    $EXT2_FT_UNKNOWN, %es:EXT2_DIR_ENTRY_OFF_FILE_TYPE(%di)
+    je      .Lnext_entry
+    movb    %es:EXT2_DIR_ENTRY_OFF_NAME_LEN(%di), %al
+    test    %al, %al
+    jz      .Lnext_entry
+
+    /* It is, lets try to compare the name string. */
+    pushw   %di
+    pushw   %si
+    addw    $EXT2_DIR_ENTRY_OFF_NAME, %di
+    cld
+.Lcompare_begin:
+    /* Check if we are at the end of the current path component. */
+    movb    (%si), %ah
+    testb   %ah, %ah
+    jz      .Lcompare_end
+    cmpb    $'/', %ah
+    je      .Lcompare_end
+
+    /* Compare the current character. Increments DI/SI. */
+    cmpsb
+    jne     .Lcompare_fail
+    decb    %al
+    jmp     .Lcompare_begin
+
+.Lcompare_end:
+    /* We're at the end of the path component. If name length (AL) is 0, we have
+     * a match. */
+    testb   %al, %al
+    jz      .Lcompare_match
+
+.Lcompare_fail:
+    /* Get back to the beginning of the path component and directory entry, fall
+     * through to next entry. */
+    popw    %si
+    popw    %di
+
+.Lnext_entry:
+    /* Increment past this entry and check if we have crossed a block boundary. */
+    addw    %es:EXT2_DIR_ENTRY_OFF_REC_LEN(%di), %di
+    cmpw    block_size, %di
+    jb      .Lentry_begin
+
+    /* Advance to the next block, or error if we've reached the end. */
+    incl    %ebx
+    decl    %ecx
+    jz      .Lnot_found
+    jmp     .Lblock_begin
+
+.Lcompare_match:
+    /* Discard the previous path component start, get back the directory entry. */
+    addw    $2, %sp
+    popw    %di
+
+    /* Get the inode number and read it in. Clear DI as read_inode() uses it, so
+     * we want it to point to the bottom of the temporary buffer. */
+    movl    %es:EXT2_DIR_ENTRY_OFF_INODE(%di), %eax
+    xorw    %di, %di
+    call    read_inode
+
+    /* Get the inode type for type comparisons. */
+    movw    (inode + EXT2_INODE_OFF_MODE), %ax
+    andw    $EXT2_S_IFMT, %ax
+
+    /* If we're at the end of the path string, we have our inode. */
+    cmpb    $0, (%si)
+    je      .Lfound
+
+    /* Not the end of the path string, must be a directory. */
+    cmpw    $EXT2_S_IFDIR, %ax
+    jne     .Lbad_type
+
+    /* Increment over the null terminator and start over. */
+    incw    %si
+    jmp     .Linode_begin
+
+.Lfound:
+    /* Must be a regular file. */
+    cmpw    $EXT2_S_IFREG, %ax
+    jne     .Lbad_type
+    ret
+
+.Lnot_found:
+    ERROR(msg_not_found)
+.Lbad_type:
+    ERROR(msg_bad_type)
+FUNCTION_END(find_inode)
+
 /** More error strings. */
 msg_too_large:      .asciz "Too large"
 msg_bad_extent:     .asciz "Bad extent"
+msg_not_found:      .asciz "Not found"
+msg_bad_type:       .asciz "Bad type"
 
 second_half_end:
 
-/** Pad up to 1KB. */
-. = _start + 0x3ff
-.byte 0
+/** Pad up to 1KB - 32 bytes for the path string buffer. */
+. = _start + 0x3e0
+path:               .fill 32
 
 .section .bss
 
@@ -522,10 +639,8 @@ superblock:         .fill EXT2_SUPERBLOCK_SIZE
 /** Current inode buffer. */
 inode:              .fill EXT2_INODE_SIZE
 
-/** Temporary buffer. */
-temp_buffer:        .fill 512
-
 /** Disk address packet. */
+dap:
 dap_size:           .byte 0
 dap_reserved:       .byte 0
 dap_count:          .word 0
