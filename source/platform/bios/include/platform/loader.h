@@ -28,6 +28,9 @@
 /** Load address of the boot loader. */
 #define LOADER_LOAD_ADDR        0x10000
 
+/** Load segment of the boot loader. */
+#define LOADER_LOAD_SEGMENT     (LOADER_LOAD_ADDR >> 4)
+
 /**
  * Multiboot load address.
  *

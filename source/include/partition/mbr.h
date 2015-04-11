@@ -22,13 +22,19 @@
 #ifndef __PARTITION_MBR_H
 #define __PARTITION_MBR_H
 
-#include <types.h>
-
 /** MBR partition table signature. */
 #define MBR_SIGNATURE               0xaa55
 
 /** MBR partition types. */
 #define MBR_PARTITION_TYPE_GPT      0xee    /**< GPT protective. */
+
+/** Offsets in MBR structures. */
+#define MBR_PARTITION_OFF_BOOTABLE  0
+#define MBR_PARTITION_OFF_START_LBA 8
+
+#ifndef __ASM__
+
+#include <types.h>
 
 /** MBR partition description. */
 typedef struct mbr_partition {
@@ -51,4 +57,5 @@ typedef struct mbr {
     uint16_t signature;
 } __packed mbr_t;
 
+#endif /* __ASM__ */
 #endif /* __PARTITION_MBR_H */

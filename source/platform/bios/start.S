@@ -37,7 +37,7 @@ FUNCTION_START(loader_entry)
     cli
 
     /* Set up data segments. */
-    movw    $(LOADER_LOAD_ADDR >> 4), %ax
+    movw    $LOADER_LOAD_SEGMENT, %ax
     movw    %ax, %ds
     movw    %ax, %es
 

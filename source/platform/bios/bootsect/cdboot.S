@@ -96,7 +96,7 @@ PRIVATE_FUNCTION_START(boot)
     /* Execute the bootloader. */
     xorl    %ebx, %ebx
     xorl    %ecx, %ecx
-    ljmp    $(LOADER_LOAD_ADDR >> 4), $0
+    ljmp    $LOADER_LOAD_SEGMENT, $0
 
 .Linfo_invalid:
     movw    $msg_info_invalid, %si
@@ -144,7 +144,7 @@ dap_reserved1:      .byte 0
 dap_count:          .byte 0
 dap_reserved2:      .byte 0
 dap_buffer_offset:  .word 0
-dap_buffer_segment: .word (LOADER_LOAD_ADDR >> 4)
+dap_buffer_segment: .word LOADER_LOAD_SEGMENT
 dap_lba_low:        .long 0
 dap_lba_high:       .long 0
 

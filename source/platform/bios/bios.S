@@ -63,7 +63,7 @@
     \
     /* Set correct segments. */ \
     .byte 0x66; \
-    ljmp    $(LOADER_LOAD_ADDR >> 4), $2f - LOADER_LOAD_ADDR; \
+    ljmp    $LOADER_LOAD_SEGMENT, $2f - LOADER_LOAD_ADDR; \
 .code16 \
 2:  xorw    %ax, %ax; \
     mov     %ax, %ds; \

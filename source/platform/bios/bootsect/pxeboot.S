@@ -35,7 +35,7 @@ FUNCTION_START(_start)
     xorl    %ecx, %ecx
 
     /* Jump to the loader entry point. */
-    ljmp    $(LOADER_LOAD_ADDR >> 4), $0
+    ljmp    $LOADER_LOAD_SEGMENT, $0
 FUNCTION_END(_start)
 
 /** Pad the file to the loader load address. */
