@@ -39,9 +39,9 @@
  *    entry in addition to a generated legacy MBR structure.
  *  - Assumes EXT2_DYNAMIC_REV. The loader itself requires this at the moment,
  *    if that changes we should add support for it here too.
- *  - Only supports up to the indirect block. I doubt any greater will be
- *    needed here, unless we have to deal with very large directories or
- *    something.
+ *  - Only supports up to the indirect block. *May* have to support bi-indirect
+ *    in the future if we have to deal with very large directories, but we're
+ *    getting towards hundreds of thousands of entries at that point...
  */
 
 #include <fs/ext2.h>
@@ -154,7 +154,7 @@ FUNCTION_START(_start)
     movb    drive_id, %dl
     movl    partition_lba, %ebx
     xorl    %ecx, %ecx
-    ljmp    $(LOADER_LOAD_ADDR >> 4), $0
+    ljmp    $LOAD_SEGMENT, $0
 
 .Lbad_fs:
     ERROR(msg_not_ext2)
@@ -288,46 +288,51 @@ PRIVATE_FUNCTION_START(read_block)
     ret
 FUNCTION_END(read_block)
 
-/** Read all data for the inode to LOADER_LOAD_ADDR. */
-PRIVATE_FUNCTION_START(read_inode_data)
-    pushal
-
-    /* Set the new segment and start data address. */
-    pushw   %es
-    pushw   $(LOADER_LOAD_ADDR >> 4)
-    popw    %es
-    xorw    %di, %di
-
-    /* Get total inode data size, divide it by block size and increment if there
-     * is a remainder, to get the total number of blocks we need to read. */
+/** Get total number of blocks in the current inode.
+ * @return %ecx         Total number of blocks.
+ * @return %eax         Trashed.
+ * @return %edx         Remainder of data size in final block. */
+PRIVATE_FUNCTION_START(get_total_blocks)
     movl    (inode + EXT2_INODE_OFF_SIZE), %eax
     xorl    %edx, %edx
     divl    block_size
+
+    /* Increment if there is a remainder to cover final chunk of data. */
     testl   %edx, %edx
     jz      1f
     incl    %eax
-1:
+1:  movl    %eax, %ecx
+    ret
+FUNCTION_END(get_total_blocks)
+
+/** Read all data for the inode to LOADER_LOAD_ADDR. */
+PRIVATE_FUNCTION_START(read_inode_data)
+    /* Get total number of blocks we need to read. */
+    call    get_total_blocks
+
+    /* Set the new segment and start data address. */
+    pushw   %es
+    pushw   $LOAD_SEGMENT
+    popw    %es
+    xorw    %di, %di
+
     /* Read each block to the destination.
-     * EAX = current block number, ECX = total blocks to read. */
-    xorl    %ecx, %ecx
-    xchgl   %eax, %ecx
-2:  pushl   %eax
-    call    get_raw_block
+     * EBX = current block number, ECX = total blocks to read. */
+    xorl    %ebx, %ebx
+1:  call    get_raw_block
     call    read_block
 
     /* Increment data buffer, handle overflowing into the next segment. */
     addw    block_size, %di
-    jnc     3f
+    jnc     2f
     movw    %es, %dx
     addw    $0x1000, %dx
     movw    %dx, %es
-3:  pop     %eax
-    incl    %eax
+2:  incl    %ebx
     decl    %ecx
-    jnz     2b
+    jnz     1b
 
     popw    %es
-    popal
     ret
 FUNCTION_END(read_inode_data)
 
@@ -375,35 +380,38 @@ boot_signature:     .word 0xaa55
 second_half:
 
 /** Look up a raw block number in the current inode.
- * @param %eax      Block number.
- * @return          Raw block number in %eax. Trashes %edx and %ebx. */
+ * @param %ebx      Block number (preserved).
+ * @return %eax     Raw block number.
+ * @return %edx     Trashed.
+ * @return %ebp     Trashed. */
 PRIVATE_FUNCTION_START(get_raw_block)
+    /* We need to modify the block number but we want to preserve it for the
+     * caller. We modify it in EBP. */
+    movl    %ebx, %ebp
+
     /* Test for extents. */
-    testl   $EXT4_EXTENTS_FL, (inode + EXT2_INODE_OFF_FLAGS)
+    testb   $(EXT4_EXTENTS_FL >> 16), (inode + EXT2_INODE_OFF_FLAGS + 2)
     jnz     .Lextents
 
-    cmpl    $EXT2_NDIR_BLOCKS, %eax
+    cmpl    $EXT2_NDIR_BLOCKS, %ebp
     jae     .Lindirect
 
     /* Raw block number is stored in the inode. */
-    shll    $2, %eax
-    movl    (inode + EXT2_INODE_OFF_BLOCK)(%eax), %eax
+    shlw    $2, %bp
+    movl    (inode + EXT2_INODE_OFF_BLOCK)(%bp), %eax
     ret
 .Lindirect:
-    subl    $EXT2_NDIR_BLOCKS, %eax
-    shll    $2, %eax
-    cmpl    block_size, %eax
+    subl    $EXT2_NDIR_BLOCKS, %ebp
+    shll    $2, %ebp
+    cmpl    block_size, %ebp
     jae     .Lbi_indirect
 
-    /* Read in the indirect block. */
-    pushl   %eax
+    /* Read in the indirect block. ES:DI should point to the location where
+     * the caller is going to read to. We use this as a temporary location to
+     * read the block to. */
     movl    (inode + EXT2_INODE_OFF_BLOCK + (EXT2_IND_BLOCK * 4)), %eax
     call    read_block
-    popl    %eax
-    pushw   %di
-    addw    %ax, %di
-    movl    %es:(%di), %eax
-    popw    %di
+    movl    %es:(%bp,%di), %eax
     ret
 .Lbi_indirect:
     /* Don't bother supporting this. We only have to load the loader here,
@@ -428,12 +436,12 @@ PRIVATE_FUNCTION_START(get_raw_block)
     je      .Lfound_extent
 
     /* Loop through to find the index covering the block (%dx == 0). */
-    movw    %es:EXT4_EXTENT_HEADER_OFF_ENTRIES(%di), %bx
+    movw    %es:EXT4_EXTENT_HEADER_OFF_ENTRIES(%di), %ax
     addw    $EXT4_EXTENT_HEADER_SIZE, %di
-2:  cmpw    %bx, %dx
+2:  cmpw    %ax, %dx
     jae     3f
 
-    cmpl    %es:EXT4_EXTENT_IDX_OFF_BLOCK(%di), %eax
+    cmpl    %es:EXT4_EXTENT_IDX_OFF_BLOCK(%di), %ebp
     jb      3f
 
     addw    $EXT4_EXTENT_IDX_SIZE, %di
@@ -445,16 +453,12 @@ PRIVATE_FUNCTION_START(get_raw_block)
     jz      .Lbad_extent
 
     /* Get the block number to read. index[i - 1]. */
-    movl    %es:(EXT4_EXTENT_IDX_OFF_LEAF - EXT4_EXTENT_IDX_SIZE)(%di), %ebx
+    movl    %es:(EXT4_EXTENT_IDX_OFF_LEAF - EXT4_EXTENT_IDX_SIZE)(%di), %eax
 
-    /* Restore the base address and read the next block (would be nice if %sp
-     * could be used as a base register...). File block number is preserved in
-     * %ebx. */
+    /* Restore the base address and read the next block. */
     popw    %di
     popw    %es
-    xchgl   %eax, %ebx
     call    read_block
-    movl    %ebx, %eax
     pushw   %es
     pushw   %di
     xorw    %dx, %dx
@@ -464,12 +468,12 @@ PRIVATE_FUNCTION_START(get_raw_block)
      * covering the block (%dx == 0). TODO: Could possibly merge this with the
      * similar loop above, but I'm lazy. Should be done if we need to free up
      * some space in the future. */
-    movw    %es:EXT4_EXTENT_HEADER_OFF_ENTRIES(%di), %bx
+    movw    %es:EXT4_EXTENT_HEADER_OFF_ENTRIES(%di), %ax
     addw    $EXT4_EXTENT_HEADER_SIZE, %di
-1:  cmpw    %bx, %dx
+1:  cmpw    %ax, %dx
     jae     2f
 
-    cmpl    %es:EXT4_EXTENT_OFF_BLOCK(%di), %eax
+    cmpl    %es:EXT4_EXTENT_OFF_BLOCK(%di), %ebp
     jb      2f
 
     addw    $EXT4_EXTENT_SIZE, %di
@@ -481,17 +485,16 @@ PRIVATE_FUNCTION_START(get_raw_block)
     jz      .Lbad_extent
 
     /* Subtract start block from block number. extent[i - 1]. */
-    subl    %es:(EXT4_EXTENT_OFF_BLOCK - EXT4_EXTENT_SIZE)(%di), %eax
+    subl    %es:(EXT4_EXTENT_OFF_BLOCK - EXT4_EXTENT_SIZE)(%di), %ebp
 
-    /* If the offset is greater than the length of the extent, return 0, else
-     * add on the physical start block. */
+    /* If the offset is greater than the length of the extent, return 0 (sparse
+     * block), else add on the physical start block. */
     movzxw  %es:(EXT4_EXTENT_OFF_LEN - EXT4_EXTENT_SIZE)(%di), %edx
-    movl    %eax, %ebx
     xorl    %eax, %eax
-    cmpl    %edx, %ebx
+    cmpl    %edx, %ebp
     jae     3f
     movl    %es:(EXT4_EXTENT_OFF_START - EXT4_EXTENT_SIZE)(%di), %eax
-    add     %ebx, %eax
+    addl    %ebp, %eax
 
     /* Restore old base address and return. */
 3:  popw    %di
