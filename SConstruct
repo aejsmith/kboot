@@ -20,6 +20,7 @@ build_flags = {
         '-Wall', '-Wextra', '-Wno-variadic-macros', '-Wno-unused-parameter',
         '-Wwrite-strings', '-Wmissing-declarations', '-Wredundant-decls',
         '-Wno-format', '-Werror', '-Wno-error=unused', '-pipe',
+        '-Wno-error=unused-function',
     ],
     'CFLAGS': ['-std=gnu99'],
     'ASFLAGS': ['-D__ASM__'],
@@ -90,20 +91,9 @@ helptext += '\n'
 helptext += 'For information on how to build KBoot, please refer to documentation/readme.txt.\n'
 Help(helptext)
 
-# Make the output nice.
 verbose = ARGUMENTS.get('V') == '1'
-if not verbose:
-    def compile_str(msg):
-        return ' \033[0;32m%-6s\033[0m $TARGET' % (msg)
-    env['ARCOMSTR']     = compile_str('AR')
-    env['ASCOMSTR']     = compile_str('ASM')
-    env['ASPPCOMSTR']   = compile_str('ASM')
-    env['CCCOMSTR']     = compile_str('CC')
-    env['CXXCOMSTR']    = compile_str('CXX')
-    env['LINKCOMSTR']   = compile_str('LINK')
-    env['RANLIBCOMSTR'] = compile_str('RANLIB')
-    env['GENCOMSTR']    = compile_str('GEN')
-    env['STRIPCOMSTR']  = compile_str('STRIP')
+def compile_str(msg):
+    return '\033[0;32m%8s\033[0m $TARGET' % (msg)
 
 # Merge in build flags.
 for (k, v) in build_flags.items():
@@ -120,6 +110,19 @@ env['BUILDERS']['LDScript'] = Builder(action = Action(
 
 # Set up the host build environment.
 host_env = env.Clone()
+host_env['CPPPATH'] = []
+
+# Make build output nice.
+if not verbose:
+    host_env['ARCOMSTR']     = compile_str('HOSTAR')
+    host_env['ASCOMSTR']     = compile_str('HOSTAS')
+    host_env['ASPPCOMSTR']   = compile_str('HOSTAS')
+    host_env['CCCOMSTR']     = compile_str('HOSTCC')
+    host_env['CXXCOMSTR']    = compile_str('HOSTCXX')
+    host_env['LINKCOMSTR']   = compile_str('HOSTLINK')
+    host_env['RANLIBCOMSTR'] = compile_str('HOSTRL')
+    host_env['GENCOMSTR']    = compile_str('HOSTGEN')
+    host_env['STRIPCOMSTR']  = compile_str('HOSTSTRIP')
 
 # Add compiler-specific flags.
 output = Popen([host_env['CC'], '--version'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
@@ -131,10 +134,13 @@ else:
     for (k, v) in gcc_flags.items():
         host_env[k] += v
 
+# We place the final output binaries in a single directory.
+host_env['OUTDIR'] = Dir('build/host/bin')
+
 # Build host system utilities.
-#SConscript('utilities/SConscript',
-#    variant_dir = os.path.join('build', 'host'),
-#    exports = {'env': host_env})
+SConscript('utilities/SConscript',
+    variant_dir = os.path.join('build', 'host', 'utilities'),
+    exports = {'env': host_env})
 
 ##################################
 # Target build environment setup #
@@ -151,6 +157,18 @@ config = configs[env['CONFIG']]['config']
 # Set the debug flag in the configuration.
 if env['DEBUG']:
     config['DEBUG'] = True
+
+# Make build output nice.
+if not verbose:
+    env['ARCOMSTR']     = compile_str('AR')
+    env['ASCOMSTR']     = compile_str('AS')
+    env['ASPPCOMSTR']   = compile_str('AS')
+    env['CCCOMSTR']     = compile_str('CC')
+    env['CXXCOMSTR']    = compile_str('CXX')
+    env['LINKCOMSTR']   = compile_str('LINK')
+    env['RANLIBCOMSTR'] = compile_str('RL')
+    env['GENCOMSTR']    = compile_str('GEN')
+    env['STRIPCOMSTR']  = compile_str('STRIP')
 
 # Detect which compiler to use.
 compilers = ['cc', 'gcc', 'clang']
