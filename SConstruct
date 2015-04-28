@@ -254,4 +254,4 @@ else:
 # Add a target to run the test script for this configuration (if it exists).
 script = os.path.join('test', 'qemu', qemu)
 if os.path.exists(script):
-    Alias('qemu', env.Command('__qemu', defaults + ['test'], Action(script, None)))
+    Alias('qemu', env.Command('__qemu', defaults + ['test', 'utilities'], Action(script, None)))
