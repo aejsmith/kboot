@@ -94,8 +94,8 @@ FUNCTION_START(_start)
     jnz     1f
 
     /* Type should be non-zero. */
-    cmpb    $0, %ds:MBR_PARTITION_OFF_TYPE(%si)
-    jne     1f
+    cmpb    %cl, %ds:MBR_PARTITION_OFF_TYPE(%si)
+    je      1f
 
     /* Looks like we're a partition. Get the LBA. */
     movl    %ds:MBR_PARTITION_OFF_START_LBA(%si), %ecx
