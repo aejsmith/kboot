@@ -143,7 +143,7 @@ efi_handle_t efi_disk_get_handle(disk_device_t *_disk) {
                     if (last->subtype == EFI_DEVICE_PATH_MEDIA_SUBTYPE_HD) {
                         efi_device_path_hd_t *hd = (efi_device_path_hd_t *)last;
 
-                        if (partition->partition.offset == hd->partition_start)
+                        if (partition->offset == hd->partition_start)
                             return handles[i];
                     }
                 }

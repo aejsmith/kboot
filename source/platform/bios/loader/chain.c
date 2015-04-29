@@ -45,7 +45,6 @@ static __noreturn void chain_loader_load(void *_handle) {
     disk_device_t *disk;
     uint8_t disk_id;
     ptr_t partition_addr;
-
     status_t ret;
 
     if (handle) {
@@ -71,7 +70,7 @@ static __noreturn void chain_loader_load(void *_handle) {
     if (disk_device_is_partition(disk)) {
         disk_device_t *parent = disk->parent;
 
-        if (strcmp(parent->raw.partition_ops->name, "MBR") == 0) {
+        if (strcmp(parent->partition_ops->name, "MBR") == 0) {
             ret = device_read(
                 &parent->device, (void *)PARTITION_TABLE_ADDR,
                 sizeof(mbr->partitions), offsetof(mbr_t, partitions));

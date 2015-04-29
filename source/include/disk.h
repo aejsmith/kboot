@@ -100,18 +100,10 @@ typedef struct disk_device {
 
     /** Partitioning information. */
     struct disk_device *parent;         /**< Parent disk, or NULL if this is the raw disk. */
-    union {
-        struct {
-            list_t partitions;          /**< List of partitions. */
-
-            /** Partitioning scheme used on the disk. */
-            partition_ops_t *partition_ops;
-        } raw;
-        struct {
-            list_t link;                /**< Link to parent's partition list. */
-            uint64_t offset;            /**< LBA offset of the partition. */
-        } partition;
-    };
+    list_t partitions;                  /**< List of partitions. */
+    partition_ops_t *partition_ops;     /**< Partitioning scheme used on the disk. */
+    list_t link;                        /**< Link to parent's partition list. */
+    uint64_t offset;                    /**< LBA offset of the partition. */
 } disk_device_t;
 
 /** Return whether a disk device is a partition.

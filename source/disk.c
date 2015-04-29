@@ -156,7 +156,7 @@ static device_ops_t disk_device_ops = {
  * @param lba           Block number to start reading from.
  * @return              Status code describing the result of the operation. */
 static status_t partition_read_blocks(disk_device_t *disk, void *buf, size_t count, uint64_t lba) {
-    return disk->parent->ops->read_blocks(disk->parent, buf, count, lba + disk->partition.offset);
+    return disk->parent->ops->read_blocks(disk->parent, buf, count, lba + disk->offset);
 }
 
 /** Get partition identification information.
@@ -168,7 +168,7 @@ static void partition_identify(disk_device_t *disk, device_identify_t type, char
     if (type == DEVICE_IDENTIFY_SHORT) {
         snprintf(buf, size,
             "%s partition %" PRIu8 " @ %" PRIu64,
-            disk->parent->raw.partition_ops->name, disk->id, disk->partition.offset);
+            disk->parent->partition_ops->name, disk->id, disk->offset);
     }
 }
 
@@ -196,14 +196,14 @@ static void add_partition(disk_device_t *parent, uint8_t id, uint64_t lba, uint6
     partition->block_size = parent->block_size;
     partition->id = id;
     partition->parent = parent;
-    partition->partition.offset = lba;
+    partition->offset = lba;
 
     name = malloc(16);
     snprintf(name, 16, "%s,%u", parent->device.name, id);
     partition->device.name = name;
 
-    list_init(&partition->partition.link);
-    list_append(&parent->raw.partitions, &partition->partition.link);
+    list_init(&partition->link);
+    list_append(&parent->partitions, &partition->link);
 
     device_register(&partition->device);
 
@@ -229,7 +229,7 @@ static void probe_disk(disk_device_t *disk) {
         /* Check for a partition table on the device. */
         builtin_foreach(BUILTIN_TYPE_PARTITION, partition_ops_t, ops) {
             if (ops->iterate(disk, add_partition)) {
-                disk->raw.partition_ops = ops;
+                disk->partition_ops = ops;
                 break;
             }
         }
@@ -244,9 +244,9 @@ static void probe_disk(disk_device_t *disk) {
 void disk_device_register(disk_device_t *disk, bool boot) {
     char *name;
 
-    list_init(&disk->raw.partitions);
+    list_init(&disk->partitions);
     disk->parent = NULL;
-    disk->raw.partition_ops = NULL;
+    disk->partition_ops = NULL;
 
     /* Assign an ID for the disk and name it. */
     disk->id = next_disk_ids[disk->type]++;
