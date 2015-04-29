@@ -89,9 +89,12 @@ FUNCTION_START(_start)
     cmpw    $0x9fc0, %ax
     jae     1f
 
-    /* Check if the partition is marked active. */
-    movb    %ds:MBR_PARTITION_OFF_BOOTABLE(%si), %al
-    cmpb    $0x80, %al
+    /* Active flag should either be 0x80 or 0. */
+    testb   $0x7f, %ds:MBR_PARTITION_OFF_BOOTABLE(%si)
+    jnz     1f
+
+    /* Type should be non-zero. */
+    cmpb    $0, %ds:MBR_PARTITION_OFF_TYPE(%si)
     jne     1f
 
     /* Looks like we're a partition. Get the LBA. */

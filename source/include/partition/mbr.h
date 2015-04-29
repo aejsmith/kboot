@@ -30,6 +30,7 @@
 
 /** Offsets in MBR structures. */
 #define MBR_PARTITION_OFF_BOOTABLE  0
+#define MBR_PARTITION_OFF_TYPE      4
 #define MBR_PARTITION_OFF_START_LBA 8
 
 #ifndef __ASM__
