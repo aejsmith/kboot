@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #
 # Copyright (C) 2015 Alex Smith
 #
@@ -18,7 +19,7 @@ import sys
 from subprocess import Popen, PIPE
 
 if len(sys.argv) != 2 and len(sys.argv) != 3:
-    print 'Usage: %s <path to kboot.elf> [<path to addr2line>] << <output>' % (sys.argv[0])
+    print('Usage: %s <path to kboot.elf> [<path to addr2line>] << <output>' % (sys.argv[0]))
     sys.exit(1)
 
 loader = sys.argv[1]
@@ -43,8 +44,8 @@ for line in lines:
         continue
 
     process = Popen([addr2line, '-f', '-e', loader, addr], stdout = PIPE, stderr = PIPE)
-    output = process.communicate()[0].split('\n')
+    output = process.communicate()[0].decode("utf-8").split('\n')
     if process.returncode != 0:
         continue
 
-    print '%s - %s @ %s' % (addr, output[0], output[1])
+    print('%s - %s @ %s' % (addr, output[0], output[1]))
