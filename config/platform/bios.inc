@@ -25,5 +25,7 @@ include = {
         'DRIVER_CONSOLE_VGA': True,
         'DRIVER_SERIAL_NS16550': True,
         'TARGET_NS16550_IO': True,
+        'DRIVER_CONSOLE_FB': True,
+        'FB': True,
     },
 }

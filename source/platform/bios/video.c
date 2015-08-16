@@ -21,6 +21,7 @@
 
 #include <lib/utility.h>
 
+#include <drivers/console/fb.h>
 #include <drivers/console/vga.h>
 
 #include <bios/bios.h>
@@ -62,7 +63,7 @@ static void bios_video_set_mode(video_mode_t *_mode) {
 static console_out_t *bios_video_create_console(video_mode_t *_mode) {
     bios_video_mode_t *mode = (bios_video_mode_t *)_mode;
 
-    return (mode->num == 3) ? vga_console_create() : NULL;
+    return (mode->num == 3) ? vga_console_create() : fb_console_create();
 }
 
 /** BIOS video operations. */
