@@ -57,13 +57,24 @@ extern void *malloc(size_t size);
 extern void *realloc(void *addr, size_t size);
 extern void free(void *addr);
 
+extern void *malloc_large(size_t size);
+extern void free_large(void *addr);
+
 /** Helper for __cleanup_free. */
 static inline void freep(void *p) {
     free(*(void **)p);
 }
 
-/** Variable attribute to free the pointer when it goes out of scope. */
+/** Helper for __cleanup_free_large. */
+static inline void free_largep(void *p) {
+    free_large(*(void **)p);
+}
+
+/** Attribute to free a pointer (with free) when it goes out of scope. */
 #define __cleanup_free          __cleanup(freep)
+
+/** Attribute to free a pointer (with free_large) when it goes out of scope. */
+#define __cleanup_free_large    __cleanup(free_largep)
 
 extern void memory_map_insert(list_t *map, phys_ptr_t start, phys_size_t size, uint8_t type);
 extern void memory_map_dump(list_t *map);

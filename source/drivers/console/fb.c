@@ -394,7 +394,6 @@ static void fb_console_putc(console_out_t *console, char ch) {
  * @param console       Console output device. */
 static void fb_console_init(console_out_t *console) {
     fb_console_out_t *fb = (fb_console_out_t *)console;
-    size_t size;
 
     assert(current_video_mode->type == VIDEO_MODE_LFB);
 
@@ -402,8 +401,7 @@ static void fb_console_init(console_out_t *console) {
     fb->rows = current_video_mode->height / CONSOLE_FONT_HEIGHT;
 
     /* Allocate a character cache. */
-    size = round_up(fb->cols * fb->rows * sizeof(*fb->chars), PAGE_SIZE);
-    fb->chars = memory_alloc(size, 0, 0, 0, MEMORY_TYPE_INTERNAL, MEMORY_ALLOC_HIGH, NULL);
+    fb->chars = malloc_large(fb->cols * fb->rows * sizeof(*fb->chars));
 
     fb->fg_colour = CONSOLE_COLOUR_FG;
     fb->bg_colour = CONSOLE_COLOUR_BG;
@@ -420,10 +418,8 @@ static void fb_console_init(console_out_t *console) {
  * @param console       Console output device. */
 static void fb_console_deinit(console_out_t *console) {
     fb_console_out_t *fb = (fb_console_out_t *)console;
-    size_t size;
 
-    size = round_up(fb->cols * fb->rows * sizeof(*fb->chars), PAGE_SIZE);
-    memory_free(fb->chars, size);
+    free_large(fb->chars);
 }
 
 /** Framebuffer console output operations. */

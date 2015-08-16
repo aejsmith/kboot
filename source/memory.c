@@ -33,7 +33,10 @@
 typedef struct heap_chunk {
     list_t header;                  /**< Link to chunk list. */
     size_t size;                    /**< Size of chunk including struct. */
-    bool allocated;                 /**< Whether the chunk is allocated. */
+    union {
+        bool allocated;             /**< Whether the chunk is allocated. */
+        void *addr;                 /**< Base address (for large allocations). */
+    };
 } heap_chunk_t;
 
 /** Size of the heap (128KB). */
@@ -42,6 +45,9 @@ typedef struct heap_chunk {
 /** Statically allocated heap. */
 static uint8_t heap[HEAP_SIZE] __aligned(PAGE_SIZE);
 static LIST_DECLARE(heap_chunks);
+
+/** Large allocations. */
+static LIST_DECLARE(large_chunks);
 
 #ifndef TARGET_HAS_MM
 
@@ -58,7 +64,9 @@ static LIST_DECLARE(memory_ranges);
  * Allocate memory from the heap.
  *
  * Allocates temporary memory from the heap. This memory will never reach the
- * kernel. An internal error will be raised if the heap is full.
+ * kernel. This should only be used for smaller allocations as it allocates
+ * from a small, fixed-size heap. An internal error will be raised if the heap
+ * is full. For large allocations use memory_alloc_internal().
  *
  * @param size          Size of allocation to make.
  *
@@ -174,6 +182,51 @@ void free(void *addr) {
             list_remove(&chunk->header);
         }
     }
+}
+
+
+/**
+ * Allocate a large chunk of memory.
+ *
+ * Allocates a large chunk of memory via memory_alloc() rather than the fixed-
+ * size internal heap. The allocation size will be rounded up to the nearest
+ * page size boundary. Memory allocated through this function must be freed with
+ * free_large().
+ *
+ * @param size          Size to allocate.
+ */
+void *malloc_large(size_t size) {
+    heap_chunk_t *chunk;
+
+    chunk = malloc(sizeof(heap_chunk_t));
+    chunk->size = round_up(size, PAGE_SIZE);
+    chunk->addr = memory_alloc(chunk->size, 0, 0, 0, MEMORY_TYPE_INTERNAL, MEMORY_ALLOC_HIGH, NULL);
+
+    list_init(&chunk->header);
+    list_append(&large_chunks, &chunk->header);
+
+    return chunk->addr;
+}
+
+/** Free a chunk allocated with malloc_large().
+ * @param addr          Address of chunk to free. */
+void free_large(void *addr) {
+    if (!addr)
+        return;
+
+    list_foreach(&large_chunks, iter) {
+        heap_chunk_t *chunk = list_entry(iter, heap_chunk_t, header);
+
+        if (chunk->addr == addr) {
+            memory_free(addr, chunk->size);
+
+            list_remove(&chunk->header);
+            free(chunk);
+            return;
+        }
+    }
+
+    internal_error("Double free on address %p", addr);
 }
 
 /**

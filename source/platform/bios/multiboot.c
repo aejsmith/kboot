@@ -256,7 +256,6 @@ static void load_modules(void) {
     for (uint32_t i = 0; i < multiboot_info.mods_count; i++) {
         multiboot_file_t *file;
         char *name;
-        size_t size;
 
         if (!modules[i].cmdline)
             continue;
@@ -282,8 +281,7 @@ static void load_modules(void) {
         /* We re-allocate the module data as high as possible to make it
          * unlikely that we will conflict with any fixed load addresses for a
          * kernel. */
-        size = round_up(file->handle.size, PAGE_SIZE);
-        file->addr = memory_alloc(size, 0, 0, 0, MEMORY_TYPE_INTERNAL, MEMORY_ALLOC_HIGH, NULL);
+        file->addr = malloc_large(file->handle.size);
         memcpy(file->addr, (void *)phys_to_virt(modules[i].mod_start), file->handle.size);
 
         list_init(&file->header);

@@ -208,6 +208,19 @@ void free(void *addr) {
     /* Nope. */
 }
 
+/** Allocate a large chunk of memory.
+ * @param size          Size to allocate. */
+void *malloc_large(size_t size) {
+    size = round_up(size, PAGE_SIZE);
+    return memory_alloc(size, 0, 0, 0, MEMORY_TYPE_INTERNAL, MEMORY_ALLOC_HIGH, NULL);
+}
+
+/** Free a chunk allocated with malloc_large().
+ * @param addr          Address of chunk to free. */
+void free_large(void *addr) {
+    /* Nope. */
+}
+
 /** Initialize the memory manager.
  * @param tags          Tag list. */
 void mm_init(kboot_tag_t *tags) {

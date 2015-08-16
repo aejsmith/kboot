@@ -47,7 +47,6 @@ typedef struct efi_loader {
  * @param _loader       Pointer to loader data. */
 static __noreturn void efi_loader_load(void *_loader) {
     efi_loader_t *loader = _loader;
-    phys_size_t buf_size;
     void *buf;
     efi_handle_t image_handle;
     efi_loaded_image_t *image;
@@ -57,8 +56,7 @@ static __noreturn void efi_loader_load(void *_loader) {
     status_t ret;
 
     /* Allocate a buffer to read the image into. */
-    buf_size = round_up(loader->handle->size, PAGE_SIZE);
-    buf = memory_alloc(buf_size, 0, 0, 0, MEMORY_TYPE_INTERNAL, 0, NULL);
+    buf = malloc_large(loader->handle->size);
 
     /* Read it in. */
     ret = fs_read(loader->handle, buf, loader->handle->size, 0);

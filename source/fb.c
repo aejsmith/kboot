@@ -341,14 +341,12 @@ void fb_copy_rect(
  * @param buffer        Buffer to convert.
  * @param image         Image structure to add to. */
 static void convert_image(const fb_buffer_t *buffer, fb_image_t *image) {
-    size_t size;
     pixel_t *pixel;
 
     image->width = buffer->width;
     image->height = buffer->height;
+    image->data = malloc_large(image->width * image->height * sizeof(pixel_t));
 
-    size = round_up(image->width * image->height * sizeof(pixel_t), PAGE_SIZE);
-    image->data = memory_alloc(size, 0, 0, 0, MEMORY_TYPE_INTERNAL, MEMORY_ALLOC_HIGH, NULL);
     pixel = image->data;
 
     for (uint16_t y = 0; y < image->height; y++) {
@@ -408,9 +406,7 @@ static status_t load_tga(fs_handle_t *handle, fb_image_t *image) {
         + header.id_length
         + (header.colour_map_length * (header.colour_map_depth / 8));
 
-    buffer.back = memory_alloc(
-        round_up(size, PAGE_SIZE), 0, 0, 0, MEMORY_TYPE_INTERNAL,
-        MEMORY_ALLOC_HIGH, NULL);
+    buffer.back = malloc_large(size);
 
     ret = fs_read(handle, buffer.back, size, offset);
     if (ret != STATUS_SUCCESS)
@@ -419,7 +415,7 @@ static status_t load_tga(fs_handle_t *handle, fb_image_t *image) {
     convert_image(&buffer, image);
 
 out_free:
-    memory_free(buffer.back, round_up(size, PAGE_SIZE));
+    free_large(buffer.back);
     return ret;
 }
 
@@ -447,10 +443,7 @@ status_t fb_load_image(const char *path, fb_image_t *image) {
 /** Destroy previously loaded image data.
  * @param image         Image to destroy. */
 void fb_destroy_image(fb_image_t *image) {
-    size_t size;
-
-    size = round_up(image->width * image->height * sizeof(pixel_t), PAGE_SIZE);
-    memory_free(image->data, size);
+    free_large(image->data);
 }
 
 /** Draw all or part of an image to the framebuffer.
@@ -484,8 +477,6 @@ void fb_draw_image(
 
 /** Initialize the framebuffer for current video mode. */
 void fb_init(void) {
-    size_t size;
-
     assert(current_video_mode->type == VIDEO_MODE_LFB);
 
     fb_buffer.mapping = (void *)current_video_mode->mem_virt;
@@ -495,14 +486,10 @@ void fb_init(void) {
     fb_buffer.pitch = current_video_mode->pitch;
 
     /* Allocate a backbuffer. */
-    size = round_up(fb_buffer.pitch * fb_buffer.height, PAGE_SIZE);
-    fb_buffer.back = memory_alloc(size, 0, 0, 0, MEMORY_TYPE_INTERNAL, MEMORY_ALLOC_HIGH, NULL);
+    fb_buffer.back = malloc_large(fb_buffer.pitch * fb_buffer.height);
 }
 
 /** Deinitialize the framebuffer. */
 void fb_deinit(void) {
-    size_t size;
-
-    size = round_up(fb_buffer.pitch * fb_buffer.height, PAGE_SIZE);
-    memory_free(fb_buffer.back, size);
+    free_large(fb_buffer.back);
 }

@@ -105,13 +105,7 @@ static status_t efi_net_fs_read(fs_handle_t *_handle, void *buf, size_t count, o
             /* Assume this is a single read of the whole file. */
             data = buf;
         } else {
-            if (size < PAGE_SIZE) {
-                handle->data = malloc(size);
-            } else {
-                size = round_up(size, PAGE_SIZE);
-                handle->data = memory_alloc(size, 0, 0, 0, MEMORY_TYPE_INTERNAL, MEMORY_ALLOC_HIGH, NULL);
-            }
-
+            handle->data = malloc_large(size);
             data = handle->data;
         }
 
@@ -134,7 +128,9 @@ static status_t efi_net_fs_read(fs_handle_t *_handle, void *buf, size_t count, o
         data = handle->data;
     }
 
-    memcpy(buf, data + offset, count);
+    if (data != buf)
+        memcpy(buf, data + offset, count);
+
     return STATUS_SUCCESS;
 }
 
@@ -190,14 +186,7 @@ static status_t efi_net_fs_open_path(fs_mount_t *mount, char *path, fs_handle_t 
 static void efi_net_fs_close(fs_handle_t *_handle) {
     efi_net_handle_t *handle = container_of(_handle, efi_net_handle_t, handle);
 
-    if (handle->data) {
-        if (handle->handle.size < PAGE_SIZE) {
-            free(handle->data);
-        } else {
-            phys_size_t size = round_up(handle->handle.size, PAGE_SIZE);
-            memory_free(handle->data, size);
-        }
-    }
+    free_large(handle->data);
 }
 
 /** EFI network filesystem operations structure. */
