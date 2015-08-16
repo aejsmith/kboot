@@ -27,5 +27,6 @@ include = {
         'TARGET_NS16550_IO': True,
         'DRIVER_CONSOLE_FB': True,
         'FB': True,
+        'GUI_MENU': True,
     },
 }

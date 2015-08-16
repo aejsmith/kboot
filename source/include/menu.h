@@ -26,11 +26,11 @@
 
 #ifdef CONFIG_TARGET_HAS_UI
 
-extern environ_t *menu_display(void);
+extern environ_t *menu_select(void);
 
 #else
 
-static inline environ_t *menu_display(void) { return root_environ; }
+static inline environ_t *menu_select(void) { return root_environ; }
 
 #endif /* CONFIG_TARGET_HAS_UI */
 #endif /* __MENU_H */

@@ -24,5 +24,6 @@ include = {
         'TARGET_HAS_VIDEO': True,
         'DRIVER_CONSOLE_FB': True,
         'FB': True,
+        'GUI_MENU': True,
     },
 }

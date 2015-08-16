@@ -58,8 +58,8 @@ void loader_main(void) {
     /* Load the configuration file. */
     config_load();
 
-    /* Display the menu. */
-    env = menu_display();
+    /* Select an environment to boot. */
+    env = menu_select();
 
     /* And finally boot the OS. */
     if (env->loader) {

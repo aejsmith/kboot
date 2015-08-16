@@ -24,6 +24,7 @@
 
 #include <assert.h>
 #include <config.h>
+#include <fb.h>
 #include <loader.h>
 #include <memory.h>
 #include <menu.h>
@@ -39,6 +40,12 @@ typedef struct menu_entry {
     char *name;                         /**< Name of the entry. */
     environ_t *env;                     /**< Environment for the entry. */
     char *error;                        /**< If an error occurred, the error string. */
+
+    #ifdef CONFIG_GUI_MENU
+    fb_image_t icon;                    /**< Icon to display in GUI menu. */
+    uint16_t icon_x;                    /**< X position to draw icon at. */
+    uint16_t icon_y;                    /**< Y position to draw icon at. */
+    #endif
 } menu_entry_t;
 
 /** List of menu entries. */
@@ -49,6 +56,16 @@ static menu_entry_t *executing_menu_entry;
 
 /** Selected menu entry. */
 static menu_entry_t *selected_menu_entry;
+
+#ifdef CONFIG_GUI_MENU
+
+/** Background colour for the GUI menu. */
+static pixel_t gui_background_colour;
+
+/** Selection image. */
+static fb_image_t gui_selection_image;
+
+#endif /* CONFIG_GUI_MENU */
 
 /** Render a menu entry.
  * @param _entry        Entry to render. */
@@ -135,6 +152,270 @@ static ui_entry_type_t menu_entry_type = {
     .input = menu_entry_input,
 };
 
+/** Display the text menu.
+ * @param timeout       Timeout for the menu. */
+static void display_text_menu(unsigned timeout) {
+    ui_window_t *window = ui_list_create("Boot Menu", false);
+
+    list_foreach(&menu_entries, iter) {
+        menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
+        ui_list_insert(window, &entry->entry, entry == selected_menu_entry);
+    }
+
+    ui_display(window, timeout);
+}
+
+#ifdef CONFIG_GUI_MENU
+
+/** Load the background for the GUI.
+ * @return              Whether successfully completed. */
+static bool load_gui_background(void) {
+    value_t *value;
+
+    gui_background_colour = 0;
+    value = environ_lookup(root_environ, "gui_background");
+    if (value) {
+        if (value->type == VALUE_TYPE_INTEGER) {
+            gui_background_colour = value->integer;
+        } else if (value->type == VALUE_TYPE_STRING) {
+            dprintf("menu: background image not implemented yet\n");
+            return false;
+        } else {
+            dprintf("menu: 'gui_background' is invalid\n");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/** Load the selection image for the GUI.
+ * @return              Whether successfully completed. */
+static bool load_gui_selection_image(void) {
+    value_t *value;
+    status_t ret;
+
+    value = environ_lookup(root_environ, "gui_selection");
+    if (!value || value->type != VALUE_TYPE_STRING) {
+        dprintf("menu: 'gui_selection' is invalid\n");
+        return false;
+    }
+
+    ret = fb_load_image(value->string, &gui_selection_image);
+    if (ret != STATUS_SUCCESS) {
+        dprintf("menu: error loading '%s': %pE\n", value->string, ret);
+        return false;
+    }
+
+    return true;
+}
+
+/** Load icons for all entries and determine positions.
+ * @return              Whether successfully completed. */
+static bool load_gui_icons(void) {
+    menu_entry_t *entry = NULL, *last;
+    uint16_t total_width = 0, x;
+
+    list_foreach(&menu_entries, iter) {
+        value_t *value;
+        status_t ret;
+
+        entry = list_entry(iter, menu_entry_t, header);
+
+        value = environ_lookup(entry->env, "gui_icon");
+        if (!value || value->type != VALUE_TYPE_STRING) {
+            dprintf("menu: 'gui_icon' for entry '%s' is invalid\n", entry->name);
+            goto err;
+        }
+
+        ret = fb_load_image(value->string, &entry->icon);
+        if (ret != STATUS_SUCCESS) {
+            dprintf("menu: error loading '%s': %pE\n", value->string, ret);
+            goto err;
+        }
+
+        total_width += entry->icon.width;
+    }
+
+    if (total_width > current_video_mode->width) {
+        dprintf("menu: not enough horizontal screen space for GUI menu\n");
+        goto err;
+    }
+
+    /* Calculate the position of each entry's icon */
+    x = (current_video_mode->width / 2) - (total_width / 2);
+    list_foreach(&menu_entries, iter) {
+        entry = list_entry(iter, menu_entry_t, header);
+
+        entry->icon_x = x;
+        entry->icon_y = (current_video_mode->height / 2) - (entry->icon.height / 2);
+
+        x += entry->icon.width;
+    }
+
+    return true;
+
+err:
+    last = entry;
+
+    list_foreach(&menu_entries, iter) {
+        entry = list_entry(iter, menu_entry_t, header);
+
+        if (last == entry)
+            break;
+
+        fb_destroy_image(&entry->icon);
+    }
+
+    return false;
+}
+
+/** Free GUI icons. */
+static void free_gui_icons(void) {
+    list_foreach(&menu_entries, iter) {
+        menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
+
+        fb_destroy_image(&entry->icon);
+    }
+}
+
+/** Draw/clear the selection below an entry.
+ * @param entry         Entry to draw below.
+ * @param selected      Whether the entry is now selected. */
+static void draw_gui_selection(menu_entry_t *entry, bool selected) {
+    uint16_t x, y;
+
+    x = entry->icon_x + (entry->icon.width / 2) - (gui_selection_image.width / 2);
+    y = entry->icon_y + entry->icon.height;
+
+    if (selected) {
+        fb_draw_image(&gui_selection_image, x, y, 0, 0, 0, 0);
+    } else {
+        // FIXME: Will need to handle background image.
+        fb_fill_rect(
+            x, y, gui_selection_image.width, gui_selection_image.height,
+            gui_background_colour);
+    }
+}
+
+/** Draw the GUI menu. */
+static void draw_gui_menu(void) {
+    /* Fill to the background colour. */
+    fb_fill_rect(0, 0, 0, 0, gui_background_colour);
+
+    /* Draw the entry icons. */
+    list_foreach(&menu_entries, iter) {
+        menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
+
+        fb_draw_image(&entry->icon, entry->icon_x, entry->icon_y, 0, 0, 0, 0);
+    }
+
+    /* Mark the current selection. */
+    draw_gui_selection(selected_menu_entry, true);
+}
+
+/** Display the GUI menu.
+ * @param timeout       Timeout for the menu.
+ * @return              Whether the GUI menu can be displayed. */
+static bool display_gui_menu(unsigned timeout) {
+    value_t *value;
+    mstime_t msecs;
+    bool ret = false;
+
+    if (current_video_mode->type != VIDEO_MODE_LFB)
+        return false;
+
+    value = environ_lookup(root_environ, "gui");
+    if (!value || value->type != VALUE_TYPE_BOOLEAN || !value->boolean)
+        return false;
+
+    /* Get the background. */
+    if (!load_gui_background())
+        return false;
+
+    /* Get the selection image. */
+    if (!load_gui_selection_image())
+        return false;
+
+    /* Load entry icons and calculate positioning information. */
+    if (!load_gui_icons())
+        goto out_free_selection;
+
+    ret = true;
+    draw_gui_menu();
+
+    msecs = secs_to_msecs(timeout);
+    while (true) {
+        if (timeout) {
+            if (console_poll(current_console)) {
+                timeout = 0;
+            } else {
+                delay(10);
+                msecs -= 10;
+
+                if (round_up(msecs, 1000) / 1000 < timeout) {
+                    timeout--;
+                    if (!timeout)
+                        break;
+                }
+            }
+        } else {
+            uint16_t key = console_getc(current_console);
+            input_result_t result;
+            bool done = false;
+
+            switch (key) {
+            case CONSOLE_KEY_LEFT:
+                if (selected_menu_entry != list_first(&menu_entries, menu_entry_t, header)) {
+                    draw_gui_selection(selected_menu_entry, false);
+                    selected_menu_entry = list_prev(selected_menu_entry, header);
+                    draw_gui_selection(selected_menu_entry, true);
+                }
+
+                break;
+            case CONSOLE_KEY_RIGHT:
+                if (selected_menu_entry != list_last(&menu_entries, menu_entry_t, header)) {
+                    draw_gui_selection(selected_menu_entry, false);
+                    selected_menu_entry = list_next(selected_menu_entry, header);
+                    draw_gui_selection(selected_menu_entry, true);
+                }
+
+                break;
+            default:
+                /* Reuse the text menu input code. */
+                result = menu_entry_input(&selected_menu_entry->entry, key);
+
+                if (result == INPUT_CLOSE) {
+                    done = true;
+                } else if (result == INPUT_RENDER_WINDOW) {
+                    draw_gui_menu();
+                }
+
+                break;
+            }
+
+            if (done)
+                break;
+        }
+    }
+
+    /* Clear the framebuffer. */
+    fb_fill_rect(0, 0, 0, 0, 0);
+
+    free_gui_icons();
+
+out_free_selection:
+    fb_destroy_image(&gui_selection_image);
+
+    return ret;
+}
+
+#else
+
+static inline bool display_gui_menu(unsigned timeout) { return false; }
+
+#endif /* CONFIG_GUI_MENU */
+
 /** Get the default menu entry.
  * @return              Default menu entry. */
 static menu_entry_t *get_default_entry(void) {
@@ -180,10 +461,9 @@ static bool check_key_press(void) {
     return false;
 }
 
-
-/** Display the menu interface.
+/** Select the environment to boot, possibly displaying the menu.
  * @return              Environment to boot. */
-environ_t *menu_display(void) {
+environ_t *menu_select(void) {
     const value_t *value;
     bool display;
     unsigned timeout;
@@ -219,14 +499,8 @@ environ_t *menu_display(void) {
     }
 
     if (display) {
-        ui_window_t *window = ui_list_create("Boot Menu", false);
-
-        list_foreach(&menu_entries, iter) {
-            menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
-            ui_list_insert(window, &entry->entry, entry == selected_menu_entry);
-        }
-
-        ui_display(window, timeout);
+        if (!display_gui_menu(timeout))
+            display_text_menu(timeout);
     }
 
     if (selected_menu_entry) {
