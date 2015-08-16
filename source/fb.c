@@ -39,6 +39,22 @@ typedef struct fb_buffer {
     uint32_t pitch;                 /**< Pitch between lines (in bytes). */
 } fb_buffer_t;
 
+/** TGA header structure. */
+typedef struct tga_header {
+    uint8_t id_length;
+    uint8_t colour_map_type;
+    uint8_t image_type;
+    uint16_t colour_map_origin;
+    uint16_t colour_map_length;
+    uint8_t colour_map_depth;
+    uint16_t x_origin;
+    uint16_t y_origin;
+    uint16_t width;
+    uint16_t height;
+    uint8_t depth;
+    uint8_t image_descriptor;
+} __packed tga_header_t;
+
 /** Current framebuffer. */
 static fb_buffer_t fb_buffer;
 
@@ -318,6 +334,153 @@ void fb_copy_rect(
 {
     buffer_copy_rect(&fb_buffer, dest_x, dest_y, source_x, source_y, width, height);
 }
+
+#ifndef __TEST
+
+/** Convert image data to ARGB888.
+ * @param buffer        Buffer to convert.
+ * @param image         Image structure to add to. */
+static void convert_image(const fb_buffer_t *buffer, fb_image_t *image) {
+    size_t size;
+    pixel_t *pixel;
+
+    image->width = buffer->width;
+    image->height = buffer->height;
+
+    size = round_up(image->width * image->height * sizeof(pixel_t), PAGE_SIZE);
+    image->data = memory_alloc(size, 0, 0, 0, MEMORY_TYPE_INTERNAL, MEMORY_ALLOC_HIGH, NULL);
+    pixel = image->data;
+
+    for (uint16_t y = 0; y < image->height; y++) {
+        for (uint16_t x = 0; x < image->width; x++)
+            *pixel++ = buffer_get_pixel(buffer, x, y);
+    }
+}
+
+/** Load a TGA image.
+ * @param handle        Handle to image to load.
+ * @param image         Image structure to fill in.
+ * @return              Status code describing result of the operation. */
+static status_t load_tga(fs_handle_t *handle, fb_image_t *image) {
+    tga_header_t header;
+    pixel_format_t format;
+    fb_buffer_t buffer;
+    size_t size;
+    offset_t offset;
+    status_t ret;
+
+    ret = fs_read(handle, &header, sizeof(header), 0);
+    if (ret != STATUS_SUCCESS)
+        return ret;
+
+    /* Only support uncompressed true colour images for now. */
+    if (header.image_type != 2)
+        return STATUS_UNKNOWN_IMAGE;
+
+    format.bpp = header.depth;
+
+    if (header.depth == 16) {
+        format.red_size = format.green_size = format.blue_size = 5;
+        format.red_pos = 10;
+        format.green_pos = 5;
+        format.blue_pos = 0;
+        format.alpha_size = 1;
+        format.alpha_pos = 15;
+    } else if (header.depth == 24 || header.depth == 32) {
+        format.red_size = format.green_size = format.blue_size = 8;
+        format.red_pos = 16;
+        format.green_pos = 8;
+        format.blue_pos = 0;
+        format.alpha_size = (header.depth == 32) ? 8 : 0;
+        format.alpha_pos = (header.depth == 32) ? 24 : 0;
+    } else {
+        return STATUS_UNKNOWN_IMAGE;
+    }
+
+    buffer.format = &format;
+    buffer.width = header.width;
+    buffer.height = header.height;
+    buffer.pitch = (format.bpp >> 3) * buffer.width;
+
+    /* Read in the data, which is after the ID and colour map. */
+    size = header.width * header.height * (header.depth / 8);
+    offset = sizeof(header)
+        + header.id_length
+        + (header.colour_map_length * (header.colour_map_depth / 8));
+
+    buffer.back = memory_alloc(
+        round_up(size, PAGE_SIZE), 0, 0, 0, MEMORY_TYPE_INTERNAL,
+        MEMORY_ALLOC_HIGH, NULL);
+
+    ret = fs_read(handle, buffer.back, size, offset);
+    if (ret != STATUS_SUCCESS)
+        goto out_free;
+
+    convert_image(&buffer, image);
+
+out_free:
+    memory_free(buffer.back, round_up(size, PAGE_SIZE));
+    return ret;
+}
+
+/** Load an image from the filesystem.
+ * @param path          Path to image to load.
+ * @param image         Image structure to fill in.
+ * @return              STATUS_SUCCESS on success.
+ *                      STATUS_UNKNOWN_IMAGE if image file type unknown.
+ *                      Other status codes for filesystem errors. */
+status_t fb_load_image(const char *path, fb_image_t *image) {
+    fs_handle_t *handle __cleanup_close = NULL;
+    status_t ret;
+
+    ret = fs_open(path, NULL, FILE_TYPE_REGULAR, &handle);
+    if (ret != STATUS_SUCCESS)
+        return ret;
+
+    if (str_ends_with(path, ".tga")) {
+        return load_tga(handle, image);
+    } else {
+        return STATUS_UNKNOWN_IMAGE;
+    }
+}
+
+/** Destroy previously loaded image data.
+ * @param image         Image to destroy. */
+void fb_destroy_image(fb_image_t *image) {
+    size_t size;
+
+    size = round_up(image->width * image->height * sizeof(pixel_t), PAGE_SIZE);
+    memory_free(image->data, size);
+}
+
+/** Draw all or part of an image to the framebuffer.
+ * @param image         Image to draw.
+ * @param dest_x        Destination X coordinate.
+ * @param dest_y        Destination Y coordinate.
+ * @param src_x         Source X coordinate.
+ * @param src_y         Source Y coordinate.
+ * @param width         Width of area to draw.
+ * @param height        Height of area to draw. */
+void fb_draw_image(
+    fb_image_t *image, uint16_t dest_x, uint16_t dest_y, uint16_t src_x,
+    uint16_t src_y, uint16_t width, uint16_t height)
+{
+    if (!src_x && !width)
+        width = image->width;
+    if (!src_y && !height)
+        height = image->height;
+
+    for (uint16_t y = 0; y < height; y++) {
+        for (uint16_t x = 0; x < width; x++) {
+            fb_put_pixel(
+                dest_x + x,
+                dest_y + y,
+                image->data[(y * image->width) + x]);
+        }
+    }
+}
+
+#endif /* __TEST */
 
 /** Initialize the framebuffer for current video mode. */
 void fb_init(void) {
