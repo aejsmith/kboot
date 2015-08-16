@@ -73,6 +73,7 @@ typedef struct device {
 } device_t;
 
 extern device_t *boot_device;
+extern char *boot_directory;
 
 extern status_t device_read(device_t *device, void *buf, size_t count, offset_t offset);
 

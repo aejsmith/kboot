@@ -21,7 +21,9 @@
 
 #include <lib/printf.h>
 #include <lib/string.h>
+#include <lib/utility.h>
 
+#include <assert.h>
 #include <config.h>
 #include <device.h>
 #include <fs.h>
@@ -33,6 +35,9 @@ static LIST_DECLARE(device_list);
 
 /** Boot device. */
 device_t *boot_device;
+
+/** Boot directory (can be NULL). */
+char *boot_directory;
 
 /** Read from a device.
  * @param device        Device to read from.
@@ -252,8 +257,23 @@ void device_init(void) {
 
     /* Set the device in the environment. */
     if (boot_device) {
-        dprintf("device: boot device is %s\n", (boot_device) ? boot_device->name : "unknown");
+        dprintf("device: boot device is %s\n", boot_device->name);
         set_environ_device(root_environ, boot_device);
+
+        if (boot_device->mount && boot_directory) {
+            fs_handle_t *handle __cleanup_close = NULL;
+            status_t ret;
+
+            dprintf("device: boot directory is '%s'\n", boot_directory);
+
+            ret = fs_open(boot_directory, NULL, FILE_TYPE_DIR, &handle);
+            if (ret != STATUS_SUCCESS) {
+                dprintf("device: error opening boot directory: %pS\n", ret);
+            } else {
+                assert(handle->mount->device == boot_device);
+                swap(root_environ->directory, handle);
+            }
+        }
     }
 
     if (!boot_device || !boot_device->mount)

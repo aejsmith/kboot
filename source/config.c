@@ -123,11 +123,8 @@ static size_t current_file_size;        /**< Size of the current file. */
 
 /** Configuration file paths to try. */
 static const char *config_file_paths[] = {
-    #ifdef CONFIG_PLATFORM_EFI
-        "efi/boot/kboot.cfg",
-    #endif
-    "boot/kboot.cfg",
-    "kboot.cfg",
+    "/boot/kboot.cfg",
+    "/kboot.cfg",
 };
 
 /** Reserved environment variable names. */
@@ -1346,7 +1343,13 @@ void config_load(void) {
         if (!load_config_file(config_file_override))
             boot_error("Specified configuration file does not exist");
     } else {
-        /* Try the various paths. */
+        /* Try the boot directory. */
+        if (boot_directory) {
+            if (load_config_file("kboot.cfg"))
+                return;
+        }
+
+        /* Try the various default paths. */
         for (size_t i = 0; i < array_size(config_file_paths); i++) {
             if (load_config_file(config_file_paths[i]))
                 return;

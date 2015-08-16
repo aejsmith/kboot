@@ -13,11 +13,11 @@ cat > ${pxedir}/kboot.cfg << EOF
 set "timeout" 5
 
 entry "Test (32-bit)" {
-    kboot "test-ia32.elf" ["test-ia32.elf"]
+    kboot "/test-ia32.elf" ["/test-ia32.elf"]
 }
 
 entry "Test (64-bit)" {
-    kboot "test-amd64.elf" ["test-amd64.elf"]
+    kboot "/test-amd64.elf" ["/test-amd64.elf"]
 }
 EOF
 
