@@ -27,6 +27,7 @@
 #include <lib/string.h>
 #include <lib/utility.h>
 
+#include <fb.h>
 #include <memory.h>
 #include <test.h>
 #include <time.h>
@@ -188,17 +189,19 @@ void primary_console_init(kboot_tag_t *tags) {
                 current_video_mode->type = VIDEO_MODE_LFB;
                 current_video_mode->width = video->lfb.width;
                 current_video_mode->height = video->lfb.height;
-                current_video_mode->bpp = video->lfb.bpp;
                 current_video_mode->pitch = video->lfb.pitch;
-                current_video_mode->red_size = video->lfb.red_size;
-                current_video_mode->red_pos = video->lfb.red_pos;
-                current_video_mode->green_size = video->lfb.green_size;
-                current_video_mode->green_pos = video->lfb.green_pos;
-                current_video_mode->blue_size = video->lfb.blue_size;
-                current_video_mode->blue_pos = video->lfb.blue_pos;
+                current_video_mode->format.bpp = video->lfb.bpp;
+                current_video_mode->format.red_size = video->lfb.red_size;
+                current_video_mode->format.red_pos = video->lfb.red_pos;
+                current_video_mode->format.green_size = video->lfb.green_size;
+                current_video_mode->format.green_pos = video->lfb.green_pos;
+                current_video_mode->format.blue_size = video->lfb.blue_size;
+                current_video_mode->format.blue_pos = video->lfb.blue_pos;
                 current_video_mode->mem_phys = video->lfb.fb_phys;
                 current_video_mode->mem_virt = video->lfb.fb_virt;
                 current_video_mode->mem_size = video->lfb.fb_size;
+
+                fb_init();
 
                 console = fb_console_create();
             }

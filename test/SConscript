@@ -57,6 +57,7 @@ main_sources = [
     '../source/drivers/console/serial.c',
     '../source/lib/printf.c',
     '../source/lib/string.c',
+    '../source/fb.c',
 ]
 
 for variant in variants:

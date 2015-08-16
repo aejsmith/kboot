@@ -26,6 +26,7 @@
 
 #include <assert.h>
 #include <config.h>
+#include <fb.h>
 #include <loader.h>
 #include <memory.h>
 #include <ui.h>
@@ -49,13 +50,18 @@ video_mode_t *current_video_mode;
 static void set_current_mode(video_mode_t *mode, bool set_console) {
     current_video_mode = mode;
 
-    if (set_console && mode && mode->ops->create_console) {
-        console_out_t *console = mode->ops->create_console(mode);
+    if (mode) {
+        if (mode->type == VIDEO_MODE_LFB)
+            fb_init();
 
-        primary_console.out = console;
+        if (set_console && mode->ops->create_console) {
+            console_out_t *console = mode->ops->create_console(mode);
 
-        if (primary_console.active && console && console->ops->init)
-            console->ops->init(console);
+            primary_console.out = console;
+
+            if (primary_console.active && console && console->ops->init)
+                console->ops->init(console);
+        }
     }
 }
 
@@ -65,11 +71,16 @@ static void set_current_mode(video_mode_t *mode, bool set_console) {
 void video_set_mode(video_mode_t *mode, bool set_console) {
     video_mode_t *prev = current_video_mode;
 
-    if (prev && prev->ops->create_console && primary_console.out) {
-        if (primary_console.active && primary_console.out->ops->deinit)
-            primary_console.out->ops->deinit(primary_console.out);
+    if (prev) {
+        if (prev->type == VIDEO_MODE_LFB)
+            fb_deinit();
 
-        free(primary_console.out);
+        if (prev->ops->create_console && primary_console.out) {
+            if (primary_console.active && primary_console.out->ops->deinit)
+                primary_console.out->ops->deinit(primary_console.out);
+
+            free(primary_console.out);
+        }
     }
 
     primary_console.out = NULL;
@@ -126,9 +137,9 @@ video_mode_t *video_find_mode(video_mode_type_t type, uint32_t width, uint32_t h
         if (mode->width == width && mode->height == height) {
             if (type == VIDEO_MODE_LFB) {
                 if (bpp) {
-                    if (mode->bpp == bpp)
+                    if (mode->format.bpp == bpp)
                         return mode;
-                } else if (!ret || mode->bpp > ret->bpp) {
+                } else if (!ret || mode->format.bpp > ret->format.bpp) {
                     ret = mode;
                 }
             } else {
@@ -190,7 +201,7 @@ static void format_mode_string(video_mode_t *mode, char *buf, size_t size) {
         snprintf(buf, size, "vga:%ux%u", mode->width, mode->height);
         break;
     case VIDEO_MODE_LFB:
-        snprintf(buf, size, "lfb:%ux%ux%u", mode->width, mode->height, mode->bpp);
+        snprintf(buf, size, "lfb:%ux%ux%u", mode->width, mode->height, mode->format.bpp);
         break;
     default:
         unreachable();
@@ -318,7 +329,7 @@ static bool config_cmd_lsvideo(value_list_t *args) {
             printf("vga:%" PRIu32 "x%" PRIu32, mode->width, mode->height);
             break;
         case VIDEO_MODE_LFB:
-            printf("lfb:%" PRIu32 "x%" PRIu32 "x%" PRIu8, mode->width, mode->height, mode->bpp);
+            printf("lfb:%" PRIu32 "x%" PRIu32 "x%" PRIu8, mode->width, mode->height, mode->format.bpp);
             break;
         }
 

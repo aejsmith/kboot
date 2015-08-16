@@ -44,6 +44,7 @@ sources = FeatureSources(config, [
     'device.c',
     ('TARGET_HAS_DISK', 'disk.c'),
     'error.c',
+    ('FB', 'fb.c'),
     'fs.c',
     'main.c',
     'memory.c',

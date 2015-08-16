@@ -125,15 +125,15 @@ void multiboot_platform_load(multiboot_loader_t *loader) {
         mode->bytes_per_scan_line = loader->mode->pitch;
         mode->x_resolution = loader->mode->width;
         mode->y_resolution = loader->mode->height;
-        mode->bits_per_pixel = loader->mode->bpp;
+        mode->bits_per_pixel = loader->mode->format.bpp;
         mode->memory_model = VBE_MEMORY_MODEL_DIRECT_COLOUR;
         mode->reserved1 = 1;
-        mode->red_mask_size = loader->mode->red_size;
-        mode->red_field_position = loader->mode->red_pos;
-        mode->green_mask_size = loader->mode->green_size;
-        mode->green_field_position = loader->mode->green_pos;
-        mode->blue_mask_size = loader->mode->blue_size;
-        mode->blue_field_position = loader->mode->blue_pos;
+        mode->red_mask_size = loader->mode->format.red_size;
+        mode->red_field_position = loader->mode->format.red_pos;
+        mode->green_mask_size = loader->mode->format.green_size;
+        mode->green_field_position = loader->mode->format.green_pos;
+        mode->blue_mask_size = loader->mode->format.blue_size;
+        mode->blue_field_position = loader->mode->format.blue_pos;
         mode->phys_base_ptr = loader->mode->mem_phys;
 
         loader->info->vbe_mode = 0x100 | VBE_MODE_LFB;

@@ -210,16 +210,17 @@ void bios_video_init(void) {
         mode->mode.ops = &bios_video_ops;
         mode->mode.width = mode_info->x_resolution;
         mode->mode.height = mode_info->y_resolution;
-        mode->mode.bpp = mode_info->bits_per_pixel;
         mode->mode.pitch = (info->vbe_version_major >= 3)
             ? mode_info->lin_bytes_per_scan_line
             : mode_info->bytes_per_scan_line;
-        mode->mode.red_size = mode_info->red_mask_size;
-        mode->mode.red_pos = mode_info->red_field_position;
-        mode->mode.green_size = mode_info->green_mask_size;
-        mode->mode.green_pos = mode_info->green_field_position;
-        mode->mode.blue_size = mode_info->blue_mask_size;
-        mode->mode.blue_pos = mode_info->blue_field_position;
+        mode->mode.format.bpp = mode_info->bits_per_pixel;
+        mode->mode.format.red_size = mode_info->red_mask_size;
+        mode->mode.format.red_pos = mode_info->red_field_position;
+        mode->mode.format.green_size = mode_info->green_mask_size;
+        mode->mode.format.green_pos = mode_info->green_field_position;
+        mode->mode.format.blue_size = mode_info->blue_mask_size;
+        mode->mode.format.blue_pos = mode_info->blue_field_position;
+        mode->mode.format.alpha_size = mode->mode.format.alpha_pos = 0;
         mode->mode.mem_phys = mode->mode.mem_virt = mode_info->phys_base_ptr;
         mode->mode.mem_size = round_up(mode->mode.height * mode->mode.pitch, PAGE_SIZE);
 

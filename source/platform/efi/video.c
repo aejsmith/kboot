@@ -151,29 +151,39 @@ void efi_video_init(void) {
         mode->mode.width = info->horizontal_resolution;
         mode->mode.height = info->vertical_resolution;
 
-        mode->mode.bpp = get_mode_bpp(info);
-        if (!mode->mode.bpp || mode->mode.bpp & 0x3)
+        mode->mode.format.bpp = get_mode_bpp(info);
+        if (!mode->mode.format.bpp || mode->mode.format.bpp & 0x3)
             continue;
 
-        mode->mode.pitch = info->pixels_per_scanline * (mode->mode.bpp >> 3);
+        mode->mode.pitch = info->pixels_per_scanline * (mode->mode.format.bpp >> 3);
+        mode->mode.format.alpha_size = mode->mode.format.alpha_pos = 0;
 
         switch (info->pixel_format) {
         case EFI_PIXEL_FORMAT_RGBR8:
-            mode->mode.red_size = mode->mode.green_size = mode->mode.blue_size = 8;
-            mode->mode.red_pos = 0;
-            mode->mode.green_pos = 8;
-            mode->mode.blue_pos = 16;
+            mode->mode.format.red_size = mode->mode.format.green_size = mode->mode.format.blue_size = 8;
+            mode->mode.format.red_pos = 0;
+            mode->mode.format.green_pos = 8;
+            mode->mode.format.blue_pos = 16;
             break;
         case EFI_PIXEL_FORMAT_BGRR8:
-            mode->mode.red_size = mode->mode.green_size = mode->mode.blue_size = 8;
-            mode->mode.red_pos = 16;
-            mode->mode.green_pos = 8;
-            mode->mode.blue_pos = 0;
+            mode->mode.format.red_size = mode->mode.format.green_size = mode->mode.format.blue_size = 8;
+            mode->mode.format.red_pos = 16;
+            mode->mode.format.green_pos = 8;
+            mode->mode.format.blue_pos = 0;
             break;
         case EFI_PIXEL_FORMAT_BITMASK:
-            get_component_size_pos(info->pixel_bitmask.red_mask, &mode->mode.red_size, &mode->mode.red_pos);
-            get_component_size_pos(info->pixel_bitmask.green_mask, &mode->mode.green_size, &mode->mode.green_pos);
-            get_component_size_pos(info->pixel_bitmask.blue_mask, &mode->mode.blue_size, &mode->mode.blue_pos);
+            get_component_size_pos(
+                info->pixel_bitmask.red_mask,
+                &mode->mode.format.red_size,
+                &mode->mode.format.red_pos);
+            get_component_size_pos(
+                info->pixel_bitmask.green_mask,
+                &mode->mode.format.green_size,
+                &mode->mode.format.green_pos);
+            get_component_size_pos(
+                info->pixel_bitmask.blue_mask,
+                &mode->mode.format.blue_size,
+                &mode->mode.format.blue_pos);
             break;
         default:
             break;
@@ -187,8 +197,11 @@ void efi_video_init(void) {
             if (mode->mode.width >= 1024)
                 best = &mode->mode;
         } else if (mode->mode.width == 1024 && mode->mode.height == 768) {
-            if (best->width < 1024 || (best->width == 1024 && best->height == 768 && mode->mode.bpp > best->bpp))
+            if (best->width < 1024 ||
+                (best->width == 1024 && best->height == 768 && mode->mode.format.bpp > best->format.bpp))
+            {
                 best = &mode->mode;
+            }
         }
 
         video_mode_register(&mode->mode, false);

@@ -30,6 +30,22 @@
 struct console_out;
 struct environ;
 
+/** Pixel format information. */
+typedef struct pixel_format {
+    uint8_t bpp;                        /**< Number of bits per pixel. */
+    uint8_t red_size;                   /**< Size of red component of each pixel. */
+    uint8_t red_pos;                    /**< Bit position of the red component of each pixel. */
+    uint8_t green_size;                 /**< Size of green component of each pixel. */
+    uint8_t green_pos;                  /**< Bit position of the green component of each pixel. */
+    uint8_t blue_size;                  /**< Size of blue component of each pixel. */
+    uint8_t blue_pos;                   /**< Bit position of the blue component of each pixel. */
+    uint8_t alpha_size;                 /**< Size of alpha component of each pixel. */
+    uint8_t alpha_pos;                  /**< Bit position of the alpha component of each pixel. */
+} pixel_format_t;
+
+/** Pixel in ARGB8888 format. */
+typedef uint32_t pixel_t;
+
 /** Video mode types (defined to match KBoot types). */
 typedef enum video_mode_type {
     VIDEO_MODE_VGA = (1<<0),            /**< VGA. */
@@ -60,14 +76,8 @@ typedef struct video_mode {
 
         /** Linear framebuffer information. */
         struct {
-            uint8_t bpp;                /**< Number of bits per pixel. */
+            pixel_format_t format;      /**< Pixel format information. */
             uint32_t pitch;             /**< Number of bytes per line of the framebuffer. */
-            uint8_t red_size;           /**< Size of red component of each pixel. */
-            uint8_t red_pos;            /**< Bit position of the red component of each pixel. */
-            uint8_t green_size;         /**< Size of green component of each pixel. */
-            uint8_t green_pos;          /**< Bit position of the green component of each pixel. */
-            uint8_t blue_size;          /**< Size of blue component of each pixel. */
-            uint8_t blue_pos;           /**< Bit position of the blue component of each pixel. */
         };
     };
 } video_mode_t;

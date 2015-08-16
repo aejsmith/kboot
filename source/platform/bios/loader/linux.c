@@ -153,16 +153,16 @@ static void get_video_info(linux_loader_t *loader, linux_params_t *params) {
         params->screen_info.orig_video_isVGA = LINUX_VIDEO_TYPE_VESA;
         params->screen_info.lfb_width = mode->width;
         params->screen_info.lfb_height = mode->height;
-        params->screen_info.lfb_depth = mode->bpp;
+        params->screen_info.lfb_depth = mode->format.bpp;
         params->screen_info.lfb_linelength = mode->pitch;
         params->screen_info.lfb_base = mode->mem_phys;
         params->screen_info.lfb_size = round_up(mode->pitch * mode->height, 65536) >> 16;
-        params->screen_info.red_size = mode->red_size;
-        params->screen_info.red_pos = mode->red_pos;
-        params->screen_info.green_size = mode->green_size;
-        params->screen_info.green_pos = mode->green_pos;
-        params->screen_info.blue_size = mode->blue_size;
-        params->screen_info.blue_pos = mode->blue_pos;
+        params->screen_info.red_size = mode->format.red_size;
+        params->screen_info.red_pos = mode->format.red_pos;
+        params->screen_info.green_size = mode->format.green_size;
+        params->screen_info.green_pos = mode->format.green_pos;
+        params->screen_info.blue_size = mode->format.blue_size;
+        params->screen_info.blue_pos = mode->format.blue_pos;
         break;
     }
 
