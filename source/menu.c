@@ -203,7 +203,7 @@ static bool load_gui_selection_image(void) {
 
     ret = fb_load_image(value->string, &gui_selection_image);
     if (ret != STATUS_SUCCESS) {
-        dprintf("menu: error loading '%s': %pE\n", value->string, ret);
+        dprintf("menu: error loading '%s': %pS\n", value->string, ret);
         return false;
     }
 
@@ -230,7 +230,7 @@ static bool load_gui_icons(void) {
 
         ret = fb_load_image(value->string, &entry->icon);
         if (ret != STATUS_SUCCESS) {
-            dprintf("menu: error loading '%s': %pE\n", value->string, ret);
+            dprintf("menu: error loading '%s': %pS\n", value->string, ret);
             goto err;
         }
 
