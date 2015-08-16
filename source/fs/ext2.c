@@ -403,14 +403,14 @@ static status_t ext2_open_entry(const fs_entry_t *_entry, fs_handle_t **_handle)
  * @return              Status code describing the result of the operation. */
 static status_t ext2_iterate(fs_handle_t *_handle, fs_iterate_cb_t cb, void *arg) {
     ext2_handle_t *handle = (ext2_handle_t *)_handle;
-    char *buf __cleanup_free;
+    char *buf __cleanup_free_large;
     char *name __cleanup_free;
     bool cont;
     offset_t offset;
     status_t ret;
 
     /* Allocate buffers to read the data into. */
-    buf = malloc(handle->handle.size);
+    buf = malloc_large(handle->handle.size);
     name = malloc(EXT2_NAME_MAX + 1);
 
     /* Read in all the directory entries. */
@@ -486,7 +486,7 @@ static status_t ext2_mount(device_t *device, fs_mount_t **_mount) {
     /* Read in the group descriptor table. */
     offset = mount->block_size * (le32_to_cpu(mount->sb.s_first_data_block) + 1);
     size = round_up(mount->block_groups * sizeof(ext2_group_desc_t), mount->block_size);
-    mount->group_tbl = malloc(size);
+    mount->group_tbl = malloc_large(size);
     ret = device_read(device, mount->group_tbl, size, offset);
     if (ret != STATUS_SUCCESS)
         goto err;
@@ -505,7 +505,7 @@ static status_t ext2_mount(device_t *device, fs_mount_t **_mount) {
     return STATUS_SUCCESS;
 
 err:
-    free(mount->group_tbl);
+    free_large(mount->group_tbl);
     free(mount);
     return ret;
 }
