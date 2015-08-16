@@ -27,8 +27,8 @@ default (e.g. BIOS), you will need to add a "video" command into your
 configuration file to set one.
 
 Any errors in the GUI configuration will result in falling back on the text
-menu. If this happens an error will be logged to the debug message to state
-what was wrong, which can be viewed by pressing F10.
+menu. If this happens an error will be logged to the debug log to state what
+was wrong, which can be viewed by pressing F10.
 
 The example below illustrates configuration of the GUI menu:
 
