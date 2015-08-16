@@ -912,3 +912,17 @@ void split_cmdline(const char *str, char **_path, char **_args) {
     *_path = path;
     *_args = strdup(str);
 }
+
+/** Test if a string ends with a given suffix.
+ * @param str           String to test.
+ * @param suffix        Suffix to search for.
+ * @return              Whether the string ends with the given suffix. */
+bool str_ends_with(const char *str, const char *suffix) {
+    size_t str_len = strlen(str);
+    size_t suffix_len = strlen(suffix);
+
+    if (suffix_len > str_len)
+        return false;
+
+    return strncmp(str + str_len - suffix_len, suffix, suffix_len) == 0;
+}

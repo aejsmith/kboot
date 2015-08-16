@@ -59,4 +59,6 @@ extern char *dirname(const char *path);
 
 extern void split_cmdline(const char *str, char **_path, char **_cmdline);
 
+extern bool str_ends_with(const char *str, const char *suffix);
+
 #endif /* __LIB_STRING_H */
