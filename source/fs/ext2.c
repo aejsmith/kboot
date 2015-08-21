@@ -256,7 +256,7 @@ static status_t read_inode_block(ext2_handle_t *handle, void *buf, uint32_t num,
 
     /* If the block number is 0, then it's a sparse block. */
     if (raw == 0) {
-        memset(buf, 0, mount->block_size);
+        memset(buf, 0, (count) ? count : mount->block_size);
         return STATUS_SUCCESS;
     } else {
         return read_raw_block(mount, buf, raw, offset, count);
