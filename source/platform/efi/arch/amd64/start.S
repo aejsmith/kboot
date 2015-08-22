@@ -30,14 +30,7 @@
  * @param %rcx          Handle to the loader image.
  * @param %rdx          Pointer to EFI system table. */
 FUNCTION_START(loader_entry)
-    /* Preserve RBP/RDI/RSI as required by the MS calling convention to avoid
-     * clobbering them, so that we can return to the firmware. */
-    push    %rbp
-    push    %rdi
-    push    %rsi
-
-    /* Clear the stack frame pointer/RFLAGS. */
-    xorq    %rbp, %rbp
+    /* Clear RFLAGS. */
     push    $0
     popf
 
@@ -45,18 +38,22 @@ FUNCTION_START(loader_entry)
     push    %rcx
     push    %rdx
 
-    /* Relocate the loader. */
+    /* Relocate the loader. Preserve RDI/RSI to return to caller if needed. */
+    push    %rdi
+    push    %rsi
+    subq    $8, %rsp
     leaq    __start(%rip), %rdi
     leaq    _DYNAMIC(%rip), %rsi
     call    efi_arch_relocate
     testq   %rax, %rax
     jz      1f
-    addq    $16, %rsp
+    addq    $8, %rsp
     pop     %rsi
     pop     %rdi
-    pop     %rbp
     ret
 1:
+    addq    $24, %rsp
+
     /* Zero the BSS section. */
     leaq    __bss_start(%rip), %rdi
     leaq    __bss_end(%rip), %rcx
@@ -84,6 +81,9 @@ FUNCTION_START(loader_entry)
     push    %rax
     lretq
 2:
+    /* Clear the stack frame pointer. */
+    xorq    %rbp, %rbp
+
     /* Call the main function. */
     popq    %rsi
     popq    %rdi
