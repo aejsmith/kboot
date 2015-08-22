@@ -188,6 +188,7 @@ static efi_device_path_t *convert_file_path(fs_handle_t *handle, const char *pat
 
     /* Add a terminator entry. */
     end = (efi_device_path_t *)((char *)efi_path + efi_path->header.length);
+    end->length = sizeof(efi_device_path_t);
     end->type = EFI_DEVICE_PATH_TYPE_END;
     end->subtype = EFI_DEVICE_PATH_END_SUBTYPE_WHOLE;
     return &efi_path->header;
