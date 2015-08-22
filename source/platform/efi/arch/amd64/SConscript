@@ -33,7 +33,7 @@ kboot = env.Command(
     env['OUTDIR'].File('kbootx64.efi'),
     env['KBOOT'],
     Action(
-        '$OBJCOPY -j .text -j .reloc -j .data -j .dynamic -j .rela.dyn ' +
+        '$OBJCOPY -j .text -j .reloc -j .data -j .dynamic -j .rela ' +
             '-j .dynsym -j .bss --target=efi-app-x86_64 $SOURCE $TARGET',
         '$GENCOMSTR'))
 defaults.append(kboot)

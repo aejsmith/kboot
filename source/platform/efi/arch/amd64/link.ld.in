@@ -33,8 +33,8 @@ SECTIONS {
     .gnu.hash : { *(.gnu.hash) }
 
     . = ALIGN(PAGE_SIZE);
-    __text_start = .;
     .text : {
+        __text_start = .;
         *(.init.text)
         *(.text)
         *(.text.*)
@@ -46,8 +46,9 @@ SECTIONS {
     .reloc : { *(.reloc) }
 
     . = ALIGN(PAGE_SIZE);
-    __data_start = .;
     .data : {
+        __data_start = .;
+
         /* Roll the read-only data into the main data section. It would not be
          * write protected even if we put it separately, and PE requires page
          * aligned sections so we only waste space by splitting it into another
@@ -69,7 +70,7 @@ SECTIONS {
     .dynamic : { *(.dynamic) }
 
     . = ALIGN(PAGE_SIZE);
-    .rela.dyn : {
+    .rela : {
         *(.rela.init.text .rela.text .rela.text.*)
         *(.rela.rodata .rela.rodata.*)
         *(.rela.got)
@@ -84,7 +85,6 @@ SECTIONS {
     .dynstr : { *(.dynstr) }
 
     . = ALIGN(PAGE_SIZE);
-    __bss_start = .;
     .bss : {
         __bss_start = .;
         *(.dynbss)
