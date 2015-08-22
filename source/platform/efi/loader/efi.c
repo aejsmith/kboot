@@ -92,9 +92,7 @@ static __noreturn void efi_loader_load(void *_loader) {
 
     loader_preboot();
 
-    /* Reset everything to default state. */
-    efi_video_reset();
-    efi_console_reset();
+    /* Free up extra memory we've allocated. */
     efi_memory_cleanup();
 
     /* Start the image. */

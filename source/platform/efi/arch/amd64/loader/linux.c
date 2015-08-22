@@ -52,9 +52,6 @@ bool linux_platform_check(linux_loader_t *loader, linux_header_t *header) {
 void linux_platform_load(linux_loader_t *loader, linux_params_t *params) {
     ptr_t entry;
 
-    /* Reset the EFI console in case the kernel wants to use it. */
-    efi_console_reset();
-
     /* 64-bit entry point is 512 bytes after the 32-bit one. */
     entry = params->hdr.code32_start + params->hdr.handover_offset + 512;
 
