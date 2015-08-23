@@ -135,6 +135,9 @@ typedef struct fs_entry {
     const char *name;                   /**< Name of the entry. */
 } fs_entry_t;
 
+/** Behaviour flags for fs_open(). */
+#define FS_OPEN_DECOMPRESS      (1<<0)  /**< If file is compressed, decompress it on the fly. */
+
 extern void fs_handle_init(fs_handle_t *handle, fs_mount_t *mount, file_type_t type, offset_t size);
 
 /** Increase the reference count of a filesystem handle.
@@ -143,8 +146,10 @@ static inline void fs_retain(fs_handle_t *handle) {
     handle->count++;
 }
 
-extern status_t fs_open_entry(const fs_entry_t *entry, file_type_t type, fs_handle_t **_handle);
-extern status_t fs_open(const char *path, fs_handle_t *from, file_type_t type, fs_handle_t **_handle);
+extern status_t fs_open_entry(const fs_entry_t *entry, file_type_t type,
+    unsigned flags, fs_handle_t **_handle);
+extern status_t fs_open(const char *path, fs_handle_t *from, file_type_t type,
+    unsigned flags, fs_handle_t **_handle);
 extern void fs_close(fs_handle_t *handle);
 
 extern status_t fs_read(fs_handle_t *handle, void *buf, size_t count, offset_t offset);

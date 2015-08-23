@@ -209,7 +209,7 @@ static bool config_cmd_efi(value_list_t *args) {
     loader->args.type = VALUE_TYPE_STRING;
     split_cmdline(args->values[0].string, &loader->path, &loader->args.string);
 
-    ret = fs_open(loader->path, NULL, FILE_TYPE_REGULAR, &loader->handle);
+    ret = fs_open(loader->path, NULL, FILE_TYPE_REGULAR, 0, &loader->handle);
     if (ret != STATUS_SUCCESS) {
         config_error("Error opening '%s': %pS", loader->path, ret);
         goto err_free;

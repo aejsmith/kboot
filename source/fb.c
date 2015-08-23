@@ -429,7 +429,7 @@ status_t fb_load_image(const char *path, fb_image_t *image) {
     fs_handle_t *handle __cleanup_close = NULL;
     status_t ret;
 
-    ret = fs_open(path, NULL, FILE_TYPE_REGULAR, &handle);
+    ret = fs_open(path, NULL, FILE_TYPE_REGULAR, 0, &handle);
     if (ret != STATUS_SUCCESS)
         return ret;
 

@@ -905,7 +905,7 @@ static bool add_module_list(kboot_loader_t *loader, const value_list_t *list) {
 
         module = malloc(sizeof(*module));
 
-        ret = fs_open(path, NULL, FILE_TYPE_REGULAR, &module->handle);
+        ret = fs_open(path, NULL, FILE_TYPE_REGULAR, FS_OPEN_DECOMPRESS, &module->handle);
         if (ret != STATUS_SUCCESS) {
             config_error("Error opening module '%s': %pS", path, ret);
             free(module);
@@ -938,7 +938,7 @@ static bool add_module_dir_cb(const fs_entry_t *entry, void *_loader) {
 
     module = malloc(sizeof(*module));
 
-    ret = fs_open_entry(entry, FILE_TYPE_NONE, &module->handle);
+    ret = fs_open_entry(entry, FILE_TYPE_NONE, FS_OPEN_DECOMPRESS, &module->handle);
     if (ret != STATUS_SUCCESS) {
         config_error("Error opening module '%s': %pS", entry->name, ret);
         free(module);
@@ -967,7 +967,7 @@ static bool add_module_dir(kboot_loader_t *loader, const char *path) {
     fs_handle_t *handle;
     status_t ret;
 
-    ret = fs_open(path, NULL, FILE_TYPE_DIR, &handle);
+    ret = fs_open(path, NULL, FILE_TYPE_DIR, 0, &handle);
     if (ret != STATUS_SUCCESS) {
         config_error("Error opening '%s': %pS", path, ret);
         return false;
@@ -1005,7 +1005,7 @@ static bool config_cmd_kboot(value_list_t *args) {
     loader->path = args->values[0].string;
 
     /* Open the kernel image. */
-    ret = fs_open(loader->path, NULL, FILE_TYPE_REGULAR, &loader->handle);
+    ret = fs_open(loader->path, NULL, FILE_TYPE_REGULAR, FS_OPEN_DECOMPRESS, &loader->handle);
     if (ret != STATUS_SUCCESS) {
         config_error("Error opening '%s': %pS", loader->path, ret);
         goto err_free;

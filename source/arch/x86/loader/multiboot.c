@@ -467,7 +467,7 @@ static bool config_cmd_multiboot(value_list_t *args) {
     loader->args.type = VALUE_TYPE_STRING;
     split_cmdline(args->values[0].string, &loader->path, &loader->args.string);
 
-    ret = fs_open(loader->path, NULL, FILE_TYPE_REGULAR, &loader->handle);
+    ret = fs_open(loader->path, NULL, FILE_TYPE_REGULAR, FS_OPEN_DECOMPRESS, &loader->handle);
     if (ret != STATUS_SUCCESS) {
         config_error("Error opening '%s': %pS", loader->path, ret);
         goto err_free;
@@ -523,7 +523,7 @@ static bool config_cmd_multiboot(value_list_t *args) {
             list_init(&module->header);
             list_append(&loader->modules, &module->header);
 
-            ret = fs_open(module->path, NULL, FILE_TYPE_REGULAR, &module->handle);
+            ret = fs_open(module->path, NULL, FILE_TYPE_REGULAR, FS_OPEN_DECOMPRESS, &module->handle);
             if (ret != STATUS_SUCCESS) {
                 config_error("Error opening '%s': %pS", module->path, ret);
                 goto err_modules;

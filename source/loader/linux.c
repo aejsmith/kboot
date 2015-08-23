@@ -112,7 +112,7 @@ static bool add_initrd(linux_loader_t *loader, const char *path) {
     initrd = malloc(sizeof(*initrd));
     list_init(&initrd->header);
 
-    ret = fs_open(path, NULL, FILE_TYPE_REGULAR, &initrd->handle);
+    ret = fs_open(path, NULL, FILE_TYPE_REGULAR, 0, &initrd->handle);
     if (ret != STATUS_SUCCESS) {
         config_error("Error opening '%s': %pS", path, ret);
         free(initrd);
@@ -143,7 +143,7 @@ static bool config_cmd_linux(value_list_t *args) {
     loader->args.type = VALUE_TYPE_STRING;
     split_cmdline(args->values[0].string, &loader->path, &loader->args.string);
 
-    ret = fs_open(loader->path, NULL, FILE_TYPE_REGULAR, &loader->kernel);
+    ret = fs_open(loader->path, NULL, FILE_TYPE_REGULAR, 0, &loader->kernel);
     if (ret != STATUS_SUCCESS) {
         config_error("Error opening '%s': %pS", loader->path, ret);
         goto err_free;

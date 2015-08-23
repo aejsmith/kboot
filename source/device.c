@@ -266,7 +266,7 @@ void device_init(void) {
 
             dprintf("device: boot directory is '%s'\n", boot_directory);
 
-            ret = fs_open(boot_directory, NULL, FILE_TYPE_DIR, &handle);
+            ret = fs_open(boot_directory, NULL, FILE_TYPE_DIR, 0, &handle);
             if (ret != STATUS_SUCCESS) {
                 dprintf("device: error opening boot directory: %pS\n", ret);
             } else {

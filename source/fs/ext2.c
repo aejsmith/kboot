@@ -361,7 +361,7 @@ static status_t open_inode(ext2_mount_t *mount, uint32_t id, ext2_handle_t *owne
         if (mount->symlink_count++ >= EXT2_SYMLINK_LIMIT)
             return STATUS_SYMLINK_LIMIT;
 
-        ret = fs_open(dest, &owner->handle, FILE_TYPE_NONE, _handle);
+        ret = fs_open(dest, &owner->handle, FILE_TYPE_NONE, 0, _handle);
         mount->symlink_count--;
         return ret;
     } else if (type != EXT2_S_IFDIR && type != EXT2_S_IFREG) {

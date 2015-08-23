@@ -46,17 +46,18 @@ void fs_handle_init(fs_handle_t *handle, fs_mount_t *mount, file_type_t type, of
 /** Perform post-open tasks.
  * @param handle        Handle that has been opened.
  * @param type          Required type of the entry, or FILE_TYPE_NONE for any.
+ * @param flags         Behaviour flags.
  * @param _handle       Where to store pointer to actual opened handle.
  * @return              Status code describing the result of the operation. On
  *                      failure the handle will be closed. */
-static status_t post_open(fs_handle_t *handle, file_type_t type, fs_handle_t **_handle) {
+static status_t post_open(fs_handle_t *handle, file_type_t type, unsigned flags, fs_handle_t **_handle) {
     if (type != FILE_TYPE_NONE && handle->type != type) {
         fs_close(handle);
         return (type == FILE_TYPE_DIR) ? STATUS_NOT_DIR : STATUS_NOT_FILE;
     }
 
     /* Check if the file is compressed. */
-    if (handle->type == FILE_TYPE_REGULAR) {
+    if (flags & FS_OPEN_DECOMPRESS && handle->type == FILE_TYPE_REGULAR) {
         if (decompress_open(handle, _handle))
             return STATUS_SUCCESS;
     }
@@ -75,11 +76,12 @@ static status_t post_open(fs_handle_t *handle, file_type_t type, fs_handle_t **_
  *
  * @param entry         Entry to open.
  * @param type          Required type of the entry, or FILE_TYPE_NONE for any.
+ * @param flags         Behaviour flags.
  * @param _handle       Where to store pointer to opened handle.
  *
  * @return              Status code describing the result of the operation.
  */
-status_t fs_open_entry(const fs_entry_t *entry, file_type_t type, fs_handle_t **_handle) {
+status_t fs_open_entry(const fs_entry_t *entry, file_type_t type, unsigned flags, fs_handle_t **_handle) {
     fs_ops_t *ops = entry->owner->mount->ops;
     fs_handle_t *handle;
     status_t ret;
@@ -91,7 +93,7 @@ status_t fs_open_entry(const fs_entry_t *entry, file_type_t type, fs_handle_t **
     if (ret != STATUS_SUCCESS)
         return ret;
 
-    return post_open(handle, type, _handle);
+    return post_open(handle, type, flags, _handle);
 }
 
 /** Structure containing data for fs_open(). */
@@ -138,11 +140,15 @@ static bool fs_open_cb(const fs_entry_t *entry, void *_data) {
  * @param path          Path to entry to open.
  * @param from          If not NULL, a directory to look up relative to.
  * @param type          Required type of the entry, or FILE_TYPE_NONE for any.
+ * @param flags         Behaviour flags.
  * @param _handle       Where to store pointer to handle.
  *
  * @return              Status code describing the result of the operation.
  */
-status_t fs_open(const char *path, fs_handle_t *from, file_type_t type, fs_handle_t **_handle) {
+status_t fs_open(
+    const char *path, fs_handle_t *from, file_type_t type, unsigned flags,
+    fs_handle_t **_handle)
+{
     char *orig __cleanup_free;
     char *dup, *tok;
     device_t *device;
@@ -235,7 +241,7 @@ status_t fs_open(const char *path, fs_handle_t *from, file_type_t type, fs_handl
         }
     }
 
-    return post_open(handle, type, _handle);
+    return post_open(handle, type, flags, _handle);
 }
 
 /** Close a filesystem handle.
@@ -341,7 +347,7 @@ static bool config_cmd_cd(value_list_t *args) {
 
     path = args->values[0].string;
 
-    ret = fs_open(path, NULL, FILE_TYPE_DIR, &handle);
+    ret = fs_open(path, NULL, FILE_TYPE_DIR, 0, &handle);
     if (ret != STATUS_SUCCESS) {
         config_error("Error opening '%s': %pS", path, ret);
         return false;
@@ -364,7 +370,7 @@ static bool config_cmd_ls_cb(const fs_entry_t *entry, void *arg) {
     fs_handle_t *handle __cleanup_close = NULL;
     status_t ret;
 
-    ret = fs_open_entry(entry, FILE_TYPE_NONE, &handle);
+    ret = fs_open_entry(entry, FILE_TYPE_NONE, 0, &handle);
     if (ret != STATUS_SUCCESS) {
         printf("ls: warning: Failed to open entry '%s'\n", entry->name);
         return true;
@@ -394,7 +400,7 @@ static bool config_cmd_ls(value_list_t *args) {
         return false;
     }
 
-    ret = fs_open(path, NULL, FILE_TYPE_DIR, &handle);
+    ret = fs_open(path, NULL, FILE_TYPE_DIR, 0, &handle);
     if (ret != STATUS_SUCCESS) {
         config_error("Error opening '%s': %pS", path, ret);
         return false;
@@ -442,7 +448,7 @@ static bool config_cmd_cat(value_list_t *args) {
         }
 
         path = args->values[i].string;
-        ret = fs_open(path, NULL, FILE_TYPE_REGULAR, &handle);
+        ret = fs_open(path, NULL, FILE_TYPE_REGULAR, 0, &handle);
         if (ret != STATUS_SUCCESS) {
             config_error("Error opening '%s': %pS", path, ret);
             return false;

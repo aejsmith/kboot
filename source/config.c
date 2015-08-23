@@ -1293,7 +1293,7 @@ static bool load_config_file(const char *path) {
     command_list_t *list;
     status_t ret;
 
-    ret = fs_open(path, NULL, FILE_TYPE_REGULAR, &handle);
+    ret = fs_open(path, NULL, FILE_TYPE_REGULAR, 0, &handle);
     if (ret != STATUS_SUCCESS)
         return false;
 

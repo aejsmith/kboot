@@ -106,7 +106,7 @@ static bool config_cmd_chain(value_list_t *args) {
     }
 
     if (args->count == 1) {
-        status_t ret = fs_open(args->values[0].string, NULL, FILE_TYPE_REGULAR, &handle);
+        status_t ret = fs_open(args->values[0].string, NULL, FILE_TYPE_REGULAR, 0, &handle);
         if (ret != STATUS_SUCCESS) {
             config_error("Error opening '%s': %pS", args->values[0].string, ret);
             return false;
