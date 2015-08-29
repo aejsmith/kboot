@@ -81,18 +81,13 @@ static void serial_port_printf(serial_port_t *port, const char *fmt, ...) {
 /** Set the terminal's absolute cursor position.
  * @param port          Port to set for.
  * @param x             New X position.
- * @param y             New Y position.
- * @param visible       Whether cursor should be visible. */
-static void set_absolute_cursor(serial_port_t *port, uint16_t x, uint16_t y, bool visible) {
+ * @param y             New Y position. */
+static void set_absolute_cursor(serial_port_t *port, uint16_t x, uint16_t y) {
     /* Cursor positions are 1-based. */
     serial_port_printf(port, "\e[%u;%uH", y + 1, x + 1);
 
-    if (visible != port->cursor_visible)
-        serial_port_puts(port, (visible) ? "\e[?25h" : "\e[?25l");
-
     port->cursor_x = x;
     port->cursor_y = y;
-    port->cursor_visible = visible;
 }
 
 /** Get the terminal's real cursor position.
@@ -241,7 +236,7 @@ static void serial_console_putc(console_out_t *console, char ch) {
         }
 
         if (update)
-            set_absolute_cursor(port, port->cursor_x, port->cursor_y, port->cursor_visible);
+            set_absolute_cursor(port, port->cursor_x, port->cursor_y);
     } else {
         serial_port_write(port, ch);
     }
@@ -270,12 +265,23 @@ static void serial_console_set_colour(console_out_t *console, colour_t fg, colou
     }
 }
 
-/** Set the cursor properties.
+/** Set whether the cursor is visible.
+ * @param console       Console output device.
+ * @param visible       Whether the cursor should be visible. */
+static void serial_console_set_cursor_visible(console_out_t *console, bool visible) {
+    serial_port_t *port = container_of(console, serial_port_t, out);
+
+    if (visible != port->cursor_visible) {
+        serial_port_puts(port, (visible) ? "\e[?25h" : "\e[?25l");
+        port->cursor_visible = visible;
+    }
+}
+
+/** Set the cursor position.
  * @param console       Console output device.
  * @param x             New X position.
- * @param y             New Y position.
- * @param visible       Whether the cursor should be visible. */
-static void serial_console_set_cursor(console_out_t *console, int16_t x, int16_t y, bool visible) {
+ * @param y             New Y position. */
+static void serial_console_set_cursor_pos(console_out_t *console, int16_t x, int16_t y) {
     serial_port_t *port = container_of(console, serial_port_t, out);
 
     assert(abs(x) < port->region.width);
@@ -284,24 +290,20 @@ static void serial_console_set_cursor(console_out_t *console, int16_t x, int16_t
     set_absolute_cursor(
         port,
         (x < 0) ? port->region.x + port->region.width + x : port->region.x + x,
-        (y < 0) ? port->region.y + port->region.height + y : port->region.y + y,
-        visible);
+        (y < 0) ? port->region.y + port->region.height + y : port->region.y + y);
 }
 
-/** Get the cursor properties.
+/** Get the cursor position.
  * @param console       Console output device.
  * @param _x            Where to store X position (relative to draw region).
- * @param _y            Where to store Y position (relative to draw region).
- * @param _visible      Where to store whether the cursor is visible */
-static void serial_console_get_cursor(console_out_t *console, uint16_t *_x, uint16_t *_y, bool *_visible) {
+ * @param _y            Where to store Y position (relative to draw region). */
+static void serial_console_get_cursor_pos(console_out_t *console, uint16_t *_x, uint16_t *_y) {
     serial_port_t *port = container_of(console, serial_port_t, out);
 
     if (_x)
         *_x = port->cursor_x - port->region.x;
     if (_y)
         *_y = port->cursor_y - port->region.y;
-    if (_visible)
-        *_visible = port->cursor_visible;
 }
 
 /** Set the draw region of the console.
@@ -327,7 +329,7 @@ static void serial_console_set_region(console_out_t *console, const draw_region_
     set_scroll_region(port, port->region.y, port->region.height, port->region.scrollable);
 
     /* Move cursor to top of region. */
-    set_absolute_cursor(port, port->region.x, port->region.y, port->cursor_visible);
+    set_absolute_cursor(port, port->region.x, port->region.y);
 }
 
 /** Get the current draw region.
@@ -370,13 +372,13 @@ static void serial_console_clear(console_out_t *console, uint16_t x, uint16_t y,
         prev_y = port->cursor_y;
 
         for (uint16_t i = 0; i < height; i++) {
-            set_absolute_cursor(port, x + port->region.x, y + port->region.y + i, port->cursor_visible);
+            set_absolute_cursor(port, x + port->region.x, y + port->region.y + i);
 
             for (uint16_t j = 0; j < width; j++)
                 serial_port_write(port, ' ');
         }
 
-        set_absolute_cursor(port, prev_x, prev_y, port->cursor_visible);
+        set_absolute_cursor(port, prev_x, prev_y);
     }
 }
 
@@ -394,12 +396,12 @@ static void serial_console_scroll_up(console_out_t *console) {
     /* Doesn't seem to work if the cursor is not on the top row of the region. */
     prev_x = port->cursor_x;
     prev_y = port->cursor_y;
-    set_absolute_cursor(port, 0, port->region.y, port->cursor_visible);
+    set_absolute_cursor(port, 0, port->region.y);
 
     serial_port_puts(port, "\eM");
 
     set_scroll_region(port, port->region.y, port->region.height, port->region.scrollable);
-    set_absolute_cursor(port, prev_x, prev_y, port->cursor_visible);
+    set_absolute_cursor(port, prev_x, prev_y);
 }
 
 /** Scroll the draw region down (move contents up).
@@ -412,12 +414,12 @@ static void serial_console_scroll_down(console_out_t *console) {
 
     prev_x = port->cursor_x;
     prev_y = port->cursor_y;
-    set_absolute_cursor(port, 0, port->region.y + port->region.height - 1, port->cursor_visible);
+    set_absolute_cursor(port, 0, port->region.y + port->region.height - 1);
 
     serial_port_puts(port, "\eD");
 
     set_scroll_region(port, port->region.y, port->region.height, port->region.scrollable);
-    set_absolute_cursor(port, prev_x, prev_y, port->cursor_visible);
+    set_absolute_cursor(port, prev_x, prev_y);
 }
 
 /** Begin UI mode.
@@ -442,8 +444,9 @@ static void serial_console_begin_ui(console_out_t *console) {
 static console_out_ops_t serial_console_out_ops = {
     .putc = serial_console_putc,
     .set_colour = serial_console_set_colour,
-    .set_cursor = serial_console_set_cursor,
-    .get_cursor = serial_console_get_cursor,
+    .set_cursor_visible = serial_console_set_cursor_visible,
+    .set_cursor_pos = serial_console_set_cursor_pos,
+    .get_cursor_pos = serial_console_get_cursor_pos,
     .set_region = serial_console_set_region,
     .get_region = serial_console_get_region,
     .clear = serial_console_clear,

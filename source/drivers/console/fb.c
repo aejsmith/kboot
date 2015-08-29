@@ -184,16 +184,26 @@ static void fb_console_set_colour(console_out_t *console, colour_t fg, colour_t 
     fb->bg_colour = bg;
 }
 
-/** Set the cursor properties.
+/** Set whether the cursor is visible.
+ * @param console       Console output device.
+ * @param visible       Whether the cursor should be visible. */
+static void fb_console_set_cursor_visible(console_out_t *console, bool visible) {
+    fb_console_out_t *fb = (fb_console_out_t *)console;
+
+    toggle_cursor(fb);
+    fb->cursor_visible = visible;
+    toggle_cursor(fb);
+}
+
+/** Set the cursor position.
  * @param console       Console output device.
  * @param x             New X position (relative to draw region). Negative
  *                      values will move the cursor back from the right edge of
  *                      the draw region.
  * @param y             New Y position (relative to draw region). Negative
  *                      values will move the cursor up from the bottom edge of
- *                      the draw region.
- * @param visible       Whether the cursor should be visible. */
-static void fb_console_set_cursor(console_out_t *console, int16_t x, int16_t y, bool visible) {
+ *                      the draw region. */
+static void fb_console_set_cursor_pos(console_out_t *console, int16_t x, int16_t y) {
     fb_console_out_t *fb = (fb_console_out_t *)console;
 
     assert(abs(x) < fb->region.width);
@@ -202,24 +212,20 @@ static void fb_console_set_cursor(console_out_t *console, int16_t x, int16_t y, 
     toggle_cursor(fb);
     fb->cursor_x = (x < 0) ? fb->region.x + fb->region.width + x : fb->region.x + x;
     fb->cursor_y = (y < 0) ? fb->region.y + fb->region.height + y : fb->region.y + y;
-    fb->cursor_visible = visible;
     toggle_cursor(fb);
 }
 
-/** Get the cursor properties.
+/** Get the cursor position.
  * @param console       Console output device.
  * @param _x            Where to store X position (relative to draw region).
- * @param _y            Where to store Y position (relative to draw region).
- * @param _visible      Where to store whether the cursor is visible */
-static void fb_console_get_cursor(console_out_t *console, uint16_t *_x, uint16_t *_y, bool *_visible) {
+ * @param _y            Where to store Y position (relative to draw region). */
+static void fb_console_get_cursor_pos(console_out_t *console, uint16_t *_x, uint16_t *_y) {
     fb_console_out_t *fb = (fb_console_out_t *)console;
 
     if (_x)
         *_x = fb->cursor_x - fb->region.x;
     if (_y)
         *_y = fb->cursor_y - fb->region.y;
-    if (_visible)
-        *_visible = fb->cursor_visible;
 }
 
 /** Clear an area to the current background colour.
@@ -405,7 +411,7 @@ static void fb_console_init(console_out_t *console) {
 
     fb->fg_colour = CONSOLE_COLOUR_FG;
     fb->bg_colour = CONSOLE_COLOUR_BG;
-    fb->cursor_visible = true;
+    fb->cursor_visible = false;
     fb_console_set_region(console, NULL);
 
     /* Clear the console. */
@@ -427,8 +433,9 @@ static console_out_ops_t fb_console_out_ops = {
     .set_region = fb_console_set_region,
     .get_region = fb_console_get_region,
     .set_colour = fb_console_set_colour,
-    .set_cursor = fb_console_set_cursor,
-    .get_cursor = fb_console_get_cursor,
+    .set_cursor_visible = fb_console_set_cursor_visible,
+    .set_cursor_pos = fb_console_set_cursor_pos,
+    .get_cursor_pos = fb_console_get_cursor_pos,
     .clear = fb_console_clear,
     .scroll_up = fb_console_scroll_up,
     .scroll_down = fb_console_scroll_down,

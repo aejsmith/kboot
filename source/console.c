@@ -87,6 +87,14 @@ void console_set_colour(console_t *console, colour_t fg, colour_t bg) {
         console->out->ops->set_colour(console->out, fg, bg);
 }
 
+/** Set whether the cursor is visible.
+ * @param console       Console to operate on.
+ * @param visible       Whether the cursor should be visible. */
+void console_set_cursor_visible(console_t *console, bool visible) {
+    if (console && console->out && console->out->ops->set_cursor_visible)
+        console->out->ops->set_cursor_visible(console->out, visible);
+}
+
 /** Begin UI mode on a console.
  * @param console       Console to operate on (must have CONSOLE_CAP_UI). */
 void console_begin_ui(console_t *console) {
@@ -106,7 +114,7 @@ void console_end_ui(console_t *console) {
 
     /* Reset state and clear to default colours. */
     console_set_region(current_console, NULL);
-    console_set_cursor(current_console, 0, 0, true);
+    console_set_cursor_visible(current_console, true);
     console_set_colour(current_console, COLOUR_DEFAULT, COLOUR_DEFAULT);
     console_clear(current_console, 0, 0, 0, 0);
 
@@ -139,28 +147,26 @@ void console_get_region(console_t *console, draw_region_t *region) {
     console->out->ops->get_region(console->out, region);
 }
 
-/** Set the cursor properties.
+/** Set the cursor position.
  * @param console       Console to operate on (must have CONSOLE_CAP_UI).
  * @param x             New X position (relative to draw region). Negative
  *                      values will move the cursor back from the right edge
  *                      of the draw region.
  * @param y             New Y position (relative to draw region). Negative
  *                      values will move the cursor up from the bottom edge
- *                      of the draw region.
- * @param visible       Whether the cursor should be visible. */
-void console_set_cursor(console_t *console, int16_t x, int16_t y, bool visible) {
+ *                      of the draw region. */
+void console_set_cursor_pos(console_t *console, int16_t x, int16_t y) {
     assert(console->out->in_ui);
-    console->out->ops->set_cursor(console->out, x, y, visible);
+    console->out->ops->set_cursor_pos(console->out, x, y);
 }
 
-/** Get the cursor properties.
+/** Get the cursor position.
  * @param console       Console to operate on (must have CONSOLE_CAP_UI).
  * @param _x            Where to store X position (relative to draw region).
- * @param _y            Where to store Y position (relative to draw region).
- * @param _visible      Where to store whether the cursor is visible */
-void console_get_cursor(console_t *console, uint16_t *_x, uint16_t *_y, bool *_visible) {
+ * @param _y            Where to store Y position (relative to draw region). */
+void console_get_cursor_pos(console_t *console, uint16_t *_x, uint16_t *_y) {
     assert(console->out->in_ui);
-    console->out->ops->get_cursor(console->out, _x, _y, _visible);
+    console->out->ops->get_cursor_pos(console->out, _x, _y);
 }
 
 /** Clear an area to the current background colour.

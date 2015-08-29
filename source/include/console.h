@@ -98,6 +98,11 @@ typedef struct console_out_ops {
      * @param bg            Background colour. */
     void (*set_colour)(struct console_out *console, colour_t fg, colour_t bg);
 
+    /** Set whether the cursor is visible.
+     * @param console       Console output device.
+     * @param visible       Whether to make the cursor visible. */
+    void (*set_cursor_visible)(struct console_out *console, bool visible);
+
     /**
      * UI operations.
      */
@@ -127,23 +132,21 @@ typedef struct console_out_ops {
      * @param region        Where to store details of the current draw region. */
     void (*get_region)(struct console_out *console, draw_region_t *region);
 
-    /** Set the cursor properties.
+    /** Set the cursor position.
      * @param console       Console output device.
      * @param x             New X position (relative to draw region). Negative
      *                      values will move the cursor back from the right edge
      *                      of the draw region.
      * @param y             New Y position (relative to draw region). Negative
      *                      values will move the cursor up from the bottom edge
-     *                      of the draw region.
-     * @param visible       Whether the cursor should be visible. */
-    void (*set_cursor)(struct console_out *console, int16_t x, int16_t y, bool visible);
+     *                      of the draw region. */
+    void (*set_cursor_pos)(struct console_out *console, int16_t x, int16_t y);
 
-    /** Get the cursor properties.
+    /** Get the cursor position.
      * @param console       Console output device.
      * @param _x            Where to store X position (relative to draw region).
-     * @param _y            Where to store Y position (relative to draw region).
-     * @param _visible      Where to store whether the cursor is visible */
-    void (*get_cursor)(struct console_out *console, uint16_t *_x, uint16_t *_y, bool *_visible);
+     * @param _y            Where to store Y position (relative to draw region). */
+    void (*get_cursor_pos)(struct console_out *console, uint16_t *_x, uint16_t *_y);
 
     /** Clear an area to the current background colour.
      * @param console       Console output device.
@@ -243,12 +246,13 @@ extern bool console_has_caps(console_t *console, unsigned caps);
 
 extern void console_putc(console_t *console, char ch);
 extern void console_set_colour(console_t *console, colour_t fg, colour_t bg);
+extern void console_set_cursor_visible(console_t *console, bool visible);
 extern void console_begin_ui(console_t *console);
 extern void console_end_ui(console_t *console);
 extern void console_set_region(console_t *console, const draw_region_t *region);
 extern void console_get_region(console_t *console, draw_region_t *region);
-extern void console_set_cursor(console_t *console, int16_t x, int16_t y, bool visible);
-extern void console_get_cursor(console_t *console, uint16_t *_x, uint16_t *_y, bool *_visible);
+extern void console_set_cursor_pos(console_t *console, int16_t x, int16_t y);
+extern void console_get_cursor_pos(console_t *console, uint16_t *_x, uint16_t *_y);
 extern void console_clear(console_t *console, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 extern void console_scroll_up(console_t *console);
 extern void console_scroll_down(console_t *console);

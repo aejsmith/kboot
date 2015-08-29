@@ -255,11 +255,10 @@ static inline void set_content_region(void) {
 static void render_help(ui_window_t *window, unsigned timeout, bool update) {
     draw_region_t region;
     uint16_t x, y;
-    bool visible;
 
     if (update) {
         console_get_region(current_console, &region);
-        console_get_cursor(current_console, &x, &y, &visible);
+        console_get_cursor_pos(current_console, &x, &y);
     }
 
     set_help_region();
@@ -272,14 +271,14 @@ static void render_help(ui_window_t *window, unsigned timeout, bool update) {
 
     /* Only draw timeout if it is non-zero. */
     if (timeout) {
-        console_set_cursor(current_console, 0 - ((timeout >= 10) ? 12 : 11), 0, false);
+        console_set_cursor_pos(current_console, 0 - ((timeout >= 10) ? 12 : 11), 0);
         printf("%u second(s)", timeout);
     }
 
     if (update) {
         console_set_region(current_console, &region);
         console_set_colour(current_console, COLOUR_LIGHT_GREY, COLOUR_BLACK);
-        console_set_cursor(current_console, x, y, visible);
+        console_set_cursor_pos(current_console, x, y);
     }
 }
 
@@ -293,7 +292,7 @@ static void render_window(ui_window_t *window, unsigned timeout) {
     console_clear(current_console, 0, 0, 0, 0);
 
     /* Disable the cursor. */
-    console_set_cursor(current_console, 0, 0, false);
+    console_set_cursor_visible(current_console, false);
 
     /* Draw the title. */
     set_title_region();
@@ -659,7 +658,7 @@ static void ui_link_render(ui_entry_t *entry) {
     ui_link_t *link = (ui_link_t *)entry;
 
     printf("%s", link->window->title);
-    console_set_cursor(current_console, -2, 0, false);
+    console_set_cursor_pos(current_console, -2, 0);
     printf("->");
 }
 
@@ -726,7 +725,7 @@ static void ui_checkbox_render(ui_entry_t *entry) {
     ui_checkbox_t *box = (ui_checkbox_t *)entry;
 
     printf("%s", box->label);
-    console_set_cursor(current_console, -3, 0, false);
+    console_set_cursor_pos(current_console, -3, 0);
     printf("[%c]", (box->value->boolean) ? 'x' : ' ');
 }
 
@@ -781,7 +780,9 @@ ui_entry_t *ui_checkbox_create(const char *label, value_t *value) {
 static void ui_textbox_editor_render(ui_window_t *window) {
     ui_textbox_editor_t *editor = (ui_textbox_editor_t *)window;
 
-    console_set_cursor(current_console, 0, 0, true);
+    console_set_cursor_pos(current_console, 0, 0);
+    console_set_cursor_visible(current_console, true);
+
     line_editor_output(&editor->editor);
 }
 
@@ -799,14 +800,14 @@ static void ui_textbox_editor_help(ui_window_t *window) {
 static void ui_textbox_editor_error_handler(const char *cmd, const char *fmt, va_list args) {
     uint16_t x, y;
 
-    console_get_cursor(current_console, &x, &y, NULL);
+    console_get_cursor_pos(current_console, &x, &y);
     set_error_region();
     console_clear(current_console, 0, 0, 0, 0);
 
     vprintf(fmt, args);
 
     set_content_region();
-    console_set_cursor(current_console, x, y, true);
+    console_set_cursor_pos(current_console, x, y);
 }
 
 /** Handle input on a textbox editor window.
@@ -880,7 +881,7 @@ static void ui_textbox_render(ui_entry_t *entry) {
             console_putc(current_console, box->value->string[i]);
         printf("...]");
     } else {
-        console_set_cursor(current_console, 0 - len - 2, 0, false);
+        console_set_cursor_pos(current_console, 0 - len - 2, 0);
         printf("[%s]", box->value->string);
     }
 }
@@ -989,7 +990,7 @@ static void ui_chooser_render(ui_entry_t *entry) {
             console_putc(current_console, buf[i]);
         printf("...]");
     } else {
-        console_set_cursor(current_console, 0 - len - 2, 0, false);
+        console_set_cursor_pos(current_console, 0 - len - 2, 0);
         printf("[%s]", buf);
     }
 }
@@ -1202,7 +1203,7 @@ static input_result_t ui_textview_input(ui_window_t *window, uint16_t key) {
     case CONSOLE_KEY_UP:
         if (textview->offset) {
             console_scroll_up(current_console);
-            console_set_cursor(current_console, 0, 0, false);
+            console_set_cursor_pos(current_console, 0, 0);
             render_textview_line(textview, --textview->offset);
 
             return INPUT_RENDER_HELP;
@@ -1212,7 +1213,7 @@ static input_result_t ui_textview_input(ui_window_t *window, uint16_t key) {
     case CONSOLE_KEY_DOWN:
         if (textview->count - textview->offset > CONTENT_HEIGHT) {
             console_scroll_down(current_console);
-            console_set_cursor(current_console, 0, -1, false);
+            console_set_cursor_pos(current_console, 0, -1);
             render_textview_line(textview, textview->offset++ + CONTENT_HEIGHT);
 
             return INPUT_RENDER_HELP;

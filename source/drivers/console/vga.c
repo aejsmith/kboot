@@ -117,16 +117,25 @@ static void vga_console_set_colour(console_out_t *console, colour_t fg, colour_t
     vga->attrib = (fg << 8) | (bg << 12);
 }
 
-/** Set the cursor properties.
+/** Set whether the cursor is visible.
+ * @param console       Console output device.
+ * @param visible       Whether the cursor should be visible. */
+static void vga_console_set_cursor_visible(console_out_t *console, bool visible) {
+    vga_console_out_t *vga = (vga_console_out_t *)console;
+
+    vga->cursor_visible = visible;
+    update_hw_cursor(vga);
+}
+
+/** Set the cursor position.
  * @param console       Console output device.
  * @param x             New X position (relative to draw region). Negative
  *                      values will move the cursor back from the right edge of
  *                      the draw region.
  * @param y             New Y position (relative to draw region). Negative
  *                      values will move the cursor up from the bottom edge of
- *                      the draw region.
- * @param visible       Whether the cursor should be visible. */
-static void vga_console_set_cursor(console_out_t *console, int16_t x, int16_t y, bool visible) {
+ *                      the draw region. */
+static void vga_console_set_cursor_pos(console_out_t *console, int16_t x, int16_t y) {
     vga_console_out_t *vga = (vga_console_out_t *)console;
 
     assert(abs(x) < vga->region.width);
@@ -134,24 +143,20 @@ static void vga_console_set_cursor(console_out_t *console, int16_t x, int16_t y,
 
     current_video_mode->x = (x < 0) ? vga->region.x + vga->region.width + x : vga->region.x + x;
     current_video_mode->y = (y < 0) ? vga->region.y + vga->region.height + y : vga->region.y + y;
-    vga->cursor_visible = visible;
     update_hw_cursor(vga);
 }
 
-/** Get the cursor properties.
+/** Get the cursor position.
  * @param console       Console output device.
  * @param _x            Where to store X position (relative to draw region).
- * @param _y            Where to store Y position (relative to draw region).
- * @param _visible      Where to store whether the cursor is visible */
-static void vga_console_get_cursor(console_out_t *console, uint16_t *_x, uint16_t *_y, bool *_visible) {
+ * @param _y            Where to store Y position (relative to draw region). */
+static void vga_console_get_cursor_pos(console_out_t *console, uint16_t *_x, uint16_t *_y) {
     vga_console_out_t *vga = (vga_console_out_t *)console;
 
     if (_x)
         *_x = current_video_mode->x - vga->region.x;
     if (_y)
         *_y = current_video_mode->y - vga->region.y;
-    if (_visible)
-        *_visible = vga->cursor_visible;
 }
 
 /** Clear an area to the current background colour.
@@ -288,8 +293,9 @@ static console_out_ops_t vga_console_out_ops = {
     .set_region = vga_console_set_region,
     .get_region = vga_console_get_region,
     .set_colour = vga_console_set_colour,
-    .set_cursor = vga_console_set_cursor,
-    .get_cursor = vga_console_get_cursor,
+    .set_cursor_visible = vga_console_set_cursor_visible,
+    .set_cursor_pos = vga_console_set_cursor_pos,
+    .get_cursor_pos = vga_console_get_cursor_pos,
     .clear = vga_console_clear,
     .scroll_up = vga_console_scroll_up,
     .scroll_down = vga_console_scroll_down,
