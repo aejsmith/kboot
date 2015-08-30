@@ -134,4 +134,85 @@ static inline int os_device_from_path(const char *path, char **_dev, char **_roo
     #endif
 }
 
+/** Get the partition number of a device.
+ * @param fd            File descriptor to device.
+ * @param _part         Where to store partition number (set to 0 if device is
+ *                      not a partition.
+ * @return              0 on success, -1 on failure. */
+static inline int os_get_partition_number(int fd, unsigned *_part) {
+    #ifdef __linux__
+        struct stat st;
+        char buf[PATH_MAX];
+        FILE *stream;
+        int ret;
+
+        if (fstat(fd, &st))
+            return -1;
+
+        snprintf(
+            buf, sizeof(buf), "/sys/dev/block/%u:%u/partition",
+            major(st.st_rdev), minor(st.st_rdev));
+
+        stream = fopen(buf, "r");
+        if (!stream) {
+            if (errno == ENOENT) {
+                *_part = 0;
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+
+        ret = fscanf(stream, "%u", _part);
+        fclose(stream);
+        return (ret == 1) ? 0 : -1;
+    #else
+        errno = ENOTSUP;
+        return -1;
+    #endif
+}
+
+/** Get the device containing a partition.
+ * @param fd            File descriptor to partition.
+ * @param part          Partition number.
+ * @param _dev          Where to store path to device.
+ * @return              0 on success, -1 on failure. */
+static inline int os_get_parent_device(int fd, unsigned part, char **_dev) {
+    #ifdef __linux__
+        struct stat st;
+        char buf[PATH_MAX];
+        FILE *stream;
+        int ret;
+        unsigned parent_major, parent_minor;
+
+        if (fstat(fd, &st))
+            return -1;
+
+        if (part) {
+            snprintf(
+                buf, sizeof(buf), "/sys/dev/block/%u:%u/../dev",
+                major(st.st_rdev), minor(st.st_rdev));
+
+            stream = fopen(buf, "r");
+            if (!stream)
+                return -1;
+
+            ret = fscanf(stream, "%u:%u", &parent_major, &parent_minor);
+            fclose(stream);
+            if (ret != 2)
+                return -1;
+        } else {
+            parent_major = major(st.st_rdev);
+            parent_minor = minor(st.st_rdev);
+        }
+
+        snprintf(buf, sizeof(buf), "/dev/block/%u:%u", parent_major, parent_minor);
+        *_dev = strdup(buf);
+        return 0;
+    #else
+        errno = ENOTSUP;
+        return -1;
+    #endif
+}
+
 #endif /* KBOOT_SUPPORT_H */

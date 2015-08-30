@@ -40,9 +40,11 @@ static const char *arg_device;
 static const char *arg_dir;
 static int arg_fallback;
 static const char *arg_image;
+static const char *arg_label ="KBoot";
 static uint64_t arg_offset;
 static const char *arg_path;
 static const char *arg_target;
+static int arg_update;
 static const char *arg_vendor_id = "kboot";
 static int arg_verbose;
 
@@ -152,6 +154,34 @@ static void copy_target_bin(const char *name, const char *path) {
 
     close(fd);
     free(buf);
+}
+
+/** Create a directory, including non-existant intermediate directories.
+ * @param path          Path to directory to create.
+ * @param mode          Mode to create with.
+ * @return              0 on success, -1 on failure. */
+static int create_dirs(char *path, mode_t mode) {
+    char *p, *q;
+    int ret;
+
+    q = path;
+    while ((p = strchr(q, '/'))) {
+        if (p != q) {
+            *p = 0;
+
+            ret = mkdir(path, mode);
+            *p = '/';
+            if (ret && errno != EEXIST)
+                return -1;
+        }
+
+        q = p + 1;
+    }
+
+    if (mkdir(path, mode) && errno != EEXIST)
+        return -1;
+
+    return 0;
 }
 
 /**
@@ -405,7 +435,56 @@ static void bios_install(const char *arg) {
 /** Install KBoot for EFI-based systems.
  * @param arch          EFI architecture name. */
 static void efi_install(const char *arch) {
-    error("EFI installation not yet implemented\n");
+    char path[PATH_MAX], buf[32];
+    const char *subdir_name;
+
+    if (!arg_dir)
+        error("EFI installation must be performed to a directory\n");
+
+    /* Open the installation device. */
+    open_device();
+
+    /* Create the installation directory. */
+    subdir_name = (arg_fallback) ? "boot" : arg_vendor_id;
+    snprintf(path, sizeof(path), "%s/EFI/%s", arg_dir, subdir_name);
+    if (create_dirs(path, 0755))
+        error("Error creating '%s': %s\n", path, strerror(errno));
+
+    /* Copy the boot loader over. */
+    snprintf(buf, sizeof(buf), "kboot%s.efi", arch);
+    snprintf(
+        path, sizeof(path), "%s/EFI/%s/%s", arg_dir, subdir_name,
+        (arg_fallback) ? buf + 1 : buf);
+    copy_target_bin(buf, path);
+
+    if (!arg_fallback && !arg_update) {
+        unsigned part;
+        char *parent_path;
+        int ret;
+
+        /* Get the partition number to pass to efibootmgr. */
+        if (os_get_partition_number(device_fd, &part))
+            error("Error getting partition number for '%s': %s\n", device_path, strerror(errno));
+
+        verbose("Partition number for '%s' is %u\n", device_path, part);
+
+        /* Get the parent device path. */
+        if (os_get_parent_device(device_fd, part, &parent_path))
+            error("Error getting parent device for '%s': %s\n", device_path, strerror(errno));
+
+        verbose("Parent device for '%s' is '%s'\n", device_path, parent_path);
+        verbose("Adding boot entry via efibootmgr\n");
+
+        /* Create a boot entry. */
+        snprintf(path, sizeof(path), "\\EFI\\%s\\%s", subdir_name, buf);
+        snprintf(buf, sizeof(buf), "%u", part);
+        ret = execlp(
+            "efibootmgr", "efibootmgr",
+            "-c", "-q", "-d", parent_path, "-p", buf, "-L", arg_label, "-l", path,
+            NULL);
+        if (ret)
+            error("Error executing efibootmgr: %s\n", strerror(errno));
+    }
 }
 
 /**
@@ -446,12 +525,13 @@ static void usage(const char *argv0, FILE *stream) {
         "must be the root of an EFI System Partition. The loader binary will be copied\n"
         "to either /EFI/<vendor ID>/kboot<arch>.efi, or /EFI/BOOT/boot<arch>.efi if\n"
         "installation to the fallback directory is requested. If not installing to the\n"
-        "fallback directory, an EFI boot entry will be added at the top of the boot\n"
-        "list.\n"
+        "fallback directory and --update is not specified, an EFI boot entry will be added\n"
+        "at to the boot list, with the specified label.\n"
         "\n"
         "Generic options:\n"
         "  --help, -h        Show this help\n"
         "  --target=TARGET   Specify target system type\n"
+        "  --update          Perform an update (behaviour target-specific)\n"
         "\n"
         "Installation location options:\n"
         "  --device=DEVICE   Install to a device\n"
@@ -464,8 +544,9 @@ static void usage(const char *argv0, FILE *stream) {
         "EFI-specific options:\n"
         "  --fallback        Install to the fallback boot directory\n"
         "  --vendor-id=NAME  Vendor directory name (default: %s)\n"
+        "  --label=LABEL     Boot entry label (default: %s)\n"
         "\n",
-        argv0, arg_vendor_id);
+        argv0, arg_vendor_id, arg_label);
 }
 
 /** Find the target binary directory.
@@ -500,6 +581,7 @@ enum {
     OPT_PATH,
     OPT_TARGET,
     OPT_VENDOR_ID,
+    OPT_LABEL,
 };
 
 /** Option descriptions. */
@@ -509,9 +591,11 @@ static const struct option options[] = {
     { "fallback",  no_argument,       &arg_fallback, 1             },
     { "help",      no_argument,       NULL,          'h'           },
     { "image",     required_argument, NULL,          OPT_IMAGE     },
+    { "label",     required_argument, NULL,          OPT_LABEL     },
     { "offset",    required_argument, NULL,          OPT_OFFSET    },
     { "path",      required_argument, NULL,          OPT_PATH      },
     { "target",    required_argument, NULL,          OPT_TARGET    },
+    { "update",    no_argument,       &arg_update,   1             },
     { "vendor-id", required_argument, NULL,          OPT_VENDOR_ID },
     { "verbose",   no_argument,       &arg_verbose,  1             },
     { NULL,        0,                 NULL,          0             }
@@ -528,6 +612,9 @@ int main(int argc, char **argv) {
         switch (opt) {
         case OPT_VENDOR_ID:
             arg_vendor_id = optarg;
+            break;
+        case OPT_LABEL:
+            arg_label = optarg;
             break;
         case OPT_DEVICE:
             arg_device = optarg;
