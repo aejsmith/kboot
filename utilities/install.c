@@ -243,9 +243,11 @@ static void open_device(void) {
 
 /** ext2 boot sector structure. */
 typedef struct ext2_boot_sector {
-    uint8_t code[992];
+    uint8_t code1[506];
+    uint32_t partition_lba;
+    uint8_t code2[482];
     char path[32];
-} ext2_boot_sector_t;
+} __attribute__((packed)) ext2_boot_sector_t;
 
 /** Check whether the device contains an ext* filesystem.
  * @return              1 if filesystem found, 0 if not, -1 on error. */
@@ -268,15 +270,17 @@ static int ext2_identify(void) {
  * @param buf           Buffer containing boot sector to write.
  * @param size          Size of the boot sector.
  * @param path          Normalized path to kboot.bin.
+ * @param partition_lba LBA of partition being installed to.
  * @return              0 on success, -1 on error. */
-static int ext2_install(void *buf, size_t size, const char *path) {
+static int ext2_install(void *buf, size_t size, const char *path, uint32_t partition_lba) {
     ext2_boot_sector_t *bs = buf;
     ssize_t ret;
 
     if (size != sizeof(*bs))
         error("Boot sector is incorrect size (got %zu, expected %zu)\n", size, sizeof(*bs));
 
-    /* Copy in the path string. */
+    /* Copy in details. */
+    bs->partition_lba = partition_lba;
     strncpy(bs->path, path, sizeof(bs->path));
 
     /* Write the boot sector. */
@@ -295,7 +299,7 @@ static int ext2_install(void *buf, size_t size, const char *path) {
 static struct {
     const char *name;
     int (*identify)(void);
-    int (*install)(void *buf, size_t size, const char *path);
+    int (*install)(void *buf, size_t size, const char *path, uint32_t partition_lba);
 } fs_types[] = {
     { "ext2", ext2_identify, ext2_install },
 };
@@ -378,10 +382,25 @@ static void install_boot_sector(void) {
     char path[BOOT_SECTOR_PATH_SIZE];
     char name[32];
     void *bs;
+    uint64_t partition_lba;
     size_t i, size;
 
     /* Normalize the path to the boot loader binary. */
     normalize_path(arg_path, path);
+
+    /* Determine the offset of the partition we're installing to (if any). */
+    if (arg_image) {
+        partition_lba = arg_offset / 512;
+    } else {
+        if (os_get_partition_offset(device_fd, &partition_lba))
+            error("Error getting partition offset for '%s': %s\n", device_path, strerror(errno));
+
+        partition_lba /= 512;
+        verbose("Partition LBA for '%s' is %llu\n", device_path, partition_lba);
+    }
+
+    if (partition_lba >= 0x100000000ull)
+        error("64-bit partition LBA unsupported on BIOS platform");
 
     /* Try to determine the filesystem type to install the boot sector to. */
     i = 0;
@@ -401,16 +420,16 @@ static void install_boot_sector(void) {
         i++;
     }
 
+    verbose("Filesystem type on '%s' is '%s'\n", device_path, fs_types[i].name);
+
     /* Get the boot sector for this filesystem type. */
     snprintf(name, sizeof(name), "%sboot.bin", fs_types[i].name);
     read_target_bin(name, &bs, &size);
 
-    verbose(
-        "Installing boot sector to '%s' at offset %llu, filesystem type '%s'\n",
-        device_path, arg_offset, fs_types[i].name);
+    verbose("Installing boot sector to '%s' at offset %llu\n", device_path, arg_offset);
 
     /* Install it. */
-    if (fs_types[i].install(bs, size, path) != 0)
+    if (fs_types[i].install(bs, size, path, partition_lba) != 0)
         error("Error writing to '%s': %s\n", device_path, strerror(errno));
 }
 
@@ -631,8 +650,11 @@ int main(int argc, char **argv) {
         case OPT_OFFSET:
             arg_offset = strtoull(optarg, &end, 0);
 
-            if (!end || end == optarg || *end)
+            if (!end || end == optarg || *end) {
                 error("Offset must be a 64-bit integer\n");
+            } else if (arg_offset % 512) {
+                fprintf(stderr, "Warning: Offset is not a multiple of 512 bytes\n");
+            }
 
             break;
         case OPT_PATH:

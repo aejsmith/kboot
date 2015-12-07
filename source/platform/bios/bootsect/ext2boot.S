@@ -72,12 +72,17 @@
 /** Main function. */
 FUNCTION_START(_start)
     /* First things first before we start futzing with the registers: attempt
-     * to figure out whether we're booted from a partition and where it is. The
-     * standard MBR passes the partition table entry structure in DS:SI, we try
-     * to determine whether this looks valid (won't be if we're not on a
-     * partition and booted directly by the BIOS). We get partition LBA into
-     * ECX, begin with this as zero for all the failure cases. */
-    xorl    %ecx, %ecx
+     * to figure out whether we're booted from a partition and where it is, and
+     * store the LBA in ECX. The standard MBR usually passes the partition table
+     * entry structure in DS:SI, which we use where possible. However, partition
+     * information may not always be passed to us (for instance Apple's BIOS
+     * emulation does not provide it), so we also have a LBA baked into the boot
+     * sector which we fall back on if the partition information does not look
+     * valid. If we are not installed to a partition and being booted directly
+     * by the BIOS, the partition information will be invalid and the baked LBA
+     * will be 0. Start off by getting the baked LBA so it will be set for all
+     * the failure cases below. */
+    movl    def_partition_lba, %ecx
 
     /* First check if the address is within a reasonable range. */
     movw    %ds, %ax
@@ -379,7 +384,8 @@ msg_ok:             .asciz "OK\r\n"
 first_half_end:
 
 /* Pad up to the end of the first 512 bytes. */
-. = _start + 0x1fe
+. = _start + 0x1fa
+def_partition_lba:  .long 0
 boot_signature:     .word MBR_SIGNATURE
 
 second_half:

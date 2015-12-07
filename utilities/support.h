@@ -137,7 +137,7 @@ static inline int os_device_from_path(const char *path, char **_dev, char **_roo
 /** Get the partition number of a device.
  * @param fd            File descriptor to device.
  * @param _part         Where to store partition number (set to 0 if device is
- *                      not a partition.
+ *                      not a partition).
  * @return              0 on success, -1 on failure. */
 static inline int os_get_partition_number(int fd, unsigned *_part) {
     #ifdef __linux__
@@ -171,6 +171,51 @@ static inline int os_get_partition_number(int fd, unsigned *_part) {
         return -1;
     #endif
 }
+
+/** Get the partition offset of a device.
+ * @param fd            File descriptor to device.
+ * @param _offset       Where to store byte offset of partition (set to 0 if
+ *                      device is not a partition).
+ * @return              0 on success, -1 on failure. */
+static inline int os_get_partition_offset(int fd, uint64_t *_offset) {
+    #ifdef __linux__
+        struct stat st;
+        char buf[PATH_MAX];
+        FILE *stream;
+        uint64_t offset;
+        int ret;
+
+        if (fstat(fd, &st))
+            return -1;
+
+        snprintf(
+            buf, sizeof(buf), "/sys/dev/block/%u:%u/start",
+            major(st.st_rdev), minor(st.st_rdev));
+
+        stream = fopen(buf, "r");
+        if (!stream) {
+            if (errno == ENOENT) {
+                *_offset = 0;
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+
+        ret = fscanf(stream, "%llu", &offset);
+        fclose(stream);
+        if (ret != 1)
+            return -1;
+
+        /* Linux always counts sector size as 512. */
+        *_offset = offset * 512;
+        return 0;
+    #else
+        errno = ENOTSUP;
+        return -1;
+    #endif
+}
+
 
 /** Get the device containing a partition.
  * @param fd            File descriptor to partition.
