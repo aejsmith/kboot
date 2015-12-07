@@ -47,6 +47,7 @@ static const char *arg_target;
 static int arg_update;
 static const char *arg_vendor_id = "kboot";
 static int arg_verbose;
+static int arg_dry_run;
 
 /** Details of the installation device. */
 static const char *device_path;
@@ -322,7 +323,8 @@ static void copy_boot_loader(void) {
 
     /* Copy the boot loader. */
     snprintf(dest, sizeof(dest), "%s/kboot.bin", arg_dir);
-    copy_target_bin("kboot.bin", dest);
+    if (!arg_dry_run)
+        copy_target_bin("kboot.bin", dest);
 
     /* Determine the boot loader path relative to the root of the installation
      * device for the boot sector. */
@@ -428,9 +430,11 @@ static void install_boot_sector(void) {
 
     verbose("Installing boot sector to '%s' at offset %llu\n", device_path, arg_offset);
 
-    /* Install it. */
-    if (fs_types[i].install(bs, size, path, partition_lba) != 0)
-        error("Error writing to '%s': %s\n", device_path, strerror(errno));
+    if (!arg_dry_run) {
+        /* Install it. */
+        if (fs_types[i].install(bs, size, path, partition_lba) != 0)
+            error("Error writing to '%s': %s\n", device_path, strerror(errno));
+    }
 }
 
 /** Install KBoot for BIOS-based systems.
@@ -466,15 +470,18 @@ static void efi_install(const char *arch) {
     /* Create the installation directory. */
     subdir_name = (arg_fallback) ? "boot" : arg_vendor_id;
     snprintf(path, sizeof(path), "%s/EFI/%s", arg_dir, subdir_name);
-    if (create_dirs(path, 0755))
-        error("Error creating '%s': %s\n", path, strerror(errno));
+    if (!arg_dry_run) {
+        if (create_dirs(path, 0755))
+            error("Error creating '%s': %s\n", path, strerror(errno));
+    }
 
     /* Copy the boot loader over. */
     snprintf(buf, sizeof(buf), "kboot%s.efi", arch);
     snprintf(
         path, sizeof(path), "%s/EFI/%s/%s", arg_dir, subdir_name,
         (arg_fallback) ? buf + 1 : buf);
-    copy_target_bin(buf, path);
+    if (!arg_dry_run)
+        copy_target_bin(buf, path);
 
     if (!arg_fallback && !arg_update) {
         unsigned part;
@@ -492,17 +499,23 @@ static void efi_install(const char *arch) {
             error("Error getting parent device for '%s': %s\n", device_path, strerror(errno));
 
         verbose("Parent device for '%s' is '%s'\n", device_path, parent_path);
-        verbose("Adding boot entry via efibootmgr\n");
 
         /* Create a boot entry. */
+        verbose("Adding boot entry via efibootmgr\n");
         snprintf(path, sizeof(path), "\\EFI\\%s\\%s", subdir_name, buf);
         snprintf(buf, sizeof(buf), "%u", part);
-        ret = execlp(
-            "efibootmgr", "efibootmgr",
-            "-c", "-q", "-d", parent_path, "-p", buf, "-L", arg_label, "-l", path,
-            NULL);
-        if (ret)
-            error("Error executing efibootmgr: %s\n", strerror(errno));
+        if (!arg_dry_run) {
+            ret = execlp(
+                "efibootmgr", "efibootmgr",
+                "-c", "-q", "-d", parent_path, "-p", buf, "-L", arg_label, "-l", path,
+                NULL);
+            if (ret)
+                error("Error executing efibootmgr: %s\n", strerror(errno));
+        } else {
+            verbose(
+                "Would execute: efibootmgr -c -q -d \"%s\" -p \"%s\" -L \"%s\" -l \"%s\"\n",
+                parent_path, buf, arg_label, path);
+        }
     }
 }
 
@@ -607,6 +620,7 @@ enum {
 static const struct option options[] = {
     { "device",    required_argument, NULL,          OPT_DEVICE    },
     { "dir",       required_argument, NULL,          OPT_DIR       },
+    { "dry-run",   no_argument,       &arg_dry_run,  1             },
     { "fallback",  no_argument,       &arg_fallback, 1             },
     { "help",      no_argument,       NULL,          'h'           },
     { "image",     required_argument, NULL,          OPT_IMAGE     },
@@ -683,6 +697,12 @@ int main(int argc, char **argv) {
         error("Options --device and --image require --path\n");
     if (arg_dir && arg_path)
         error("Option --path is invalid with --dir\n");
+
+    /* Dry run implies verbose. */
+    if (arg_dry_run) {
+        arg_verbose = 1;
+        verbose("Dry run, nothing will actually be modified\n");
+    }
 
     /* Try to locate target binary directory. */
     find_target_bin_dir(argv[0]);
