@@ -938,17 +938,17 @@ static bool add_module_dir_cb(const fs_entry_t *entry, void *_loader) {
 
     module = malloc(sizeof(*module));
 
-    ret = fs_open_entry(entry, FILE_TYPE_NONE, FS_OPEN_DECOMPRESS, &module->handle);
+    ret = fs_open_entry(entry, FILE_TYPE_REGULAR, FS_OPEN_DECOMPRESS, &module->handle);
     if (ret != STATUS_SUCCESS) {
-        config_error("Error opening module '%s': %pS", entry->name, ret);
         free(module);
-        loader->success = false;
-        return false;
-    } else if (module->handle->type == FILE_TYPE_DIR) {
-        /* Ignore directories. */
-        fs_close(module->handle);
-        free(module);
-        return true;
+
+        if (ret != STATUS_NOT_FILE) {
+            config_error("Error opening module '%s': %pS", entry->name, ret);
+            loader->success = false;
+            return false;
+        } else {
+            return true;
+        }
     }
 
     module->name = strdup(entry->name);
