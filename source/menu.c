@@ -89,7 +89,7 @@ static void menu_entry_help(ui_entry_t *_entry) {
  * @param env           Environment for the entry.
  * @param name          Name of the entry (NULL for root). */
 static void display_config_menu(environ_t *env, const char *name) {
-    char *title;
+    char *title = NULL;
     ui_window_t *window;
     environ_t *prev;
 
@@ -102,7 +102,7 @@ static void display_config_menu(environ_t *env, const char *name) {
 
     prev = current_environ;
     current_environ = env;
-    window = env->loader->configure(env->loader_private, (name) ? title : "Configure");
+    window = env->loader->configure(env->loader_private, (title) ? title : "Configure");
     current_environ = prev;
 
     ui_display(window, 0);
