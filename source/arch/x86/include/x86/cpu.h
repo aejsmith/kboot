@@ -71,6 +71,9 @@
 
 /** Model Specific Registers. */
 #define X86_MSR_EFER            0xc0000080  /**< Extended Feature Enable register. */
+#define X86_MSR_FS_BASE         0xc0000100  /**< FS segment base register. */
+#define X86_MSR_GS_BASE         0xc0000101  /**< GS segment base register. */
+#define X86_MSR_KERNEL_GS_BASE  0xc0000102  /**< GS base to switch to with SWAPGS. */
 
 /** EFER MSR flags. */
 #define X86_EFER_LME            (1<<8)      /**< Long Mode (IA-32e) Enable. */
