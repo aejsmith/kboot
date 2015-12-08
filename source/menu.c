@@ -48,9 +48,6 @@ typedef struct menu_entry {
     #endif
 } menu_entry_t;
 
-/** List of menu entries. */
-static LIST_DECLARE(menu_entries);
-
 /** Currently executing menu entry. */
 static menu_entry_t *executing_menu_entry;
 
@@ -157,7 +154,7 @@ static ui_entry_type_t menu_entry_type = {
 static void display_text_menu(unsigned timeout) {
     ui_window_t *window = ui_list_create("Boot Menu", false);
 
-    list_foreach(&menu_entries, iter) {
+    list_foreach(&current_environ->menu_entries, iter) {
         menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
         ui_list_insert(window, &entry->entry, entry == selected_menu_entry);
     }
@@ -173,7 +170,7 @@ static bool load_gui_background(void) {
     value_t *value;
 
     gui_background_colour = 0;
-    value = environ_lookup(root_environ, "gui_background");
+    value = environ_lookup(current_environ, "gui_background");
     if (value) {
         if (value->type == VALUE_TYPE_INTEGER) {
             gui_background_colour = value->integer;
@@ -195,7 +192,7 @@ static bool load_gui_selection_image(void) {
     value_t *value;
     status_t ret;
 
-    value = environ_lookup(root_environ, "gui_selection");
+    value = environ_lookup(current_environ, "gui_selection");
     if (!value || value->type != VALUE_TYPE_STRING) {
         dprintf("menu: 'gui_selection' is invalid\n");
         return false;
@@ -216,7 +213,7 @@ static bool load_gui_icons(void) {
     menu_entry_t *entry = NULL, *last;
     uint16_t total_width = 0, x;
 
-    list_foreach(&menu_entries, iter) {
+    list_foreach(&current_environ->menu_entries, iter) {
         value_t *value;
         status_t ret;
 
@@ -244,7 +241,7 @@ static bool load_gui_icons(void) {
 
     /* Calculate the position of each entry's icon */
     x = (current_video_mode->width / 2) - (total_width / 2);
-    list_foreach(&menu_entries, iter) {
+    list_foreach(&current_environ->menu_entries, iter) {
         entry = list_entry(iter, menu_entry_t, header);
 
         entry->icon_x = x;
@@ -258,7 +255,7 @@ static bool load_gui_icons(void) {
 err:
     last = entry;
 
-    list_foreach(&menu_entries, iter) {
+    list_foreach(&current_environ->menu_entries, iter) {
         entry = list_entry(iter, menu_entry_t, header);
 
         if (last == entry)
@@ -272,7 +269,7 @@ err:
 
 /** Free GUI icons. */
 static void free_gui_icons(void) {
-    list_foreach(&menu_entries, iter) {
+    list_foreach(&current_environ->menu_entries, iter) {
         menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
 
         fb_destroy_image(&entry->icon);
@@ -304,7 +301,7 @@ static void draw_gui_menu(void) {
     fb_fill_rect(0, 0, 0, 0, gui_background_colour);
 
     /* Draw the entry icons. */
-    list_foreach(&menu_entries, iter) {
+    list_foreach(&current_environ->menu_entries, iter) {
         menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
 
         fb_draw_image(&entry->icon, entry->icon_x, entry->icon_y, 0, 0, 0, 0);
@@ -325,7 +322,7 @@ static bool display_gui_menu(unsigned timeout) {
     if (current_video_mode->type != VIDEO_MODE_LFB)
         return false;
 
-    value = environ_lookup(root_environ, "gui");
+    value = environ_lookup(current_environ, "gui");
     if (!value || value->type != VALUE_TYPE_BOOLEAN || !value->boolean)
         return false;
 
@@ -366,7 +363,7 @@ static bool display_gui_menu(unsigned timeout) {
 
             switch (key) {
             case CONSOLE_KEY_LEFT:
-                if (selected_menu_entry != list_first(&menu_entries, menu_entry_t, header)) {
+                if (selected_menu_entry != list_first(&current_environ->menu_entries, menu_entry_t, header)) {
                     draw_gui_selection(selected_menu_entry, false);
                     selected_menu_entry = list_prev(selected_menu_entry, header);
                     draw_gui_selection(selected_menu_entry, true);
@@ -374,7 +371,7 @@ static bool display_gui_menu(unsigned timeout) {
 
                 break;
             case CONSOLE_KEY_RIGHT:
-                if (selected_menu_entry != list_last(&menu_entries, menu_entry_t, header)) {
+                if (selected_menu_entry != list_last(&current_environ->menu_entries, menu_entry_t, header)) {
                     draw_gui_selection(selected_menu_entry, false);
                     selected_menu_entry = list_next(selected_menu_entry, header);
                     draw_gui_selection(selected_menu_entry, true);
@@ -419,12 +416,12 @@ static inline bool display_gui_menu(unsigned timeout) { return false; }
 /** Get the default menu entry.
  * @return              Default menu entry. */
 static menu_entry_t *get_default_entry(void) {
-    const value_t *value = environ_lookup(root_environ, "default");
+    const value_t *value = environ_lookup(current_environ, "default");
 
     if (value) {
         size_t i = 0;
 
-        list_foreach(&menu_entries, iter) {
+        list_foreach(&current_environ->menu_entries, iter) {
             menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
 
             if (value->type == VALUE_TYPE_INTEGER) {
@@ -440,7 +437,7 @@ static menu_entry_t *get_default_entry(void) {
     }
 
     /* No default entry found, return the first list entry. */
-    return list_first(&menu_entries, menu_entry_t, header);
+    return list_first(&current_environ->menu_entries, menu_entry_t, header);
 }
 
 /** Check if the user requested the menu to be displayed with a key press.
@@ -468,31 +465,31 @@ environ_t *menu_select(void) {
     bool display;
     unsigned timeout;
 
-    if (list_empty(&menu_entries)) {
+    if (list_empty(&current_environ->menu_entries)) {
         /* Assume if no entries are declared the root environment is bootable.
          * If it is not an error will be raised in loader_main(). We do give
          * the user the option to bring up the configuration menu by pressing
          * escape here. */
-        if (root_environ->loader && root_environ->loader->configure) {
+        if (current_environ->loader && current_environ->loader->configure) {
             if (check_key_press())
-                display_config_menu(root_environ, NULL);
+                display_config_menu(current_environ, NULL);
         }
 
-        return root_environ;
+        return current_environ;
     }
 
     /* Determine the default entry. */
     selected_menu_entry = get_default_entry();
 
     /* Check if the menu was requested to be hidden. */
-    value = environ_lookup(root_environ, "hidden");
+    value = environ_lookup(current_environ, "hidden");
     if (value && value->type == VALUE_TYPE_BOOLEAN && value->boolean) {
         /* Don't set a timeout if the user manually enters the menu. */
         timeout = 0;
         display = check_key_press();
     } else {
         /* Get the timeout. */
-        value = environ_lookup(root_environ, "timeout");
+        value = environ_lookup(current_environ, "timeout");
         timeout = (value && value->type == VALUE_TYPE_INTEGER) ? value->integer : 0;
 
         display = true;
@@ -545,11 +542,6 @@ static bool config_cmd_entry(value_list_t *args) {
         return false;
     }
 
-    if (current_environ != root_environ) {
-        config_error("Nested entries not allowed");
-        return false;
-    }
-
     entry = malloc(sizeof(menu_entry_t));
     entry->entry.type = &menu_entry_type;
     entry->name = args->values[0].string;
@@ -570,7 +562,7 @@ static bool config_cmd_entry(value_list_t *args) {
     config_set_error_handler(prev_handler);
 
     list_init(&entry->header);
-    list_append(&menu_entries, &entry->header);
+    list_append(&current_environ->menu_entries, &entry->header);
     return true;
 }
 

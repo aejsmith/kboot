@@ -24,7 +24,6 @@
 #include <device.h>
 #include <loader.h>
 #include <memory.h>
-#include <menu.h>
 #include <shell.h>
 
 /** Maximum number of pre-boot hooks. */
@@ -49,22 +48,10 @@ void loader_preboot(void) {
 
 /** Main function of the loader. */
 void loader_main(void) {
-    environ_t *env;
-
     config_init();
     memory_init();
     device_init();
 
     /* Load the configuration file. */
     config_load();
-
-    /* Select an environment to boot. */
-    env = menu_select();
-
-    /* And finally boot the OS. */
-    if (env->loader) {
-        environ_boot(env);
-    } else {
-        boot_error("No operating system to boot");
-    }
 }

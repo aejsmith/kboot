@@ -49,6 +49,7 @@ typedef struct environ {
     struct fs_handle *directory;        /**< Current directory. */
     loader_ops_t *loader;               /**< Operating system loader operations. */
     void *loader_private;               /**< Data used by the loader. */
+    list_t menu_entries;                /**< List of menu entries. */
 } environ_t;
 
 /** Structure containing a list of commands. */
@@ -154,6 +155,6 @@ extern void environ_boot(environ_t *env) __noreturn;
 extern command_list_t *config_parse(const char *path, config_read_helper_t helper);
 
 extern void config_init(void);
-extern void config_load(void);
+extern void config_load(void) __noreturn;
 
 #endif /* __CONFIG_H */

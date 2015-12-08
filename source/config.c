@@ -75,6 +75,7 @@
 #include <fs.h>
 #include <loader.h>
 #include <memory.h>
+#include <menu.h>
 #include <shell.h>
 
 /** Structure containing details of a command to run. */
@@ -596,6 +597,7 @@ environ_t *environ_create(environ_t *parent) {
     environ_t *env = malloc(sizeof(*env));
 
     list_init(&env->entries);
+    list_init(&env->menu_entries);
     env->loader = NULL;
     env->loader_private = NULL;
 
@@ -1263,13 +1265,13 @@ static bool config_cmd_exit(value_list_t *args) {
 BUILTIN_COMMAND("exit", "Exit the loader and return to firmware", config_cmd_exit);
 
 /**
- * Initialization functions.
+ * Configuration loading.
  */
 
-/** File input helper for load_config_file().
+/** File input helper config_parse().
  * @param nest          Nesting count (unused).
  * @return              Character read, or EOF on end of file. */
-static int load_read_helper(unsigned nest) {
+static int file_read_helper(unsigned nest) {
     while (true) {
         if (current_file_offset < current_file_size) {
             char ch = current_file[current_file_offset++];
@@ -1285,25 +1287,34 @@ static int load_read_helper(unsigned nest) {
     }
 }
 
-/** Attempt to load a configuration file.
+/** Parse a configuration file.
  * @param path          Path of the file.
- * @return              Whether the specified path existed. */
-static bool load_config_file(const char *path) {
+ * @param must_exist    Whether the file must exist. If this is true and the
+ *                      file does not exist, an error will be raised, otherwise
+ *                      it will silently return.
+ * @return              Parsed command list, or NULL on failure. */
+static command_list_t *parse_config_file(const char *path, bool must_exist) {
     fs_handle_t *handle __cleanup_close = NULL;
     command_list_t *list;
     status_t ret;
 
     ret = fs_open(path, NULL, FILE_TYPE_REGULAR, 0, &handle);
-    if (ret != STATUS_SUCCESS)
-        return false;
+    if (ret != STATUS_SUCCESS) {
+        if (must_exist || ret != STATUS_NOT_FOUND)
+            config_error("Error opening '%s': %pS", path, ret);
 
-    dprintf("config: loading configuration file '%s'\n", path);
+        return NULL;
+    }
+
+    dprintf("config: reading configuration file '%s'\n", path);
 
     current_file = malloc(handle->size + 1);
 
     ret = fs_read(handle, current_file, handle->size, 0);
-    if (ret != STATUS_SUCCESS)
-        boot_error("Error reading '%s': %pS", path, ret);
+    if (ret != STATUS_SUCCESS) {
+        config_error("Error reading '%s': %pS", path, ret);
+        return NULL;
+    }
 
     current_file[handle->size] = 0;
 
@@ -1312,20 +1323,91 @@ static bool load_config_file(const char *path) {
     current_file_size = strlen(current_file);
     current_file_offset = 0;
 
-    /* Should always succeed here, as config_error() will not return on error. */
-    list = config_parse(path, load_read_helper);
-    assert(list);
+    list = config_parse(path, file_read_helper);
 
-    if (!command_list_exec(list, root_environ)) {
-        /* If commands throw an error they should call config_error(), but
-         * safeguard in case they don't. FIXME: Can fail if this code is used
-         * for include. */
-        config_error("Command list execution failed");
+    free(current_file);
+    return list;
+}
+
+/**
+ * Attempt to load a configuration file.
+ *
+ * Attempts to replace load a new configuration file and execute its contents,
+ * i.e. display the menu and/or load an OS. This function will return if the
+ * specified file did not exist, or a config_error() occurred that did not
+ * result in boot_error() being called.
+ *
+ * @param path          Path of the file.
+ * @param must_exist    Whether the file must exist.
+ */
+static void load_config_file(const char *path, bool must_exist) {
+    command_list_t *list;
+    environ_t *env;
+    bool ret;
+
+    list = parse_config_file(path, must_exist);
+    if (!list)
+        return;
+
+    current_environ = environ_create(root_environ);
+
+    ret = command_list_exec(list, current_environ);
+    command_list_destroy(list);
+    if (ret) {
+        /* Select an environment to boot. */
+        env = menu_select();
+
+        /* And finally boot the OS. */
+        if (env->loader) {
+            environ_boot(env);
+        } else {
+            boot_error("No operating system to boot");
+        }
+    }
+}
+
+/** Replace the current configuration with a new one.
+ * @param args          Argument list.
+ * @return              Whether successful. */
+static bool config_cmd_config(value_list_t *args) {
+    if (args->count != 1 || args->values[0].type != VALUE_TYPE_STRING) {
+        config_error("Invalid arguments");
+        return false;
     }
 
+    /* If this returns, an error occurred. */
+    load_config_file(args->values[0].string, true);
+    return false;
+}
+
+BUILTIN_COMMAND("config", "Replace the current configuration with a new one", config_cmd_config);
+
+/** Include another configuration file into the current one.
+ * @param args          Argument list.
+ * @return              Whether successful. */
+static bool config_cmd_include(value_list_t *args) {
+    command_list_t *list;
+    bool ret;
+
+    if (args->count != 1 || args->values[0].type != VALUE_TYPE_STRING) {
+        config_error("Invalid arguments");
+        return false;
+    }
+
+    list = parse_config_file(args->values[0].string, true);
+    if (!list)
+        return false;
+
+    ret = command_list_exec(list, current_environ);
     command_list_destroy(list);
     return true;
 }
+
+BUILTIN_COMMAND("include", "Include another configuration file into the current one", config_cmd_include);
+
+/**
+ * Initialization functions.
+ */
 
 /** Set up the configuration system. */
 void config_init(void) {
@@ -1340,21 +1422,16 @@ void config_init(void) {
 /** Load the configuration. */
 void config_load(void) {
     if (config_file_override) {
-        if (!load_config_file(config_file_override))
-            boot_error("Specified configuration file does not exist");
+        load_config_file(config_file_override, false);
     } else {
         /* Try the boot directory. */
-        if (boot_directory) {
-            if (load_config_file("kboot.cfg"))
-                return;
-        }
+        if (boot_directory)
+            load_config_file("kboot.cfg", false);
 
         /* Try the various default paths. */
-        for (size_t i = 0; i < array_size(config_file_paths); i++) {
-            if (load_config_file(config_file_paths[i]))
-                return;
-        }
-
-        boot_error("Could not find configuration file");
+        for (size_t i = 0; i < array_size(config_file_paths); i++)
+            load_config_file(config_file_paths[i], false);
     }
+
+    boot_error("Could not find configuration file");
 }
