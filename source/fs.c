@@ -356,7 +356,7 @@ static bool config_cmd_cd(value_list_t *args) {
         return false;
     }
 
-    swap(current_environ->directory, handle);
+    environ_set_directory(current_environ, handle);
     return true;
 }
 

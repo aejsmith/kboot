@@ -149,6 +149,8 @@ extern void environ_destroy(environ_t *env);
 extern value_t *environ_lookup(environ_t *env, const char *name);
 extern value_t *environ_insert(environ_t *env, const char *name, const value_t *value);
 extern void environ_remove(environ_t *env, const char *name);
+extern void environ_set_device(environ_t *env, struct device *device);
+extern void environ_set_directory(environ_t *env, struct fs_handle *handle);
 extern void environ_set_loader(environ_t *env, struct loader_ops *ops, void *private);
 extern void environ_boot(environ_t *env) __noreturn;
 

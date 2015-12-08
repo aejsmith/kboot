@@ -701,6 +701,54 @@ void environ_remove(environ_t *env, const char *name) {
     }
 }
 
+/** Set the current device in an environment.
+ * @param env           Environment to set in.
+ * @param device        Device to set. */
+void environ_set_device(environ_t *env, device_t *device) {
+    value_t value;
+
+    env->device = device;
+
+    value.type = VALUE_TYPE_STRING;
+    value.string = (char *)device->name;
+    environ_insert(env, "device", &value);
+
+    if (device->mount) {
+        if (device->mount->label) {
+            value.string = device->mount->label;
+            environ_insert(env, "device_label", &value);
+        }
+
+        if (device->mount->uuid) {
+            value.string = device->mount->uuid;
+            environ_insert(env, "device_uuid", &value);
+        }
+    } else {
+        environ_remove(env, "device_label");
+        environ_remove(env, "device_uuid");
+    }
+
+    /* Change directory to the root (NULL indicates root to the FS code). */
+    if (env->directory)
+        fs_close(env->directory);
+
+    env->directory = NULL;
+}
+
+/** Set the current directory in an environment.
+ * @param env           Environment to set in.
+ * @param handle        Handle to directory to set (must be on current device). */
+void environ_set_directory(environ_t *env, fs_handle_t *handle) {
+    assert(handle->type == FILE_TYPE_DIR);
+    assert(handle->mount->device == env->device);
+
+    if (env->directory)
+        fs_close(env->directory);
+
+    fs_retain(handle);
+    env->directory = handle;
+}
+
 /**
  * Set the loader for an environment.
  *
@@ -1342,8 +1390,11 @@ static command_list_t *parse_config_file(const char *path, bool must_exist) {
  */
 static void load_config_file(const char *path, bool must_exist) {
     command_list_t *list;
+    char *dir __cleanup_free = NULL;
+    fs_handle_t *handle __cleanup_close = NULL;
+    status_t ret;
     environ_t *env;
-    bool ret;
+    bool ok;
 
     list = parse_config_file(path, must_exist);
     if (!list)
@@ -1351,9 +1402,22 @@ static void load_config_file(const char *path, bool must_exist) {
 
     current_environ = environ_create(root_environ);
 
-    ret = command_list_exec(list, current_environ);
+    /* Set the device and directory in the environment to those containing the
+     * configuration file. */
+    dir = dirname(path);
+    ret = fs_open(dir, NULL, FILE_TYPE_DIR, 0, &handle);
+    if (ret != STATUS_SUCCESS) {
+        /* Really this should succeed since we managed to open the file... */
+        config_error("Error opening '%s': %pS", dir, ret);
+        return;
+    }
+
+    environ_set_device(current_environ, handle->mount->device);
+    environ_set_directory(current_environ, handle);
+
+    ok = command_list_exec(list, current_environ);
     command_list_destroy(list);
-    if (ret) {
+    if (ok) {
         /* Select an environment to boot. */
         env = menu_select();
 

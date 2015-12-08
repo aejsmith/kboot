@@ -118,40 +118,6 @@ void device_register(device_t *device) {
     list_append(&device_list, &device->header);
 }
 
-/** Set the device in an environment.
- * @param env           Environment to set in.
- * @param device        Device to set. */
-static void set_environ_device(environ_t *env, device_t *device) {
-    value_t value;
-
-    env->device = device;
-
-    value.type = VALUE_TYPE_STRING;
-    value.string = (char *)device->name;
-    environ_insert(env, "device", &value);
-
-    if (device->mount) {
-        if (device->mount->label) {
-            value.string = device->mount->label;
-            environ_insert(env, "device_label", &value);
-        }
-
-        if (device->mount->uuid) {
-            value.string = device->mount->uuid;
-            environ_insert(env, "device_uuid", &value);
-        }
-    } else {
-        environ_remove(env, "device_label");
-        environ_remove(env, "device_uuid");
-    }
-
-    /* Change directory to the root (NULL indicates root to the FS code). */
-    if (env->directory)
-        fs_close(env->directory);
-
-    env->directory = NULL;
-}
-
 /** Set the current device.
  * @param args          Argument list.
  * @return              Whether successful. */
@@ -169,7 +135,7 @@ static bool config_cmd_device(value_list_t *args) {
         return false;
     }
 
-    set_environ_device(current_environ, device);
+    environ_set_device(current_environ, device);
     return true;
 }
 
@@ -258,7 +224,7 @@ void device_init(void) {
     /* Set the device in the environment. */
     if (boot_device) {
         dprintf("device: boot device is %s\n", boot_device->name);
-        set_environ_device(root_environ, boot_device);
+        environ_set_device(root_environ, boot_device);
 
         if (boot_device->mount && boot_directory) {
             fs_handle_t *handle __cleanup_close = NULL;
