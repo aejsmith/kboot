@@ -163,6 +163,7 @@ FUNCTION_START(_start)
     movb    drive_id, %dl
     movl    partition_lba, %ebx
     xorl    %ecx, %ecx
+    movw    $path, %si
     ljmp    $LOADER_LOAD_SEGMENT, $0
 
 .Lbad_fs:
@@ -379,7 +380,6 @@ FUNCTION_END(error)
 msg_loading:        .asciz "Loading... "
 msg_read_failed:    .asciz "Failed"
 msg_not_ext2:       .asciz "Bad FS"
-msg_ok:             .asciz "OK\r\n"
 
 first_half_end:
 
@@ -650,6 +650,7 @@ msg_too_large:      .asciz "Too large"
 msg_bad_extent:     .asciz "Bad extent"
 msg_not_found:      .asciz "Not found"
 msg_bad_type:       .asciz "Bad type"
+msg_ok:             .asciz "OK\r\n"
 
 second_half_end:
 

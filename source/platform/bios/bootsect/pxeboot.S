@@ -33,6 +33,7 @@ FUNCTION_START(_start)
     movb    $0x7f, %dl
     xorl    %ebx, %ebx
     xorl    %ecx, %ecx
+    xorw    %si, %si
 
     /* Jump to the loader entry point. */
     ljmp    $LOADER_LOAD_SEGMENT, $0

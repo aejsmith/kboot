@@ -231,6 +231,9 @@ void bios_disk_init(void) {
         dprintf(
             "bios: boot device ID is 0x%x, partition offset is 0x%" PRIx64 "\n",
             bios_boot_device, bios_boot_partition);
+
+        if (bios_boot_path[0])
+            boot_directory = dirname(bios_boot_path);
     }
 
     /* Use the Get Drive Parameters call to get the number of drives. */

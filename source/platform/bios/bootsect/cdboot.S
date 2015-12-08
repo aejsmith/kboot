@@ -96,6 +96,7 @@ PRIVATE_FUNCTION_START(boot)
     /* Execute the bootloader. */
     xorl    %ebx, %ebx
     xorl    %ecx, %ecx
+    xorw    %si, %si
     ljmp    $LOADER_LOAD_SEGMENT, $0
 
 .Linfo_invalid:

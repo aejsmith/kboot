@@ -30,22 +30,37 @@
 /* Ensure that this code is linked in first. */
 .section .init.text, "ax", @progbits
 
-/** Real-mode startup function. */
+/** Real-mode startup function.
+ * @param %dl           Boot device ID.
+ * @param %ebx          Boot partition LBA (lower 32 bits).
+ * @param %ecx          Boot partition LBA (upper 32 bits).
+ * @param %si           Pointer (16-bit linear) to boot loader binary path. */
 FUNCTION_START(loader_entry)
 .code16
     /* Don't want interrupts. */
     cli
 
     /* Set up data segments. */
-    movw    $LOADER_LOAD_SEGMENT, %ax
+    xorw    %ax, %ax
     movw    %ax, %ds
+    movw    $LOADER_LOAD_SEGMENT, %ax
     movw    %ax, %es
 
     /* Save the boot device/partition offset LBA. */
-    addr32 movb %dl, (bios_boot_device - LOADER_LOAD_ADDR)
-    addr32 movl %ebx, (bios_boot_partition - LOADER_LOAD_ADDR)
-    addr32 movl %ecx, (bios_boot_partition - LOADER_LOAD_ADDR) + 4
+    addr32 movb %dl, bios_boot_device
+    addr32 movl %ebx, bios_boot_partition
+    addr32 movl %ecx, bios_boot_partition + 4
 
+    /* Copy the boot path into our buffer so we don't overwrite it. */
+    testw   %si, %si
+    jz      2f
+    movl    $(bios_boot_path - LOADER_LOAD_ADDR), %edi
+1:  lodsb
+    stosb
+    testb   %al, %al
+    jz      2f
+    jmp     1b
+2:
     /* Make sure we're displaying page 0, and move the cursor to (0,0) */
     movb    $0x02, %ah
     xorb    %bh, %bh
@@ -56,13 +71,13 @@ FUNCTION_START(loader_entry)
     call    enable_a20
 
     /* Now we need to switch to protected mode. */
-1:  addr32 lgdt (loader_gdtp - LOADER_LOAD_ADDR)
+    addr32 lgdt loader_gdtp
     movl    %cr0, %eax
     orl     $(1<<0), %eax
     movl    %eax, %cr0
-    data32 ljmp $SEGMENT_CS, $2f
+    data32 ljmp $SEGMENT_CS, $3f
 .code32
-2:
+3:
     mov     $SEGMENT_DS, %ax
     mov     %ax, %ds
     mov     %ax, %es
@@ -299,6 +314,10 @@ SYMBOL(bios_boot_device)
 /** Boot partition offset LBA. */
 SYMBOL(bios_boot_partition)
     .quad   0
+
+/** Boot loader path. */
+SYMBOL(bios_boot_path)
+    .fill   32
 
 .section .data, "aw", @progbits
 

@@ -66,6 +66,7 @@ typedef struct specification_packet {
 
 extern uint8_t bios_boot_device;
 extern uint64_t bios_boot_partition;
+extern char bios_boot_path[];
 
 extern uint8_t bios_disk_get_id(disk_device_t *disk);
 
