@@ -1336,23 +1336,12 @@ static int file_read_helper(unsigned nest) {
 }
 
 /** Parse a configuration file.
+ * @param handle        Handle to file to parse.
  * @param path          Path of the file.
- * @param must_exist    Whether the file must exist. If this is true and the
- *                      file does not exist, an error will be raised, otherwise
- *                      it will silently return.
  * @return              Parsed command list, or NULL on failure. */
-static command_list_t *parse_config_file(const char *path, bool must_exist) {
-    fs_handle_t *handle __cleanup_close = NULL;
+static command_list_t *parse_config_file(fs_handle_t *handle, const char *path) {
     command_list_t *list;
     status_t ret;
-
-    ret = fs_open(path, NULL, FILE_TYPE_REGULAR, 0, &handle);
-    if (ret != STATUS_SUCCESS) {
-        if (must_exist || ret != STATUS_NOT_FOUND)
-            config_error("Error opening '%s': %pS", path, ret);
-
-        return NULL;
-    }
 
     dprintf("config: reading configuration file '%s'\n", path);
 
@@ -1390,13 +1379,22 @@ static command_list_t *parse_config_file(const char *path, bool must_exist) {
  */
 static void load_config_file(const char *path, bool must_exist) {
     command_list_t *list;
-    char *dir __cleanup_free = NULL;
-    fs_handle_t *handle __cleanup_close = NULL;
+    fs_handle_t *handle;
     status_t ret;
+    char *dir __cleanup_free = NULL;
     environ_t *env;
     bool ok;
 
-    list = parse_config_file(path, must_exist);
+    ret = fs_open(path, NULL, FILE_TYPE_REGULAR, 0, &handle);
+    if (ret != STATUS_SUCCESS) {
+        if (must_exist || ret != STATUS_NOT_FOUND)
+            config_error("Error opening '%s': %pS", path, ret);
+
+        return;
+    }
+
+    list = parse_config_file(handle, path);
+    fs_close(handle);
     if (!list)
         return;
 
@@ -1414,6 +1412,7 @@ static void load_config_file(const char *path, bool must_exist) {
 
     environ_set_device(current_environ, handle->mount->device);
     environ_set_directory(current_environ, handle);
+    fs_close(handle);
 
     ok = command_list_exec(list, current_environ);
     command_list_destroy(list);
@@ -1446,25 +1445,115 @@ static bool config_cmd_config(value_list_t *args) {
 
 BUILTIN_COMMAND("config", "Replace the current configuration with a new one", config_cmd_config);
 
+/** Include a single configuration file.
+ * @param handle        Handle to file.
+ * @param path          Path to file.
+ * @return              Whether successful. */
+static bool include_config_file(fs_handle_t *handle, const char *path) {
+    command_list_t *list;
+    bool ok;
+
+    list = parse_config_file(handle, path);
+    if (!list)
+        return false;
+
+    ok = command_list_exec(list, current_environ);
+    command_list_destroy(list);
+    return ok;
+}
+
+/** Directory iteration state for config_cmd_include(). */
+typedef struct include_state {
+    char **entries;                 /**< Array of entry names. */
+    size_t count;                   /**< Number of entries. */
+} include_state_t;
+
+/** Clean up the include state structure. */
+static void include_state_cleanup(include_state_t *state) {
+    for (size_t i = 0; i < state->count; i++)
+        free(state->entries[i]);
+
+    free(state->entries);
+}
+
+/** Iteration callback for config_cmd_include(). */
+static bool include_iterate_cb(const fs_entry_t *entry, void *_state) {
+    include_state_t *state = _state;
+
+    state->entries = realloc(state->entries, (state->count + 1) * sizeof(state->entries[0]));
+    state->entries[state->count] = strdup(entry->name);
+    state->count++;
+
+    return true;
+}
+
+/** Sort comparison function for the include entries list. */
+static int include_sort_compare(const void *a, const void *b) {
+    const char *const *first = a;
+    const char *const *second = b;
+
+    return strcmp(*first, *second);
+}
+
 /** Include another configuration file into the current one.
  * @param args          Argument list.
  * @return              Whether successful. */
 static bool config_cmd_include(value_list_t *args) {
-    command_list_t *list;
-    bool ret;
+    fs_handle_t *handle __cleanup_close = NULL;
+    status_t ret;
 
     if (args->count != 1 || args->values[0].type != VALUE_TYPE_STRING) {
         config_error("Invalid arguments");
         return false;
     }
 
-    list = parse_config_file(args->values[0].string, true);
-    if (!list)
+    ret = fs_open(args->values[0].string, NULL, FILE_TYPE_NONE, 0, &handle);
+    if (ret != STATUS_SUCCESS) {
+        config_error("Error opening '%s': %pS", args->values[0].string, ret);
         return false;
+    }
 
-    ret = command_list_exec(list, current_environ);
-    command_list_destroy(list);
-    return true;
+    if (handle->type == FILE_TYPE_DIR) {
+        include_state_t state __cleanup(include_state_cleanup) = { NULL, 0 };
+
+        /* We're including a directory of config files. We want the order in
+         * which we include files to be alphabetically sorted (so there is a
+         * guaranteed order in which files are included), however the FS does
+         * not guarantee sorting. Therefore we must sort manually here. We get
+         * a list of all entry names, sort it, then open them manually. */
+        ret = fs_iterate(handle, include_iterate_cb, &state);
+        if (ret != STATUS_SUCCESS) {
+            config_error("Error iterating '%s': %pS", args->values[0].string, ret);
+            return false;
+        }
+
+        qsort(state.entries, state.count, sizeof(state.entries[0]), include_sort_compare);
+
+        for (size_t i = 0; i < state.count; i++) {
+            char *path __cleanup_free;
+            fs_handle_t *child __cleanup_close = NULL;
+
+            path = malloc(strlen(args->values[0].string) + strlen(state.entries[i]) + 2);
+            sprintf(path, "%s/%s", args->values[0].string, state.entries[i]);
+
+            ret = fs_open(path, NULL, FILE_TYPE_REGULAR, 0, &child);
+            if (ret != STATUS_SUCCESS) {
+                if (ret != STATUS_NOT_FILE) {
+                    config_error("Error opening '%s': %pS", path, ret);
+                    return false;
+                } else {
+                    continue;
+                }
+            }
+
+            if (!include_config_file(child, path))
+                return false;
+        }
+
+        return true;
+    } else {
+        return include_config_file(handle, args->values[0].string);
+    }
 }
 
 BUILTIN_COMMAND("include", "Include another configuration file into the current one", config_cmd_include);
