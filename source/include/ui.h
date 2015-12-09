@@ -110,7 +110,7 @@ extern void ui_entry_destroy(ui_entry_t *entry);
 
 extern void ui_print_action(uint16_t key, const char *name);
 
-extern void ui_display(ui_window_t *window, unsigned timeout);
+extern bool ui_display(ui_window_t *window, unsigned timeout);
 
 extern ui_window_t *ui_list_create(const char *title, bool exitable);
 extern void ui_list_insert(ui_window_t *window, ui_entry_t *entry, bool selected);

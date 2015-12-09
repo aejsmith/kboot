@@ -311,15 +311,17 @@ static void render_window(ui_window_t *window, unsigned timeout) {
 /** Display a user interface.
  * @param window        Window to display.
  * @param timeout       Seconds to wait before closing the window if no input.
- *                      If 0, the window will not time out. */
-void ui_display(ui_window_t *window, unsigned timeout) {
+ *                      If 0, the window will not time out.
+ * @return              True if the UI was manually exited, false if timed out. */
+bool ui_display(ui_window_t *window, unsigned timeout) {
     mstime_t msecs;
+    bool ret;
 
     if (!ui_nest_count) {
         draw_region_t region;
 
         if (!console_has_caps(current_console, CONSOLE_CAP_UI | CONSOLE_CAP_IN))
-            return;
+            return false;
 
         /* First entry into UI, begin UI mode on the console. */
         console_begin_ui(current_console);
@@ -347,8 +349,10 @@ void ui_display(ui_window_t *window, unsigned timeout) {
 
                 if (round_up(msecs, 1000) / 1000 < timeout) {
                     timeout--;
-                    if (!timeout)
+                    if (!timeout) {
+                        ret = false;
                         break;
+                    }
 
                     render_help(window, timeout, true);
                 }
@@ -357,8 +361,10 @@ void ui_display(ui_window_t *window, unsigned timeout) {
             uint16_t key = console_getc(current_console);
             input_result_t result = window->type->input(window, key);
 
-            if (result == INPUT_CLOSE)
+            if (result == INPUT_CLOSE) {
+                ret = true;
                 break;
+            }
 
             switch (result) {
             case INPUT_RENDER_HELP:
@@ -380,6 +386,8 @@ void ui_display(ui_window_t *window, unsigned timeout) {
 
     if (!ui_nest_count)
         console_end_ui(current_console);
+
+    return ret;
 }
 
 /** Destroy a list window.

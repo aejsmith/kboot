@@ -135,6 +135,17 @@ static const char *reserved_environ_names[] = {
     "device_uuid",
 };
 
+/** Environment variable names to not inherit. */
+static const char *no_inherit_environ_names[] = {
+    "default",
+    "gui",
+    "gui_background",
+    "gui_icon",
+    "gui_selection",
+    "hidden",
+    "timeout",
+};
+
 /** Overridden configuration file path. */
 char *config_file_override;
 
@@ -607,8 +618,20 @@ environ_t *environ_create(environ_t *parent) {
 
         list_foreach(&parent->entries, iter) {
             const environ_entry_t *entry = list_entry(iter, environ_entry_t, header);
-            environ_entry_t *clone = malloc(sizeof(*clone));
+            environ_entry_t *clone;
 
+            /* Check if this is a name we should not inherit. */
+            for (size_t i = 0; i < array_size(no_inherit_environ_names); i++) {
+                if (!strcmp(entry->name, no_inherit_environ_names[i])) {
+                    entry = NULL;
+                    break;
+                }
+            }
+
+            if (!entry)
+                continue;
+
+            clone = malloc(sizeof(*clone));
             list_init(&clone->header);
             clone->name = strdup(entry->name);
             value_copy(&entry->value, &clone->value);
@@ -1395,7 +1418,7 @@ static void load_config_file(const char *path, bool must_exist) {
     if (!list)
         return;
 
-    current_environ = environ_create(root_environ);
+    env = environ_create(root_environ);
 
     /* Set the device and directory in the environment to those containing the
      * configuration file. */
@@ -1407,15 +1430,15 @@ static void load_config_file(const char *path, bool must_exist) {
         return;
     }
 
-    environ_set_device(current_environ, handle->mount->device);
-    environ_set_directory(current_environ, handle);
+    environ_set_device(env, handle->mount->device);
+    environ_set_directory(env, handle);
     fs_close(handle);
 
-    ok = command_list_exec(list, current_environ);
+    ok = command_list_exec(list, env);
     command_list_destroy(list);
     if (ok) {
         /* Select an environment to boot. */
-        env = menu_select();
+        env = menu_select(env);
 
         /* And finally boot the OS. */
         if (env->loader) {
@@ -1423,6 +1446,8 @@ static void load_config_file(const char *path, bool must_exist) {
         } else {
             boot_error("No operating system to boot");
         }
+    } else {
+        environ_destroy(env);
     }
 }
 
