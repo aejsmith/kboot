@@ -354,12 +354,11 @@ void ui_display(ui_window_t *window, unsigned timeout) {
         } else {
             uint16_t key = console_getc(current_console);
             input_result_t result = window->type->input(window, key);
-            bool done = false;
+
+            if (result == INPUT_CLOSE)
+                break;
 
             switch (result) {
-            case INPUT_CLOSE:
-                done = true;
-                break;
             case INPUT_RENDER_HELP:
                 /* Doing a partial update, should preserve the draw region and the
                  * cursor state within it. */
@@ -372,9 +371,6 @@ void ui_display(ui_window_t *window, unsigned timeout) {
                 /* INPUT_RENDER_ENTRY is handled by ui_list_input(). */
                 break;
             }
-
-            if (done)
-                break;
         }
     }
 
