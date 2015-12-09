@@ -555,6 +555,7 @@ static bool command_exec(command_list_entry_t *entry) {
  * @return              Whether all of the commands completed successfully. */
 bool command_list_exec(command_list_t *list, environ_t *env) {
     environ_t *prev;
+    bool ret = false;
 
     /* Set the environment as the current. */
     prev = current_environ;
@@ -568,21 +569,17 @@ bool command_list_exec(command_list_t *list, environ_t *env) {
          * other commands from being run if we have a loader set. */
         if (current_environ->loader) {
             config_error("Loader command must be final command");
-            return false;
+            goto out;
         }
 
-        if (!command_exec(entry)) {
-            current_environ = prev;
-            return false;
-        }
+        if (!command_exec(entry))
+            goto out;
     }
 
-    /* Restore the previous environment if not NULL. This has the effect of
-     * keeping current_environ set to the root environment when we finish
-     * executing the top level configuration. */
-    if (prev)
-        current_environ = prev;
+    ret = true;
 
+out:
+    current_environ = prev;
     return true;
 }
 
