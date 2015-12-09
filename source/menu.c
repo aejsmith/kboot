@@ -79,7 +79,7 @@ static void menu_entry_help(ui_entry_t *_entry) {
 
     ui_print_action('\n', "Select");
 
-    if (!entry->error && entry->env->loader->configure)
+    if (!entry->error && entry->env->loader && entry->env->loader->configure)
         ui_print_action(CONSOLE_KEY_F1, "Configure");
 
     ui_print_action(CONSOLE_KEY_F2, "Shell");
@@ -124,7 +124,7 @@ static input_result_t menu_entry_input(ui_entry_t *_entry, uint16_t key) {
         selected_menu_entry = entry;
         return INPUT_CLOSE;
     case CONSOLE_KEY_F1:
-        if (!entry->error && entry->env->loader->configure) {
+        if (!entry->error && entry->env->loader && entry->env->loader->configure) {
             display_config_menu(entry->env, entry->name);
             return INPUT_RENDER_WINDOW;
         } else {
