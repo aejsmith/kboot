@@ -21,7 +21,7 @@ from jinja2 import Environment, FileSystemLoader
 
 def main():
     if len(sys.argv) != 3:
-        print "Usage: %s <docs dir> <output dir>" % (sys.argv[0])
+        print("Usage: %s <docs dir> <output dir>" % (sys.argv[0]))
         return 1
 
     # Get a list of documents and parse their content.
