@@ -170,14 +170,12 @@ void __noreturn boot_error(const char *fmt, ...) {
 
     #ifdef CONFIG_TARGET_HAS_UI
         if (console_has_caps(current_console, CONSOLE_CAP_UI)) {
-            ui_window_t *window;
+            ui_window_t window;
 
-            window = malloc(sizeof(*window));
-            window->type = &boot_error_window_type;
-            window->title = "Boot Error";
+            window.type = &boot_error_window_type;
+            window.title = "Boot Error";
 
-            ui_display(window, 0);
-            ui_window_destroy(window);
+            ui_display(&window, 0);
 
             /* Jump into the shell (only get here if it is enabled). */
             shell_main();

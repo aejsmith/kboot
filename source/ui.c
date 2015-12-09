@@ -131,8 +131,12 @@ static unsigned ui_nest_count;
 void ui_window_destroy(ui_window_t *window) {
     if (window->type->destroy)
         window->type->destroy(window);
+}
 
-    free(window);
+/** Generic helper to free an entry.
+ * @param entry         Entry to free. */
+static void ui_entry_generic_destroy(ui_entry_t *entry) {
+    free(entry);
 }
 
 /** Destroy a list entry.
@@ -140,8 +144,6 @@ void ui_window_destroy(ui_window_t *window) {
 void ui_entry_destroy(ui_entry_t *entry) {
     if (entry->type->destroy)
         entry->type->destroy(entry);
-
-    free(entry);
 }
 
 /** Return whether an entry is selectable.
@@ -389,6 +391,7 @@ static void ui_list_destroy(ui_window_t *window) {
         ui_entry_destroy(list->entries[i]);
 
     free(list->entries);
+    free(list);
 }
 
 /** Render an entry from a list.
@@ -618,6 +621,7 @@ static void ui_label_render(ui_entry_t *entry) {
 
 /** Label entry type. */
 static ui_entry_type_t ui_label_entry_type = {
+    .destroy = ui_entry_generic_destroy,
     .render = ui_label_render,
 };
 
@@ -682,6 +686,7 @@ static input_result_t ui_link_input(ui_entry_t *entry, uint16_t key) {
 
 /** Link entry type. */
 static ui_entry_type_t ui_link_entry_type = {
+    .destroy = ui_entry_generic_destroy,
     .render = ui_link_render,
     .help = ui_link_help,
     .input = ui_link_input,
@@ -750,6 +755,7 @@ static input_result_t ui_checkbox_input(ui_entry_t *entry, uint16_t key) {
 
 /** Checkbox entry type. */
 static ui_entry_type_t ui_checkbox_entry_type = {
+    .destroy = ui_entry_generic_destroy,
     .render = ui_checkbox_render,
     .help = ui_checkbox_help,
     .input = ui_checkbox_input,
@@ -919,6 +925,7 @@ static input_result_t ui_textbox_input(ui_entry_t *entry, uint16_t key) {
 
 /** Textbox entry type. */
 static ui_entry_type_t ui_textbox_entry_type = {
+    .destroy = ui_entry_generic_destroy,
     .render = ui_textbox_render,
     .help = ui_textbox_help,
     .input = ui_textbox_input,
@@ -946,6 +953,7 @@ static void ui_chooser_destroy(ui_entry_t *entry) {
     ui_chooser_t *chooser = (ui_chooser_t *)entry;
 
     ui_window_destroy(chooser->list);
+    free(chooser);
 }
 
 /** Render a chooser.
@@ -1063,6 +1071,7 @@ static void ui_choice_destroy(ui_entry_t *entry) {
 
     value_destroy(&choice->value);
     free(choice->label);
+    free(choice);
 }
 
 /** Render a choice.
@@ -1151,6 +1160,7 @@ static void ui_textview_destroy(ui_window_t *window) {
     ui_textview_t *textview = (ui_textview_t *)window;
 
     free(textview->lines);
+    free(textview);
 }
 
 /** Print a line from a text view.
