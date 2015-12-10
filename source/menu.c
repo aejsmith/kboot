@@ -491,7 +491,10 @@ static bool display_gui_menu(unsigned timeout) {
         } else {
             uint16_t key = console_getc(current_console);
 
-            if (key == CONSOLE_KEY_LEFT) {
+            if (key == '\e') {
+                if (current_menu->prev)
+                    break;
+            } else if (key == CONSOLE_KEY_LEFT) {
                 menu_entry_t *first = list_first(&current_menu->env->menu_entries, menu_entry_t, header);
 
                 if (current_menu->selected != first) {
