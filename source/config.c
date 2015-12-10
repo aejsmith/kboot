@@ -1440,25 +1440,25 @@ static void load_config_file(const char *path, bool must_exist) {
     }
 
     list = parse_config_file(handle, path);
-    fs_close(handle);
-    if (!list)
-        return;
-
-    env = environ_create(root_environ);
-
-    /* Set the device and directory in the environment to those containing the
-     * configuration file. */
-    dir = dirname(path);
-    ret = fs_open(dir, NULL, FILE_TYPE_DIR, 0, &handle);
-    if (ret != STATUS_SUCCESS) {
-        /* Really this should succeed since we managed to open the file... */
-        config_error("Error opening '%s': %pS", dir, ret);
+    if (!list) {
+        fs_close(handle);
         return;
     }
 
+    env = environ_create(root_environ);
+
+    /* Set the device in the environment to the one containing the config. */
     environ_set_device(env, handle->mount->device);
-    environ_set_directory(env, handle);
+
     fs_close(handle);
+
+    /* Set the directory. Note this may fail on certain filesystems, e.g. PXE. */
+    dir = dirname(path);
+    ret = fs_open(dir, NULL, FILE_TYPE_DIR, 0, &handle);
+    if (ret == STATUS_SUCCESS) {
+        environ_set_directory(env, handle);
+        fs_close(handle);
+    }
 
     ok = command_list_exec(list, env);
     command_list_destroy(list);
