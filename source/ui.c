@@ -115,9 +115,18 @@ typedef struct ui_textview {
     size_t offset;                      /**< First line displayed. */
 } ui_textview_t;
 
-/** Properties of the UI console. */
-static size_t ui_console_width;
-static size_t ui_console_height;
+/**
+ * Maximum UI size.
+ *
+ * We have a maximum size for the UI because on high resolution framebuffer
+ * consoles the UI is too spread out if we take up the entire screen. This is
+ * the size you get on a 1024x768 framebuffer.
+ */
+#define UI_MAX_WIDTH        128
+#define UI_MAX_HEIGHT       48
+
+/** Region that the UI will be drawn in. */
+static draw_region_t ui_region;
 
 /** UI nesting count (nested calls to ui_display()). */
 static unsigned ui_nest_count;
@@ -127,8 +136,8 @@ static const char *ui_title_stack[8];
 static unsigned ui_title_count;
 
 /** Dimensions of the content area. */
-#define CONTENT_WIDTH               (ui_console_width - 4)
-#define CONTENT_HEIGHT              (ui_console_height - 6)
+#define CONTENT_WIDTH       ((size_t)ui_region.width - 4)
+#define CONTENT_HEIGHT      ((size_t)ui_region.height - 6)
 
 /** Destroy a window.
  * @param window        Window to destroy. */
@@ -229,9 +238,9 @@ void ui_pop_title(void) {
 static inline void set_title_region(void) {
     draw_region_t region;
 
-    region.x = 2;
-    region.y = 1;
-    region.width = ui_console_width - 4;
+    region.x = ui_region.x + 2;
+    region.y = ui_region.y + 1;
+    region.width = ui_region.width - 4;
     region.height = 1;
     region.scrollable = false;
 
@@ -243,9 +252,9 @@ static inline void set_title_region(void) {
 static inline void set_help_region(void) {
     draw_region_t region;
 
-    region.x = 2;
-    region.y = ui_console_height - 2;
-    region.width = ui_console_width - 4;
+    region.x = ui_region.x + 2;
+    region.y = ui_region.y + ui_region.height - 2;
+    region.width = ui_region.width - 4;
     region.height = 1;
     region.scrollable = false;
 
@@ -257,9 +266,9 @@ static inline void set_help_region(void) {
 static inline void set_error_region(void) {
     draw_region_t region;
 
-    region.x = 2;
-    region.y = ui_console_height - 4;
-    region.width = ui_console_width - 4;
+    region.x = ui_region.x + 2;
+    region.y = ui_region.y + ui_region.height - 4;
+    region.width = ui_region.width - 4;
     region.height = 1;
     region.scrollable = false;
 
@@ -271,8 +280,8 @@ static inline void set_error_region(void) {
 static inline void set_content_region(void) {
     draw_region_t region;
 
-    region.x = 2;
-    region.y = 3;
+    region.x = ui_region.x + 2;
+    region.y = ui_region.y + 3;
     region.width = CONTENT_WIDTH;
     region.height = CONTENT_HEIGHT;
     region.scrollable = false;
@@ -357,18 +366,24 @@ bool ui_display(ui_window_t *window, unsigned timeout) {
     bool ret;
 
     if (!ui_nest_count) {
-        draw_region_t region;
-
         if (!console_has_caps(current_console, CONSOLE_CAP_UI | CONSOLE_CAP_IN))
             return false;
 
         /* First entry into UI, begin UI mode on the console. */
         console_begin_ui(current_console);
 
-        /* Save console dimensions for convenient access. */
-        console_get_region(current_console, &region);
-        ui_console_width = region.width;
-        ui_console_height = region.height;
+        /* Determine the region we will draw the UI in. */
+        console_get_region(current_console, &ui_region);
+
+        if (ui_region.width > UI_MAX_WIDTH) {
+            ui_region.x += (ui_region.width - UI_MAX_WIDTH) / 2;
+            ui_region.width = UI_MAX_WIDTH;
+        }
+
+        if (ui_region.height > UI_MAX_HEIGHT) {
+            ui_region.y += (ui_region.height - UI_MAX_HEIGHT) / 2;
+            ui_region.height = UI_MAX_HEIGHT;
+        }
     }
 
     ui_nest_count++;
