@@ -1305,6 +1305,17 @@ static bool config_cmd_unset(value_list_t *args) {
 BUILTIN_COMMAND("unset", "Unset an environment variable", config_cmd_unset);
 
 /** Reboot the system.
+ * @param private       Unused. */
+static __noreturn void reboot_loader_load(void *private) {
+    target_reboot();
+}
+
+/** Reboot loader operations. */
+static loader_ops_t reboot_loader_ops = {
+    .load = reboot_loader_load,
+};
+
+/** Reboot the system.
  * @param args          Argument list.
  * @return              Whether successful. */
 static bool config_cmd_reboot(value_list_t *args) {
@@ -1313,10 +1324,23 @@ static bool config_cmd_reboot(value_list_t *args) {
         return false;
     }
 
-    target_reboot();
+    environ_set_loader(current_environ, &reboot_loader_ops, NULL);
+    return true;
 }
 
 BUILTIN_COMMAND("reboot", "Reboot the system", config_cmd_reboot);
+
+/** Exit the loader.
+ * @param private       Unused. */
+static __noreturn void exit_loader_load(void *private) {
+    target_exit();
+}
+
+/** Exit loader operations. */
+static loader_ops_t exit_loader_ops = {
+    .load = exit_loader_load,
+};
+
 
 /** Exit the loader and return to firmware.
  * @param args          Argument list.
@@ -1327,7 +1351,8 @@ static bool config_cmd_exit(value_list_t *args) {
         return false;
     }
 
-    target_exit();
+    environ_set_loader(current_environ, &exit_loader_ops, NULL);
+    return true;
 }
 
 BUILTIN_COMMAND("exit", "Exit the loader and return to firmware", config_cmd_exit);
