@@ -522,6 +522,7 @@ static bool check_key_press(void) {
  * @param env           Environment containing the menu to display.
  * @return              Environment to boot. */
 environ_t *menu_select(environ_t *env) {
+    environ_t *prev_env;
     menu_state_t state;
     const value_t *value;
     bool display;
@@ -532,8 +533,8 @@ environ_t *menu_select(environ_t *env) {
 
         /* Assume if no entries are declared the root environment is bootable.
          * If it is not an error will be raised by the caller. We do give the
-         * user the option to bring up the configuration menu by pressing
-         * escape here. */
+         * user the option to bring up the configuration menu by pressing F8
+         * here. */
         if (env->loader && env->loader->configure) {
             if (check_key_press())
                 display_config_menu(env, NULL);
@@ -541,6 +542,11 @@ environ_t *menu_select(environ_t *env) {
 
         return env;
     }
+
+    /* Must set current environment so that, for example, relative theme paths
+     * will be looked up correctly. */
+    prev_env = current_environ;
+    current_environ = env;
 
     state.prev = current_menu;
     current_menu = &state;
@@ -569,6 +575,7 @@ environ_t *menu_select(environ_t *env) {
     }
 
     current_menu = state.prev;
+    current_environ = prev_env;
 
     if (!current_menu) {
         assert(state.action != MENU_ACTION_NONE);

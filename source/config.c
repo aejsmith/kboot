@@ -1341,7 +1341,6 @@ static loader_ops_t exit_loader_ops = {
     .load = exit_loader_load,
 };
 
-
 /** Exit the loader and return to firmware.
  * @param args          Argument list.
  * @return              Whether successful. */
