@@ -468,7 +468,7 @@ void fb_draw_image(
             fb_put_pixel(
                 dest_x + x,
                 dest_y + y,
-                image->data[(y * image->width) + x]);
+                image->data[((y + src_y) * image->width) + x + src_x]);
         }
     }
 }

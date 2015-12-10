@@ -5,22 +5,36 @@ Overview
 --------
 
 KBoot provides a basic graphical boot menu. An icon is assigned to each menu
-entry, and the icons will be laid out horizontally on screen. A selection image
-is drawn below the currently selected menu entry.
+entry, and the icons will be laid out horizontally on screen. A selection colour
+or image is drawn over the currently selected menu entry.
 
 In addition to left/right to navigate the entries, the menu supports the same
 inputs as the text menu:
 
 * *F1* - Show configuration options for the currently selected entry.
-* *F2* - Enter the shell.
-* *F10* - Display the debug log.
+* *F9* - Display the debug log.
+* *F10* - Enter the shell.
 
 Usage
 -----
 
-To use the GUI menu you must provide an icon for each menu entry, and an image
-to use to highlight the current selection. Currently, only uncompressed TGA
-images are supported, with their origin set as top left.
+To enable the GUI menu, set the `gui` environment variable to true at the top
+level scope of the menu. There are 3 customisable elements to the GUI menu, all
+controlled by environment variables:
+
+* `gui_icon` - Specifies the path to an icon for an entry, set inside the entry
+  scope.
+* `gui_selection` - Specifies how to highlight a selected entry, set at the top
+  level scope of the menu. This can either be set to an integer, in which case
+  it is interpreted as an RGB colour that will be filled in the area behind a
+  selected entry's icon, or to a string, in which case it is a path to an image
+  that is drawn behind the icon (centred on it). Defaults to `0xffffff`.
+* `gui_background` - Specifies the background of the menu, set at the top level
+  scope of the menu. Can either be an integer RGB colour, or a path to an image
+  that is drawn centred on the screen (no scaling is done). Any area not covered
+  by the image is filled in black. Defaults to `0x000000`.
+
+At minimum each entry must have `gui_icon` set.
 
 If you are using a platform that does not set a framebuffer video mode by
 default (e.g. BIOS), you will need to add a "video" command into your
@@ -28,7 +42,7 @@ configuration file to set one.
 
 Any errors in the GUI configuration will result in falling back on the text
 menu. If this happens an error will be logged to the debug log to state what
-was wrong, which can be viewed by pressing F10.
+was wrong, which can be viewed by pressing F9.
 
 The example below illustrates configuration of the GUI menu:
 

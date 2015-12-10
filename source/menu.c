@@ -52,6 +52,23 @@ typedef struct menu_entry {
     #endif
 } menu_entry_t;
 
+#ifdef CONFIG_GUI_MENU
+
+/** Structure defining a GUI menu resource (colour or image). */
+typedef struct menu_resource {
+    enum {
+        MENU_RESOURCE_COLOUR,
+        MENU_RESOURCE_IMAGE,
+    } type;
+
+    union {
+        pixel_t colour;
+        fb_image_t image;
+    };
+} menu_resource_t;
+
+#endif /* CONFIG_GUI_MENU */
+
 /** Structure containing menu state. */
 typedef struct menu_state {
     struct menu_state *prev;            /**< Previous menu. */
@@ -66,8 +83,8 @@ typedef struct menu_state {
     } action;
 
     #ifdef CONFIG_GUI_MENU
-        pixel_t background_colour;      /**< Background colour for the GUI menu. */
-        fb_image_t selection_image;     /**< Selection image. */
+        menu_resource_t background;     /**< Background colour/image. */
+        menu_resource_t selection;      /**< Selection colour/image. */
     #endif
 } menu_state_t;
 
@@ -229,44 +246,35 @@ static void display_text_menu(unsigned timeout) {
 
 #ifdef CONFIG_GUI_MENU
 
-/** Load the background for the GUI.
+/** Load a resource for the GUI.
+ * @param resource      Resource to load.
+ * @param name          Name of the environment variable.
+ * @param def           Default colour value.
  * @return              Whether successfully completed. */
-static bool load_gui_background(void) {
+static bool load_gui_resource(menu_resource_t *resource, const char *name, pixel_t def) {
     value_t *value;
 
-    current_menu->background_colour = 0;
-    value = environ_lookup(current_menu->env, "gui_background");
+    resource->type = MENU_RESOURCE_COLOUR;
+    resource->colour = def;
+
+    value = environ_lookup(current_menu->env, name);
     if (value) {
         if (value->type == VALUE_TYPE_INTEGER) {
-            current_menu->background_colour = value->integer;
+            resource->colour = value->integer;
         } else if (value->type == VALUE_TYPE_STRING) {
-            dprintf("menu: background image not implemented yet\n");
-            return false;
+            status_t ret;
+
+            resource->type = MENU_RESOURCE_IMAGE;
+
+            ret = fb_load_image(value->string, &resource->image);
+            if (ret != STATUS_SUCCESS) {
+                dprintf("menu: error loading '%s': %pS\n", value->string, ret);
+                return false;
+            }
         } else {
-            dprintf("menu: 'gui_background' is invalid\n");
+            dprintf("menu: '%s' is invalid\n", name);
             return false;
         }
-    }
-
-    return true;
-}
-
-/** Load the selection image for the GUI.
- * @return              Whether successfully completed. */
-static bool load_gui_selection_image(void) {
-    value_t *value;
-    status_t ret;
-
-    value = environ_lookup(current_menu->env, "gui_selection");
-    if (!value || value->type != VALUE_TYPE_STRING) {
-        dprintf("menu: 'gui_selection' is invalid\n");
-        return false;
-    }
-
-    ret = fb_load_image(value->string, &current_menu->selection_image);
-    if (ret != STATUS_SUCCESS) {
-        dprintf("menu: error loading '%s': %pS\n", value->string, ret);
-        return false;
     }
 
     return true;
@@ -341,39 +349,95 @@ static void free_gui_icons(void) {
     }
 }
 
-/** Draw/clear the selection below an entry.
- * @param entry         Entry to draw below.
- * @param selected      Whether the entry is now selected. */
-static void draw_gui_selection(menu_entry_t *entry, bool selected) {
-    uint16_t x, y;
+/** Draw part of the background.
+ * @param x             X position of area to draw.
+ * @param y             Y position of area to draw.
+ * @param width         Width of area to draw.
+ * @param height        Height of area to draw. */
+static void draw_gui_background(uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+    if (current_menu->background.type == MENU_RESOURCE_IMAGE) {
+        fb_image_t *image = &current_menu->background.image;
 
-    x = entry->icon_x + (entry->icon.width / 2) - (current_menu->selection_image.width / 2);
-    y = entry->icon_y + entry->icon.height;
+        /* Image may be bigger or smaller than screen, we want to centre it. */
+        int16_t bg_left = (current_video_mode->width - image->width) / 2;
+        int16_t bg_right = bg_left + image->width;
+        int16_t bg_top = (current_video_mode->height - image->height) / 2;
+        int16_t bg_bottom = bg_top + image->height;
 
-    if (selected) {
-        fb_draw_image(&current_menu->selection_image, x, y, 0, 0, 0, 0);
+        /* Fill extra space with black. TODO: Could be optimised to do only the
+         * areas not covered by the image. */
+        if (bg_left > x || bg_right < x + width || bg_top > y || bg_bottom < y + height)
+            fb_fill_rect(x, y, width, height, 0);
+
+        fb_draw_image(
+            &current_menu->background.image,
+            (bg_left > x) ? bg_left : x,
+            (bg_top > y) ? bg_top : y,
+            max(x - bg_left, 0),
+            max(y - bg_top, 0),
+            min(width, bg_right - bg_left),
+            min(height, bg_bottom - bg_top));
     } else {
-        // FIXME: Will need to handle background image.
-        fb_fill_rect(
-            x, y, current_menu->selection_image.width, current_menu->selection_image.height,
-            current_menu->background_colour);
+        fb_fill_rect(x, y, width, height, current_menu->background.colour);
     }
+}
+
+/** Draw an entry.
+ * @param entry         Entry to draw below.
+ * @param selected      Whether the entry is selected.
+ * @param draw_bg       Whether it is necessary to draw the background. */
+static void draw_gui_entry(menu_entry_t *entry, bool selected, bool draw_bg) {
+    uint16_t selection_x, selection_y, selection_width, selection_height;
+
+    /* Determine where the selection should be drawn. */
+    if (current_menu->selection.type == MENU_RESOURCE_IMAGE) {
+        selection_width = current_menu->selection.image.width;
+        selection_height = current_menu->selection.image.height;
+        selection_x = entry->icon_x + (entry->icon.width / 2) - (selection_width / 2);
+        selection_y = (current_video_mode->height / 2) - (selection_height / 2);
+    } else {
+        selection_width = entry->icon.width;
+        selection_height = entry->icon.height;
+        selection_x = entry->icon_x;
+        selection_y = entry->icon_y;
+    }
+
+    /* Draw the background. */
+    if (draw_bg) {
+        /* Must fill the area including both the selection and the entry icon. */
+        draw_gui_background(
+            min(entry->icon_x, selection_x),
+            min(entry->icon_y, selection_y),
+            max(entry->icon.width, selection_width),
+            max(entry->icon.height, selection_height));
+    }
+
+    /* Draw the selection image. */
+    if (selected) {
+        if (current_menu->selection.type == MENU_RESOURCE_IMAGE) {
+            fb_draw_image(&current_menu->selection.image, selection_x, selection_y, 0, 0, 0, 0);
+        } else {
+            fb_fill_rect(
+                selection_x, selection_y, selection_width, selection_height,
+                current_menu->selection.colour);
+        }
+    }
+
+    /* Draw the icon. */
+    fb_draw_image(&entry->icon, entry->icon_x, entry->icon_y, 0, 0, 0, 0);
 }
 
 /** Draw the GUI menu. */
 static void draw_gui_menu(void) {
-    /* Fill to the background colour. */
-    fb_fill_rect(0, 0, 0, 0, current_menu->background_colour);
+    /* Draw the background. */
+    draw_gui_background(0, 0, current_video_mode->width, current_video_mode->height);
 
-    /* Draw the entry icons. */
+    /* Draw the entries. */
     list_foreach(&current_menu->env->menu_entries, iter) {
         menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
 
-        fb_draw_image(&entry->icon, entry->icon_x, entry->icon_y, 0, 0, 0, 0);
+        draw_gui_entry(entry, entry == current_menu->selected, false);
     }
-
-    /* Mark the current selection. */
-    draw_gui_selection(current_menu->selected, true);
 }
 
 /** Display the GUI menu.
@@ -392,12 +456,12 @@ static bool display_gui_menu(unsigned timeout) {
         return false;
 
     /* Get the background. */
-    if (!load_gui_background())
+    if (!load_gui_resource(&current_menu->background, "gui_background", 0))
         return false;
 
     /* Get the selection image. */
-    if (!load_gui_selection_image())
-        return false;
+    if (!load_gui_resource(&current_menu->selection, "gui_selection", 0xffffff))
+        goto out_free_background;
 
     /* Load entry icons and calculate positioning information. */
     if (!load_gui_icons())
@@ -431,17 +495,17 @@ static bool display_gui_menu(unsigned timeout) {
                 menu_entry_t *first = list_first(&current_menu->env->menu_entries, menu_entry_t, header);
 
                 if (current_menu->selected != first) {
-                    draw_gui_selection(current_menu->selected, false);
+                    draw_gui_entry(current_menu->selected, false, true);
                     current_menu->selected = list_prev(current_menu->selected, header);
-                    draw_gui_selection(current_menu->selected, true);
+                    draw_gui_entry(current_menu->selected, true, true);
                 }
             } else if (key == CONSOLE_KEY_RIGHT) {
                 menu_entry_t *last = list_last(&current_menu->env->menu_entries, menu_entry_t, header);
 
                 if (current_menu->selected != last) {
-                    draw_gui_selection(current_menu->selected, false);
+                    draw_gui_entry(current_menu->selected, false, true);
                     current_menu->selected = list_next(current_menu->selected, header);
-                    draw_gui_selection(current_menu->selected, true);
+                    draw_gui_entry(current_menu->selected, true, true);
                 }
             } else {
                 /* Reuse the text menu input code. */
@@ -462,7 +526,12 @@ static bool display_gui_menu(unsigned timeout) {
     free_gui_icons();
 
 out_free_selection:
-    fb_destroy_image(&current_menu->selection_image);
+    if (current_menu->selection.type == MENU_RESOURCE_IMAGE)
+        fb_destroy_image(&current_menu->selection.image);
+
+out_free_background:
+    if (current_menu->background.type == MENU_RESOURCE_IMAGE)
+        fb_destroy_image(&current_menu->background.image);
 
     return ret;
 }
