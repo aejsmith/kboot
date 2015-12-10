@@ -101,13 +101,13 @@ __noreturn void shell_main(void) {
     if (!console_has_caps(current_console, CONSOLE_CAP_OUT | CONSOLE_CAP_IN))
         target_reboot();
 
-    console_set_cursor_visible(current_console, true);
-
     current_environ = environ_create(root_environ);
     prev_handler = config_set_error_handler(shell_error_handler);
 
     while (true) {
         command_list_t *list;
+
+        console_set_cursor_visible(current_console, true);
 
         console_set_colour(current_console, COLOUR_WHITE, COLOUR_DEFAULT);
         printf("KBoot> ");
