@@ -654,6 +654,7 @@ environ_t *menu_select(environ_t *env) {
 
         /* Perform the action. */
         if (state.action == MENU_ACTION_SHELL) {
+            environ_destroy(env);
             shell_main();
         } else {
             dprintf("menu: booting menu entry '%s'\n", state.selected->name);
@@ -671,6 +672,19 @@ environ_t *menu_select(environ_t *env) {
         }
 
         return NULL;
+    }
+}
+
+/** Clean up menu entries from an environment.
+ * @param env           Environment to clean up. */
+void menu_cleanup(environ_t *env) {
+    list_foreach_safe(&env->menu_entries, iter) {
+        menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
+
+        environ_destroy(entry->env);
+        free(entry->error);
+        free(entry->name);
+        free(entry);
     }
 }
 

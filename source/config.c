@@ -648,6 +648,8 @@ environ_t *environ_create(environ_t *parent) {
 /** Destroy an environment.
  * @param env           Environment to destroy. */
 void environ_destroy(environ_t *env) {
+    menu_cleanup(env);
+
     list_foreach_safe(&env->entries, iter) {
         environ_entry_t *entry = list_entry(iter, environ_entry_t, header);
 
@@ -1426,7 +1428,7 @@ static void load_config_file(const char *path, bool must_exist) {
     fs_handle_t *handle;
     status_t ret;
     char *dir __cleanup_free = NULL;
-    environ_t *env;
+    environ_t *env, *target;
     bool ok;
 
     ret = fs_open(path, NULL, FILE_TYPE_REGULAR, 0, &handle);
@@ -1462,12 +1464,13 @@ static void load_config_file(const char *path, bool must_exist) {
     command_list_destroy(list);
     if (ok) {
         /* Select an environment to boot. */
-        env = menu_select(env);
+        target = menu_select(env);
 
         /* And finally boot the OS. */
-        if (env->loader) {
-            environ_boot(env);
+        if (target->loader) {
+            environ_boot(target);
         } else {
+            environ_destroy(env);
             boot_error("No operating system to boot");
         }
     } else {
