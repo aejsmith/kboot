@@ -94,6 +94,8 @@ static menu_state_t *current_menu;
 /** Currently executing menu entry (used in config command for error handling). */
 static menu_entry_t *executing_menu_entry;
 
+static void do_menu(menu_state_t *state, const char *title);
+
 /** Render a menu entry.
  * @param _entry        Entry to render. */
 static void menu_entry_render(ui_entry_t *_entry) {
@@ -135,28 +137,24 @@ static void menu_entry_help(ui_entry_t *_entry) {
  * @param env           Environment for the entry.
  * @param name          Name of the entry (NULL for root). */
 static void display_config_menu(environ_t *env, const char *name) {
-    char *title = NULL;
     ui_window_t *window;
     environ_t *prev;
 
-    /* Determine the window title. */
-    if (name) {
-        size_t len = strlen(name) + 13;
-        title = malloc(len);
-        snprintf(title, len, "Configure '%s'", name);
-    }
+    if (name)
+        ui_push_title(name);
 
     prev = current_environ;
     current_environ = env;
 
-    window = env->loader->configure(env->loader_private, (title) ? title : "Configure");
+    window = env->loader->configure(env->loader_private, "Configure");
 
     current_environ = prev;
 
     ui_display(window, 0);
     ui_window_destroy(window);
 
-    free(title);
+    if (name)
+        ui_pop_title();
 }
 
 /** Select an entry.
@@ -165,7 +163,9 @@ static void display_config_menu(environ_t *env, const char *name) {
 static input_result_t select_entry(menu_entry_t *entry) {
     if (!entry->env->loader && !list_empty(&entry->env->menu_entries)) {
         /* This entry is a sub-menu, display it. */
-        menu_select(entry->env);
+        menu_state_t state;
+        state.env = entry->env;
+        do_menu(&state, entry->name);
         return (current_menu->action != MENU_ACTION_NONE) ? INPUT_CLOSE : INPUT_RENDER_WINDOW;
     } else {
         current_menu->action = MENU_ACTION_BOOT;
@@ -201,8 +201,18 @@ static input_result_t menu_entry_input(ui_entry_t *_entry, uint16_t key) {
             list_foreach(&entry->env->menu_entries, iter) {
                 menu_entry_t *other = list_entry(iter, menu_entry_t, header);
 
-                if (i++ == function)
-                    return select_entry(other);
+                if (i++ == function) {
+                    input_result_t result;
+
+                    /* Push the title of the parent entry in so the title bar
+                     * reflects the fact that the new menu is a child of it.
+                     * Without this we would only get the title of the child
+                     * menu. */
+                    ui_push_title(entry->name);
+                    result = select_entry(other);
+                    ui_pop_title();
+                    return result;
+                }
             }
         }
 
@@ -226,10 +236,11 @@ static ui_entry_type_t menu_entry_type = {
 };
 
 /** Display the text menu.
+ * @param title         Title for the menu.
  * @param timeout       Timeout for the menu. */
-static void display_text_menu(unsigned timeout) {
+static void display_text_menu(const char *title, unsigned timeout) {
     /* Window should be exitable if we are not the top level menu. */
-    ui_window_t *window = ui_list_create("Boot Menu", current_menu->prev);
+    ui_window_t *window = ui_list_create(title, current_menu->prev);
 
     list_foreach(&current_menu->env->menu_entries, iter) {
         menu_entry_t *entry = list_entry(iter, menu_entry_t, header);
@@ -441,9 +452,10 @@ static void draw_gui_menu(void) {
 }
 
 /** Display the GUI menu.
+ * @param title         Title for the menu.
  * @param timeout       Timeout for the menu.
  * @return              Whether the GUI menu can be displayed. */
-static bool display_gui_menu(unsigned timeout) {
+static bool display_gui_menu(const char *title, unsigned timeout) {
     value_t *value;
     mstime_t msecs;
     bool ret = false;
@@ -466,6 +478,10 @@ static bool display_gui_menu(unsigned timeout) {
     /* Load entry icons and calculate positioning information. */
     if (!load_gui_icons())
         goto out_free_selection;
+
+    /* Make this visible in the title on any text UI windows we display for
+     * consistency with the text menu. */
+    ui_push_title(title);
 
     ret = true;
     draw_gui_menu();
@@ -525,6 +541,8 @@ static bool display_gui_menu(unsigned timeout) {
 
     /* Clear the framebuffer. */
     fb_fill_rect(0, 0, 0, 0, 0);
+
+    ui_pop_title();
 
     free_gui_icons();
 
@@ -590,15 +608,62 @@ static bool check_key_press(void) {
     return false;
 }
 
+/** Display the menu.
+ * @param state         State for the menu (env must be set).
+ * @param title         Title for the menu. */
+static void do_menu(menu_state_t *state, const char *title) {
+    environ_t *prev_env;
+    const value_t *value;
+    bool display;
+    unsigned timeout;
+
+    /* Must set current environment so that, for example, relative theme paths
+     * will be looked up correctly. */
+    prev_env = current_environ;
+    current_environ = state->env;
+
+    state->prev = current_menu;
+    current_menu = state;
+
+    state->action = MENU_ACTION_NONE;
+    state->selected = get_default_entry();
+
+    /* Check if the menu was requested to be hidden. */
+    value = environ_lookup(state->env, "hidden");
+    if (value && value->type == VALUE_TYPE_BOOLEAN && value->boolean) {
+        /* Don't set a timeout if the user manually enters the menu. */
+        timeout = 0;
+        display = check_key_press();
+    } else {
+        /* Get the timeout. */
+        value = environ_lookup(state->env, "timeout");
+        timeout = (value && value->type == VALUE_TYPE_INTEGER) ? value->integer : 0;
+
+        display = true;
+    }
+
+    if (display) {
+        if (!display_gui_menu(title, timeout))
+            display_text_menu(title, timeout);
+    } else {
+        state->action = MENU_ACTION_BOOT;
+    }
+
+    current_menu = state->prev;
+    current_environ = prev_env;
+
+    /* Propagate action back to the previous menu. */
+    if (state->action != MENU_ACTION_NONE) {
+        current_menu->action = state->action;
+        current_menu->selected = state->selected;
+    }
+}
+
 /** Select the environment to boot, possibly displaying the menu.
  * @param env           Environment containing the menu to display.
  * @return              Environment to boot. */
 environ_t *menu_select(environ_t *env) {
-    environ_t *prev_env;
     menu_state_t state;
-    const value_t *value;
-    bool display;
-    unsigned timeout;
 
     if (list_empty(&env->menu_entries)) {
         assert(!current_menu);
@@ -615,63 +680,22 @@ environ_t *menu_select(environ_t *env) {
         return env;
     }
 
-    /* Must set current environment so that, for example, relative theme paths
-     * will be looked up correctly. */
-    prev_env = current_environ;
-    current_environ = env;
-
-    state.prev = current_menu;
-    current_menu = &state;
-
     state.env = env;
-    state.action = MENU_ACTION_NONE;
-    state.selected = get_default_entry();
+    do_menu(&state, "Boot Menu");
 
-    /* Check if the menu was requested to be hidden. */
-    value = environ_lookup(env, "hidden");
-    if (value && value->type == VALUE_TYPE_BOOLEAN && value->boolean) {
-        /* Don't set a timeout if the user manually enters the menu. */
-        timeout = 0;
-        display = check_key_press();
+    assert(state.action != MENU_ACTION_NONE);
+
+    /* Perform the action. */
+    if (state.action == MENU_ACTION_SHELL) {
+        environ_destroy(env);
+        shell_main();
     } else {
-        /* Get the timeout. */
-        value = environ_lookup(env, "timeout");
-        timeout = (value && value->type == VALUE_TYPE_INTEGER) ? value->integer : 0;
+        dprintf("menu: booting menu entry '%s'\n", state.selected->name);
 
-        display = true;
-    }
+        if (state.selected->error)
+            boot_error("%s", state.selected->error);
 
-    if (display) {
-        if (!display_gui_menu(timeout))
-            display_text_menu(timeout);
-    }
-
-    current_menu = state.prev;
-    current_environ = prev_env;
-
-    if (!current_menu) {
-        assert(state.action != MENU_ACTION_NONE);
-
-        /* Perform the action. */
-        if (state.action == MENU_ACTION_SHELL) {
-            environ_destroy(env);
-            shell_main();
-        } else {
-            dprintf("menu: booting menu entry '%s'\n", state.selected->name);
-
-            if (state.selected->error)
-                boot_error("%s", state.selected->error);
-
-            return state.selected->env;
-        }
-    } else {
-        /* Propagate action back to the previous menu. */
-        if (state.action != MENU_ACTION_NONE) {
-            current_menu->action = state.action;
-            current_menu->selected = state.selected;
-        }
-
-        return NULL;
+        return state.selected->env;
     }
 }
 

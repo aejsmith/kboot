@@ -122,6 +122,10 @@ static size_t ui_console_height;
 /** UI nesting count (nested calls to ui_display()). */
 static unsigned ui_nest_count;
 
+/** UI title stack (see ui_push_title()). */
+static const char *ui_title_stack[8];
+static unsigned ui_title_count;
+
 /** Dimensions of the content area. */
 #define CONTENT_WIDTH               (ui_console_width - 4)
 #define CONTENT_HEIGHT              (ui_console_height - 6)
@@ -191,6 +195,34 @@ void ui_print_action(uint16_t key, const char *name) {
     }
 
     printf(" = %s  ", name);
+}
+
+/**
+ * Push a title onto the title stack.
+ *
+ * In the UI, the title bar displays the history of how the current window was
+ * reached. In a couple of cases we want to include extra things into this list,
+ * for example if we go to a nested menu that is accessible through the F* keys
+ * from the main menu. If we just tracked the windows are being shown, this
+ * would result in "Boot Menu > Submenu Name". What we want is "Boot Menu >
+ * Entry Name > Submenu Name". This function allows the entry name to be pushed
+ * in.
+ *
+ * Every call to this function should be matched by a ui_pop_title() to remove
+ * the pushed name.
+ *
+ * @param title         Title to push (must not be freed while on stack).
+ */
+void ui_push_title(const char *title) {
+    if (ui_title_count == array_size(ui_title_stack))
+        internal_error("Too many nested menus");
+
+    ui_title_stack[ui_title_count++] = title;
+}
+
+/** Pop a title from the title stack. */
+void ui_pop_title(void) {
+    ui_title_count--;
 }
 
 /** Set the draw region to the title region. */
@@ -298,7 +330,14 @@ static void render_window(ui_window_t *window, unsigned timeout) {
 
     /* Draw the title. */
     set_title_region();
-    printf("%s", window->title);
+
+    /* Print the last 3 titles on the stack. */
+    for (unsigned i = (ui_title_count > 3) ? ui_title_count - 3 : 0; i < ui_title_count; i++) {
+        printf("%s", ui_title_stack[i]);
+
+        if (i != ui_title_count - 1)
+            printf(" > ");
+    }
 
     /* Draw the help text. */
     render_help(window, timeout, false);
@@ -333,6 +372,7 @@ bool ui_display(ui_window_t *window, unsigned timeout) {
     }
 
     ui_nest_count++;
+    ui_push_title(window->title);
 
     render_window(window, timeout);
 
@@ -382,6 +422,7 @@ bool ui_display(ui_window_t *window, unsigned timeout) {
         }
     }
 
+    ui_pop_title();
     ui_nest_count--;
 
     if (!ui_nest_count)
@@ -461,9 +502,6 @@ static void ui_list_help(ui_window_t *window) {
         if (selected->type->help)
             selected->type->help(selected);
     }
-
-    if (list->exitable)
-        ui_print_action('\e', "Back");
 }
 
 /** Handle input on a list window.
