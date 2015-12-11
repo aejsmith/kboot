@@ -494,6 +494,10 @@ static void ui_list_render(ui_window_t *window) {
     ui_list_t *list = (ui_list_t *)window;
     size_t end;
 
+    /* Set offset if currently selected entry is off-screen. */
+    if (list->selected < list->offset || list->selected - list->offset >= CONTENT_HEIGHT)
+        list->offset = (list->selected - CONTENT_HEIGHT) + 1;
+
     /* Calculate the range of entries to display. */
     end = min(list->offset + CONTENT_HEIGHT, list->count);
 
@@ -663,10 +667,7 @@ void ui_list_insert(ui_window_t *window, ui_entry_t *entry, bool selected) {
      * the first thing added is a section header). */
     if (selected || (!list->selected && !ui_entry_selectable(list->entries[0]))) {
         assert(ui_entry_selectable(entry));
-
         list->selected = pos;
-        if (pos >= CONTENT_HEIGHT)
-            list->offset = (pos - CONTENT_HEIGHT) + 1;
     }
 }
 
