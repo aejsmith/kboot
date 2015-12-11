@@ -26,9 +26,6 @@
 #include <efi/services.h>
 #include <efi/video.h>
 
-#include <lib/charset.h>
-#include <lib/string.h>
-
 #include <console.h>
 #include <device.h>
 #include <loader.h>
@@ -44,33 +41,6 @@ efi_loaded_image_t *efi_loaded_image;
 efi_system_table_t *efi_system_table;
 efi_runtime_services_t *efi_runtime_services;
 efi_boot_services_t *efi_boot_services;
-
-/** Find the boot directory. */
-static void find_boot_directory(void) {
-    efi_device_path_file_t *efi_path = (efi_device_path_file_t *)efi_loaded_image->file_path;
-    size_t len;
-    uint8_t *path __cleanup_free = NULL;
-
-    if (efi_path->header.type != EFI_DEVICE_PATH_TYPE_MEDIA ||
-        efi_path->header.subtype != EFI_DEVICE_PATH_MEDIA_SUBTYPE_FILE)
-    {
-        dprintf("efi: image path is not a file path, cannot determine boot directory\n");
-        return;
-    }
-
-    len = (efi_path->header.length - sizeof(efi_device_path_file_t)) / sizeof(efi_char16_t);
-    path = malloc(len * MAX_UTF8_PER_UTF16);
-
-    len = utf16_to_utf8(path, efi_path->path, len);
-    path[len] = 0;
-
-    for (size_t i = 0; i < len; i++) {
-        if (path[i] == '\\')
-            path[i] = '/';
-    }
-
-    boot_directory = dirname((char *)path);
-}
 
 /** Main function of the EFI loader.
  * @param image_handle  Handle to the loader image.
@@ -103,9 +73,6 @@ __noreturn void efi_main(efi_handle_t image_handle, efi_system_table_t *system_t
     ret = efi_get_loaded_image(image_handle, &efi_loaded_image);
     if (ret != EFI_SUCCESS)
         internal_error("Failed to get loaded image protocol (0x%zx)", ret);
-
-    /* Find the boot directory. */
-    find_boot_directory();
 
     loader_main();
 }

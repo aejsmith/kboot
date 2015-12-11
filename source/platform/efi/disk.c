@@ -19,6 +19,7 @@
  * @brief               EFI disk device support.
  */
 
+#include <lib/charset.h>
 #include <lib/string.h>
 
 #include <efi/device.h>
@@ -303,6 +304,35 @@ void efi_disk_init(void) {
         efi_disk_t *disk = list_entry(iter, efi_disk_t, disk.device.header);
 
         list_remove(&disk->disk.device.header);
+
+        /* Find the boot directory. For a CD the boot path is invalid as it
+         * refers to the embedded EFI system partition, which is not used for
+         * anything by us except to store the boot file. */
+        if (disk->boot && disk->disk.type != DISK_TYPE_CDROM) {
+            efi_device_path_file_t *efi_path = (efi_device_path_file_t *)efi_loaded_image->file_path;
+            size_t len;
+            uint8_t *path __cleanup_free = NULL;
+
+            if (efi_path->header.type == EFI_DEVICE_PATH_TYPE_MEDIA &&
+                efi_path->header.subtype == EFI_DEVICE_PATH_MEDIA_SUBTYPE_FILE)
+            {
+                len = (efi_path->header.length - sizeof(efi_device_path_file_t)) / sizeof(efi_char16_t);
+                path = malloc(len * MAX_UTF8_PER_UTF16);
+
+                len = utf16_to_utf8(path, efi_path->path, len);
+                path[len] = 0;
+
+                for (size_t i = 0; i < len; i++) {
+                    if (path[i] == '\\')
+                        path[i] = '/';
+                }
+
+                boot_directory = dirname((char *)path);
+            } else {
+                dprintf("efi: image path is not a file path, cannot determine boot directory\n");
+            }
+        }
+
         disk_device_register(&disk->disk, disk->boot);
     }
 }
