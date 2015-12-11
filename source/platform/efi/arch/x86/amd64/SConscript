@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2014 Alex Smith
+# Copyright (C) 2015 Alex Smith
 #
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -18,15 +18,17 @@ Import('config', 'defaults', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
-    'loader/linux.c',
-    'loader/multiboot.c',
-
     'relocate.c',
     'start.S',
 ])
 
 # Set the linker script path.
 env['LDSCRIPT'] = env.LDScript('link.ld', 'link.ld.in')
+
+# The EFI binary must be relocatable, so on 64-bit this means we must build
+# position independent code.
+env['CCFLAGS'] += ['-fpic']
+env['ASFLAGS'] += ['-fpic']
 
 # Build the final EFI binary.
 kboot = env.Command(

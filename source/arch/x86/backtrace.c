@@ -36,7 +36,7 @@ typedef struct stack_frame {
 void backtrace(printf_t func) {
     stack_frame_t *frame;
 
-    #ifdef __PIC__
+    #if TARGET_RELOCATABLE
         func("Backtrace (base = %p):\n", __start);
     #else
         func("Backtrace:\n");
@@ -44,7 +44,7 @@ void backtrace(printf_t func) {
 
     frame = (stack_frame_t *)x86_read_bp();
     while (frame && frame->addr) {
-        #ifdef __PIC__
+        #ifdef TARGET_RELOCATABLE
             func(" %p (%p)\n", frame->addr, frame->addr - (ptr_t)__start);
         #else
             func(" %p\n", frame->addr);

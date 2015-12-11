@@ -142,7 +142,7 @@ static status_t efi_net_fs_read(fs_handle_t *_handle, void *buf, size_t count, o
  * @return              Status code describing the result of the operation. */
 static status_t efi_net_fs_open_path(fs_mount_t *mount, char *path, fs_handle_t *from, fs_handle_t **_handle) {
     efi_net_t *net = container_of(mount, efi_net_t, mount);
-    efi_uintn_t size;
+    uint64_t size;
     size_t len;
     efi_net_handle_t *handle;
     efi_status_t ret;

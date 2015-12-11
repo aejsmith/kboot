@@ -26,6 +26,7 @@
 #define TARGET_PHYS_MIN     0x100000
 
 /** Properties of the platform (functions we provide etc.). */
+#define TARGET_RELOCATABLE  1
 #define TARGET_HAS_MM       1
 #define TARGET_HAS_EXIT     1
 

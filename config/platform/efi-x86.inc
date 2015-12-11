@@ -14,8 +14,12 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-config = {
-    'description': 'x86 PCs with 64-bit UEFI firmware',
-    'includes': ['arch/amd64', 'platform/efi-x86'],
-    'config': {},
+include = {
+    'includes': ['platform/efi'],
+    'config': {
+        'EFI_ARCH': 'x86',
+        'EFI_ARCH_X86': True,
+        'DRIVER_SERIAL_NS16550': True,
+        'TARGET_NS16550_IO': True,
+    },
 }

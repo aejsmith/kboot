@@ -15,7 +15,7 @@
 #
 
 config = {
-    'description': 'x86 PCs with 64-bit UEFI firmware',
-    'includes': ['arch/amd64', 'platform/efi-x86'],
+    'description': 'x86 PCs with 32-bit UEFI firmware',
+    'includes': ['arch/ia32', 'platform/efi-x86'],
     'config': {},
 }

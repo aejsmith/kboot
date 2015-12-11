@@ -14,8 +14,25 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-config = {
-    'description': 'x86 PCs with 64-bit UEFI firmware',
-    'includes': ['arch/amd64', 'platform/efi-x86'],
-    'config': {},
-}
+Import('config', 'defaults', 'env')
+from util import FeatureSources
+
+sources = FeatureSources(config, [
+    'relocate.c',
+    'start.S',
+])
+
+# Set the linker script path.
+env['LDSCRIPT'] = env.LDScript('link.ld', 'link.ld.in')
+
+# Build the final EFI binary.
+kboot = env.Command(
+    env['OUTDIR'].File('kbootia32.efi'),
+    env['KBOOT'],
+    Action(
+        '$OBJCOPY -j .text -j .reloc -j .data -j .dynamic -j .rel ' +
+            '-j .dynsym -j .bss --target=efi-app-ia32 $SOURCE $TARGET',
+        '$GENCOMSTR'))
+defaults.append(kboot)
+
+Return('sources')

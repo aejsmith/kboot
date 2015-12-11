@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2014 Alex Smith
+# Copyright (C) 2015 Alex Smith
 #
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -20,34 +20,11 @@ Import(*vars)
 from util import FeatureSources
 
 sources = FeatureSources(config, [
-    'loader/efi.c',
-    'loader/kboot.c',
-
-    'console.c',
-    'device.c',
-    'disk.c',
-    'memory.c',
-    'net.c',
-    'platform.c',
-    'services.c',
-    'video.c',
+    'loader/linux.c',
+    'loader/multiboot.c',
 ])
 
-# Add architecture-specific headers.
-env['CPPPATH'] += [Dir('arch/%s/include' % (config['EFI_ARCH']))]
-
-# Get architecture-specific sources.
-arch_sources = SConscript(dirs = ['arch/' + config['EFI_ARCH']], exports = vars)
+arch_sources = SConscript(dirs = ['amd64' if config['64BIT'] else 'ia32'], exports = vars)
 sources = arch_sources + sources
-
-# EFI uses UCS-2 strings.
-env['CCFLAGS'] += ['-fshort-wchar']
-
-# We build the loader as a relocatable ELF shared library, and then convert
-# that into a PE binary for use with EFI. On IA32 we don't actually compile as
-# PIC, but by compiling as a shared library we are relocatable.
-env['LINKFLAGS'] += [
-    '-Wl,-Bsymbolic', '-Wl,-shared', '-Wl,-znocombreloc', '-Wl,--no-undefined'
-]
 
 Return('sources')

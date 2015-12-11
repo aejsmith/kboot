@@ -1,0 +1,108 @@
+/*
+ * Copyright (C) 2015 Alex Smith
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/**
+ * @file
+ * @brief               IA32 EFI loader linker script.
+ */
+
+#include <arch/page.h>
+
+OUTPUT_FORMAT("elf32-i386")
+OUTPUT_ARCH("i386")
+ENTRY(loader_entry)
+
+SECTIONS {
+    . = 0;
+    __start = .;
+
+    .hash : { *(.hash) }
+    .gnu.hash : { *(.gnu.hash) }
+
+    . = ALIGN(PAGE_SIZE);
+    .text : {
+        __text_start = .;
+        *(.init.text)
+        *(.text)
+        *(.text.*)
+    }
+
+    /* Dummy relocation section for the PE binary so that EFI recognizes us as
+     * a relocatable image. */
+    . = ALIGN(PAGE_SIZE);
+    .reloc : { *(.reloc) }
+
+    . = ALIGN(PAGE_SIZE);
+    .data : {
+        __data_start = .;
+
+        /* Roll the read-only data into the main data section. It would not be
+         * write protected even if we put it separately, and PE requires page
+         * aligned sections so we only waste space by splitting it into another
+         * section. */
+        *(.rodata)
+        *(.rodata.*)
+        *(.got)
+        *(.got.plt)
+        *(.init.data)
+        *(.data)
+        *(.data.*)
+
+        __builtins_start = .;
+        *(.builtins)
+        __builtins_end = .;
+    }
+
+    . = ALIGN(PAGE_SIZE);
+    .dynamic : { *(.dynamic) }
+
+    . = ALIGN(PAGE_SIZE);
+    .rel : {
+        *(.rel.init.text .rel.text .rel.text.*)
+        *(.rel.rodata .rel.rodata.*)
+        *(.rel.got)
+        *(.rel.init.data .rel.data .rel.data.* .rel.builtins)
+        *(.rel.bss .rel.bss.*)
+    }
+
+    . = ALIGN(PAGE_SIZE);
+    .dynsym : { *(.dynsym) }
+
+    . = ALIGN(PAGE_SIZE);
+    .dynstr : { *(.dynstr) }
+
+    . = ALIGN(PAGE_SIZE);
+    .bss : {
+        __bss_start = .;
+        *(.dynbss)
+        *(.bss)
+        *(.bss.*)
+        *(COMMON)
+        __bss_end = .;
+    }
+
+    . = ALIGN(PAGE_SIZE);
+    __end = .;
+
+    /DISCARD/ : {
+        *(.note.*)
+        *(.comment*)
+        *(.eh_frame*)
+
+        /* Don't need ELF relocations for the dummy PE relocations. */
+        *(.rel.reloc)
+    }
+}
