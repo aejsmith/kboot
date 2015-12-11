@@ -161,7 +161,7 @@ static void display_config_menu(environ_t *env, const char *name) {
  * @param entry         Entry to select.
  * @return              Input handling result. */
 static input_result_t select_entry(menu_entry_t *entry) {
-    if (!entry->env->loader && !list_empty(&entry->env->menu_entries)) {
+    if (!entry->env->loader && !entry->error && !list_empty(&entry->env->menu_entries)) {
         /* This entry is a sub-menu, display it. */
         menu_state_t state;
         state.env = entry->env;
@@ -729,7 +729,7 @@ static void entry_error_handler(const char *cmd, const char *fmt, va_list args) 
  * @param args          Arguments to the command.
  * @return              Whether successful. */
 static bool config_cmd_entry(value_list_t *args) {
-    menu_entry_t *entry;
+    menu_entry_t *entry, *prev;
     config_error_handler_t prev_handler;
 
     if (args->count != 2 ||
@@ -747,7 +747,9 @@ static bool config_cmd_entry(value_list_t *args) {
     entry->env = environ_create(current_environ);
     entry->error = NULL;
 
+    prev = executing_menu_entry;
     executing_menu_entry = entry;
+
     prev_handler = config_set_error_handler(entry_error_handler);
 
     /* Execute the command list. */
@@ -758,6 +760,7 @@ static bool config_cmd_entry(value_list_t *args) {
     }
 
     config_set_error_handler(prev_handler);
+    executing_menu_entry = prev;
 
     list_init(&entry->header);
     list_append(&current_environ->menu_entries, &entry->header);
