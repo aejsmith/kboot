@@ -18,9 +18,9 @@ Import('env')
 
 def build_utility(name, sources):
     target = env.Program(env['OUTDIR'].File(name), sources)
-    install = env.Install(env['BINDIR'], target)
+    install = env.Install(env['DESTBINDIR'], target)
     Alias('utilities', target)
 
 build_utility('kboot-install', ['install.c'])
 
-Alias('install-utilities', env['BINDIR'])
+Alias('install-utilities', env['DESTBINDIR'])

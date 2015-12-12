@@ -127,6 +127,13 @@ env['BUILDERS']['LDScript'] = Builder(action = Action(
 # Define installation paths.
 env['BINDIR'] = os.path.join(env['PREFIX'], 'bin')
 env['LIBDIR'] = os.path.join(env['PREFIX'], 'lib', 'kboot')
+env['TARGETDIR'] = os.path.join(env['LIBDIR'], env['CONFIG'])
+
+# Define real installation paths taking DESTDIR into account.
+env['DESTDIR'] = ARGUMENTS.get('DESTDIR', '/')
+env['DESTBINDIR'] = os.path.join(env['DESTDIR'], os.path.relpath(env['BINDIR'], '/'))
+env['DESTLIBDIR'] = os.path.join(env['DESTDIR'], os.path.relpath(env['LIBDIR'], '/'))
+env['DESTTARGETDIR'] = os.path.join(env['DESTDIR'], os.path.relpath(env['TARGETDIR'], '/'))
 
 ################################
 # Host build environment setup #
@@ -182,9 +189,6 @@ if not env.has_key('CONFIG'):
     util.StopError("No target system configuration specified. See 'scons -h'.")
 elif not env['CONFIG'] in configs:
     util.StopError("Unknown configuration '%s'." % (env['CONFIG']))
-
-# Define installation path for the target.
-env['TARGETDIR'] = os.path.join(env['PREFIX'], 'lib', 'kboot', env['CONFIG'])
 
 config = configs[env['CONFIG']]['config']
 

@@ -106,6 +106,6 @@ env.AddPostAction(target, [
 
 # Install all files in the output directory.
 for target in env.Glob('${OUTDIR}/*'):
-    env.Install(env['TARGETDIR'], target)
+    env.Install(env['DESTTARGETDIR'], target)
 
-Alias('install', env['TARGETDIR'])
+Alias('install', env['DESTTARGETDIR'])
