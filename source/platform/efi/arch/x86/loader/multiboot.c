@@ -89,6 +89,7 @@ void multiboot_platform_load(multiboot_loader_t *loader) {
     }
 
     /* Copy the final memory map into the info area. */
+    assert(mmap);
     loader->info->flags |= MULTIBOOT_INFO_MEMORY | MULTIBOOT_INFO_MEM_MAP;
     loader->info->mmap_length = sizeof(*mmap) * (offset + 1);
     dest = multiboot_alloc_info(loader, loader->info->mmap_length, &loader->info->mmap_addr);
