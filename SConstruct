@@ -14,6 +14,9 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
+# Version number.
+version = 1
+
 # Build flags for both host and target.
 build_flags = {
     'CCFLAGS': [
@@ -24,6 +27,9 @@ build_flags = {
     ],
     'CFLAGS': ['-std=gnu99'],
     'ASFLAGS': ['-D__ASM__'],
+    'CPPDEFINES': {
+        'KBOOT_LOADER_VERSION': '\\"${VERSION}\\"',
+    }
 }
 
 # GCC-specific build flags.
@@ -35,6 +41,14 @@ gcc_flags = {
 clang_flags = {
     # Clang's integrated assembler doesn't support 16-bit code.
     'ASFLAGS': ['-no-integrated-as'],
+}
+
+# Build flags for host.
+host_flags = {
+    'CPPDEFINES': {
+        'KBOOT_PREFIX': '\\"${PREFIX}\\"',
+        'KBOOT_LIBDIR': '\\"${LIBDIR}\\"',
+    }
 }
 
 # Build flags for target.
@@ -58,8 +72,10 @@ from subprocess import Popen, PIPE
 sys.path = [os.path.abspath(os.path.join('utilities', 'build'))] + sys.path
 import util, vcs
 
-# Compile for debug by default if building from git.
+# Get revision.
 revision = vcs.revision_id()
+
+# Compile for debug by default if building from git.
 debug_default = 1 if revision is not None else 0
 
 # Configurable build options.
@@ -74,6 +90,9 @@ opts.AddVariables(
 # Create the build environment.
 env = Environment(ENV = os.environ, variables = opts)
 opts.Save('.options.cache', env)
+
+# Define the version string.
+env['VERSION'] = '%d+%s' % (version, revision) if revision is not None else '%d' % (version)
 
 # Get a list of known configurations.
 configs = SConscript('config/SConscript')
@@ -116,11 +135,6 @@ env['TARGETDIR'] = os.path.join(env['PREFIX'], 'lib', 'kboot', env['CONFIG'])
 
 # Set up the host build environment.
 host_env = env.Clone()
-host_env['CPPPATH'] = []
-host_env['CPPDEFINES'] = {
-    'KBOOT_PREFIX': '\\"${PREFIX}\\"',
-    'KBOOT_LIBDIR': '\\"${LIBDIR}\\"',
-}
 
 # Make build output nice.
 if not verbose:
@@ -134,6 +148,13 @@ if not verbose:
     host_env['GENCOMSTR']    = compile_str('HOSTGEN')
     host_env['STRIPCOMSTR']  = compile_str('HOSTSTRIP')
     host_env['INSTALLSTR']   = compile_str('INSTALL')
+
+# Merge in build flags.
+for (k, v) in host_flags.items():
+    if type(v) == dict:
+        host_env[k].update(v)
+    else:
+        host_env[k] += v
 
 # Add compiler-specific flags.
 output = Popen([host_env['CC'], '--version'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()

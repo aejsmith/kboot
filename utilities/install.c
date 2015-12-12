@@ -564,6 +564,7 @@ static void usage(const char *argv0, FILE *stream) {
         "  --help, -h        Show this help\n"
         "  --target=TARGET   Specify target system type\n"
         "  --update          Perform an update (behaviour target-specific)\n"
+        "  --version         Display the KBoot version\n"
         "\n"
         "Installation location options:\n"
         "  --device=DEVICE   Install to a device\n"
@@ -618,6 +619,7 @@ enum {
     OPT_TARGET,
     OPT_VENDOR_ID,
     OPT_LABEL,
+    OPT_VERSION,
 };
 
 /** Option descriptions. */
@@ -635,6 +637,7 @@ static const struct option options[] = {
     { "update",    no_argument,       &arg_update,   1             },
     { "vendor-id", required_argument, NULL,          OPT_VENDOR_ID },
     { "verbose",   no_argument,       &arg_verbose,  1             },
+    { "version",   no_argument,       NULL,          OPT_VERSION   },
     { NULL,        0,                 NULL,          0             }
 };
 
@@ -681,6 +684,9 @@ int main(int argc, char **argv) {
         case OPT_TARGET:
             arg_target = optarg;
             break;
+        case OPT_VERSION:
+            printf("KBoot version %s\n", KBOOT_LOADER_VERSION);
+            return EXIT_SUCCESS;
         case 0:
             break;
         default:

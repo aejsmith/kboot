@@ -1182,6 +1182,21 @@ static bool config_cmd_help(value_list_t *args) {
 
 BUILTIN_COMMAND("help", "List available commands", config_cmd_help);
 
+/** Display the KBoot version.
+ * @param args          Argument list.
+ * @return              Whether successful. */
+static bool config_cmd_version(value_list_t *args) {
+    if (args->count != 0) {
+        config_error("Invalid arguments");
+        return false;
+    }
+
+    printf("KBoot version %s\n", KBOOT_LOADER_VERSION);
+    return true;
+}
+
+BUILTIN_COMMAND("version", "Display the KBoot version", config_cmd_version);
+
 /** Print a list of environment variables.
  * @param args          Argument list.
  * @return              Whether successful. */
