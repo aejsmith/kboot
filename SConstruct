@@ -127,7 +127,6 @@ env['BUILDERS']['LDScript'] = Builder(action = Action(
 # Define installation paths.
 env['BINDIR'] = os.path.join(env['PREFIX'], 'bin')
 env['LIBDIR'] = os.path.join(env['PREFIX'], 'lib', 'kboot')
-env['TARGETDIR'] = os.path.join(env['PREFIX'], 'lib', 'kboot', env['CONFIG'])
 
 ################################
 # Host build environment setup #
@@ -183,6 +182,9 @@ if not env.has_key('CONFIG'):
     util.StopError("No target system configuration specified. See 'scons -h'.")
 elif not env['CONFIG'] in configs:
     util.StopError("Unknown configuration '%s'." % (env['CONFIG']))
+
+# Define installation path for the target.
+env['TARGETDIR'] = os.path.join(env['PREFIX'], 'lib', 'kboot', env['CONFIG'])
 
 config = configs[env['CONFIG']]['config']
 
