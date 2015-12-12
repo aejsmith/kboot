@@ -216,9 +216,9 @@ else:
         env[k] += v
 
 # Add the compiler include directory for some standard headers.
-incdir = Popen([env['CC'], '-print-file-name=include'], stdout=PIPE).communicate()[0].strip()
-env['CCFLAGS'] += ['-isystem', incdir]
-env['ASFLAGS'] += ['-isystem', incdir]
+incdir = Popen([compiler, '-print-file-name=include'], stdout=PIPE).communicate()[0].strip()
+env['CCFLAGS'] += ['-isystem%s' % (incdir)]
+env['ASFLAGS'] += ['-isystem%s' % (incdir)]
 
 # Change the Decider to MD5-timestamp to speed up the build a bit.
 Decider('MD5-timestamp')
