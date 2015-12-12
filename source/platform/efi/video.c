@@ -152,8 +152,10 @@ void efi_video_init(void) {
         mode->mode.height = info->vertical_resolution;
 
         mode->mode.format.bpp = get_mode_bpp(info);
-        if (!mode->mode.format.bpp || mode->mode.format.bpp & 0x3)
+        if (!mode->mode.format.bpp || mode->mode.format.bpp & 0x3) {
+            free(mode);
             continue;
+        }
 
         mode->mode.pitch = info->pixels_per_scanline * (mode->mode.format.bpp >> 3);
         mode->mode.format.alpha_size = mode->mode.format.alpha_pos = 0;
