@@ -593,13 +593,17 @@ static void find_target_bin_dir(const char *argv0) {
     if (!program_dir)
         error("Failed to get program path\n");
 
-    /* Try to locate the data directory. TODO: Installed location. */
+    /* Try to locate the data directory. */
     snprintf(buf, sizeof(buf), "%s/../../../build/%s/bin", program_dir, arg_target);
-    if (stat(buf, &st) == 0 && st.st_mode & S_IFDIR) {
-        target_bin_dir = realpath(buf, NULL);
-    } else {
-        error("Target '%s' could not be found\n", arg_target);
+    if (stat(buf, &st) != 0 || !(st.st_mode & S_IFDIR)) {
+        snprintf(buf, sizeof(buf), "%s/%s", KBOOT_LIBDIR, arg_target);
+        if (stat(buf, &st) != 0 || !(st.st_mode & S_IFDIR))
+            error("Target '%s' could not be found\n", arg_target);
     }
+
+    target_bin_dir = realpath(buf, NULL);
+    if (!target_bin_dir)
+        error("Error getting real path of '%s': %s\n", buf, strerror(errno));
 
     free(program_dir);
 }

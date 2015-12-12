@@ -103,3 +103,9 @@ env.AddPostAction(target, [
     Action('$READELF -aW $TARGET > ${TARGET.base}.rde', None),
     Action('$NM -C $TARGET | sort > ${TARGET.base}.sym', None),
 ])
+
+# Install all files in the output directory.
+for target in env.Glob('${OUTDIR}/*'):
+    env.Install(env['TARGETDIR'], target)
+
+Alias('install', env['TARGETDIR'])

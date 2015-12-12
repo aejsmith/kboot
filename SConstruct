@@ -67,6 +67,7 @@ opts = Variables('.options.cache')
 opts.AddVariables(
     ('CONFIG', 'Target system configuration name.'),
     ('CROSS_COMPILE', 'Cross compiler tool prefix (prepended to all tool names).', ''),
+    ('PREFIX', 'Installation prefix.', '/usr/local'),
     BoolVariable('DEBUG', 'Whether to compile with debugging features.', debug_default),
 )
 
@@ -104,6 +105,11 @@ env['BUILDERS']['LDScript'] = Builder(action = Action(
     '$CC $_CCCOMCOM $ASFLAGS -E -x c $SOURCE | grep -v "^\#" > $TARGET',
     '$GENCOMSTR'))
 
+# Define installation paths.
+env['BINDIR'] = os.path.join(env['PREFIX'], 'bin')
+env['LIBDIR'] = os.path.join(env['PREFIX'], 'lib', 'kboot')
+env['TARGETDIR'] = os.path.join(env['PREFIX'], 'lib', 'kboot', env['CONFIG'])
+
 ################################
 # Host build environment setup #
 ################################
@@ -111,6 +117,10 @@ env['BUILDERS']['LDScript'] = Builder(action = Action(
 # Set up the host build environment.
 host_env = env.Clone()
 host_env['CPPPATH'] = []
+host_env['CPPDEFINES'] = {
+    'KBOOT_PREFIX': '\\"${PREFIX}\\"',
+    'KBOOT_LIBDIR': '\\"${LIBDIR}\\"',
+}
 
 # Make build output nice.
 if not verbose:
@@ -123,6 +133,7 @@ if not verbose:
     host_env['RANLIBCOMSTR'] = compile_str('HOSTRL')
     host_env['GENCOMSTR']    = compile_str('HOSTGEN')
     host_env['STRIPCOMSTR']  = compile_str('HOSTSTRIP')
+    host_env['INSTALLSTR']   = compile_str('INSTALL')
 
 # Add compiler-specific flags.
 output = Popen([host_env['CC'], '--version'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
@@ -169,6 +180,7 @@ if not verbose:
     env['RANLIBCOMSTR'] = compile_str('RL')
     env['GENCOMSTR']    = compile_str('GEN')
     env['STRIPCOMSTR']  = compile_str('STRIP')
+    env['INSTALLSTR']   = compile_str('INSTALL')
 
 # Detect which compiler to use.
 compilers = ['cc', 'gcc', 'clang']
