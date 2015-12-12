@@ -30,10 +30,6 @@
  * @param %rcx          Handle to the loader image.
  * @param %rdx          Pointer to EFI system table. */
 FUNCTION_START(loader_entry)
-    /* Clear RFLAGS. */
-    push    $0
-    popf
-
     /* EFI uses the Microsoft x86_64 ABI. Arguments are passed in RCX/RDX. */
     push    %rcx
     push    %rdx
@@ -51,8 +47,11 @@ FUNCTION_START(loader_entry)
     pop     %rsi
     pop     %rdi
     ret
-1:
-    addq    $24, %rsp
+1:  addq    $24, %rsp
+
+    /* Clear RFLAGS. This will disable interrupts. */
+    push    $0
+    popf
 
     /* Zero the BSS section. */
     leaq    __bss_start(%rip), %rdi
@@ -60,9 +59,6 @@ FUNCTION_START(loader_entry)
     subq    %rdi, %rcx
     xorb    %al, %al
     rep stosb
-
-    /* We are entered with interrupts enabled. We don't want them. */
-    cli
 
     /* Save the EFI GDT and IDT pointers which we must restore before calling
      * any EFI functions. */
