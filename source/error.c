@@ -89,7 +89,7 @@ void __noreturn internal_error(const char *fmt, ...) {
     va_end(args);
 
     error_printf("\n\n");
-    error_printf("Please report this error to http://kiwi.alex-smith.me.uk/\n");
+    error_printf("Please report this error to https://github.com/aejsmith/kboot\n");
 
     backtrace(error_printf);
 
