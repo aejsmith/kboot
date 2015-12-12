@@ -591,7 +591,7 @@ bool command_list_exec(command_list_t *list, environ_t *env) {
 
 out:
     current_environ = prev;
-    return true;
+    return ret;
 }
 
 /**
