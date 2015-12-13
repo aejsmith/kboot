@@ -48,6 +48,7 @@
     EXT2_FEATURE_INCOMPAT_FILETYPE |    \
     EXT3_FEATURE_INCOMPAT_RECOVER |     \
     EXT4_FEATURE_INCOMPAT_EXTENTS  |    \
+    EXT4_FEATURE_INCOMPAT_64BIT |       \
     EXT4_FEATURE_INCOMPAT_MMP |         \
     EXT4_FEATURE_INCOMPAT_FLEX_BG)
 
@@ -56,11 +57,12 @@ typedef struct ext2_mount {
     fs_mount_t mount;                   /**< Mount header. */
 
     ext2_superblock_t sb;               /**< Superblock of the filesystem. */
-    ext2_group_desc_t *group_tbl;       /**< Pointer to block group descriptor table. */
+    void *group_tbl;                    /**< Pointer to block group descriptor table. */
     uint32_t inodes_per_group;          /**< Inodes per group. */
     uint32_t inodes_count;              /**< Inodes count. */
     size_t block_size;                  /**< Size of a block on the filesystem. */
     size_t block_groups;                /**< Number of block groups. */
+    size_t group_desc_size;             /**< Size of a group descriptor. */
     size_t inode_size;                  /**< Size of an inode. */
     size_t symlink_count;               /**< Current symbolic link recursion count. */
 } ext2_mount_t;
@@ -313,22 +315,28 @@ static status_t ext2_read(fs_handle_t *_handle, void *buf, size_t count, offset_
  * @return              Status code describing the result of the operation. */
 static status_t open_inode(ext2_mount_t *mount, uint32_t id, ext2_handle_t *owner, fs_handle_t **_handle) {
     size_t group, inode_size;
-    offset_t inode_offset, size;
+    ext2_group_desc_t *group_desc;
+    offset_t inode_block, inode_offset, size;
     uint16_t type;
     ext2_handle_t *handle;
     status_t ret;
 
-    /* Get the group descriptor table containing the inode. */
+    /* Get the group descriptor containing the inode. */
     group = (id - 1) / mount->inodes_per_group;
     if (group >= mount->block_groups) {
         dprintf("ext2: bad inode number %" PRIu32 "\n", id);
         return STATUS_CORRUPT_FS;
     }
 
+    group_desc = mount->group_tbl + (group * mount->group_desc_size);
+
     /* Get the size of the inode and its offset in the group's inode table. */
     inode_size = min(mount->inode_size, sizeof(ext2_inode_t));
+    inode_block = le32_to_cpu(group_desc->bg_inode_table);
+    if (mount->group_desc_size >= EXT2_MIN_GROUP_DESC_SIZE_64BIT)
+        inode_block |= (offset_t)le32_to_cpu(group_desc->bg_inode_table_hi) << 32;
     inode_offset =
-        ((offset_t)le32_to_cpu(mount->group_tbl[group].bg_inode_table) * mount->block_size) +
+        (inode_block * mount->block_size) +
         ((offset_t)((id - 1) % mount->inodes_per_group) * mount->inode_size);
 
     handle = malloc(sizeof(*handle));
@@ -471,23 +479,22 @@ static status_t ext2_mount(device_t *device, fs_mount_t **_mount) {
     mount = malloc(sizeof(*mount));
     mount->mount.device = device;
     mount->mount.case_insensitive = false;
-    mount->group_tbl = NULL;
     mount->symlink_count = 0;
 
     /* Read in the superblock. */
     ret = device_read(device, &mount->sb, sizeof(mount->sb), 1024);
     if (ret != STATUS_SUCCESS)
-        goto err;
+        goto err_free_mount;
 
     /* Check if it is supported. */
     if (le16_to_cpu(mount->sb.s_magic) != EXT2_MAGIC) {
         ret = STATUS_UNKNOWN_FS;
-        goto err;
+        goto err_free_mount;
     } else if (le32_to_cpu(mount->sb.s_rev_level) != EXT2_DYNAMIC_REV) {
         /* Reject this because GOOD_OLD_REV does not have a UUID or label. */
         dprintf("ext2: device %s is not EXT2_DYNAMIC_REV, unsupported\n", device->name);
         ret = STATUS_NOT_SUPPORTED;
-        goto err;
+        goto err_free_mount;
     }
 
     incompat_features = le32_to_cpu(mount->sb.s_feature_incompat);
@@ -496,7 +503,7 @@ static status_t ext2_mount(device_t *device, fs_mount_t **_mount) {
             "ext2: device %s has unsupported filesystem features: 0x%x\n",
             device->name, incompat_features);
         ret = STATUS_NOT_SUPPORTED;
-        goto err;
+        goto err_free_mount;
     }
 
     /* Get useful information out of the superblock. */
@@ -506,18 +513,36 @@ static status_t ext2_mount(device_t *device, fs_mount_t **_mount) {
     mount->block_groups = mount->inodes_count / mount->inodes_per_group;
     mount->inode_size = le16_to_cpu(mount->sb.s_inode_size);
 
+    /* Determine group descriptor size (changes with 64-bit feature). */
+    if (incompat_features & EXT4_FEATURE_INCOMPAT_64BIT) {
+        mount->group_desc_size = le16_to_cpu(mount->sb.s_desc_size);
+
+        if (mount->group_desc_size < EXT2_MIN_GROUP_DESC_SIZE_64BIT ||
+            mount->group_desc_size > EXT2_MAX_GROUP_DESC_SIZE ||
+            !is_pow2(mount->group_desc_size))
+        {
+            dprintf(
+                "ext2: device %s has unsupported group descriptor size %zu\n",
+                device->name, mount->group_desc_size);
+            ret = STATUS_CORRUPT_FS;
+            goto err_free_mount;
+        }
+    } else {
+        mount->group_desc_size = EXT2_MIN_GROUP_DESC_SIZE;
+    }
+
     /* Read in the group descriptor table. */
     offset = mount->block_size * (le32_to_cpu(mount->sb.s_first_data_block) + 1);
-    size = round_up(mount->block_groups * sizeof(ext2_group_desc_t), mount->block_size);
+    size = round_up(mount->block_groups * mount->group_desc_size, mount->block_size);
     mount->group_tbl = malloc_large(size);
     ret = device_read(device, mount->group_tbl, size, offset);
     if (ret != STATUS_SUCCESS)
-        goto err;
+        goto err_free_tbl;
 
     /* Get a handle to the root inode. */
     ret = open_inode(mount, EXT2_ROOT_INO, NULL, &mount->mount.root);
     if (ret != STATUS_SUCCESS)
-        goto err;
+        goto err_free_tbl;
 
     /* Store label and UUID. */
     mount->mount.label = strdup(mount->sb.s_volume_name);
@@ -527,8 +552,10 @@ static status_t ext2_mount(device_t *device, fs_mount_t **_mount) {
     *_mount = &mount->mount;
     return STATUS_SUCCESS;
 
-err:
+err_free_tbl:
     free_large(mount->group_tbl);
+
+err_free_mount:
     free(mount);
     return ret;
 }

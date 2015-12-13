@@ -233,7 +233,7 @@ PRIVATE_FUNCTION_START(read_inode)
 
     /* Read in the group table entry. Work out which sector of the table it is
      * in (EAX), and the offset into that entry (EBX), and read it in. */
-    shll    $EXT2_GROUP_DESC_SHIFT, %ebx
+    shll    $EXT2_MIN_GROUP_DESC_SHIFT, %ebx
     movl    %ebx, %eax
     shrl    $9, %eax
     andw    $511, %bx

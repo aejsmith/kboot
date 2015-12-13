@@ -96,25 +96,28 @@
 #define EXT4_EXTENTS_FL         0x80000     /**< Inode uses extents. */
 
 /** Superblock backwards-incompatible feature flags. */
-#define EXT2_FEATURE_INCOMPAT_COMPRESSION   0x0001
-#define EXT2_FEATURE_INCOMPAT_FILETYPE      0x0002
-#define EXT3_FEATURE_INCOMPAT_RECOVER       0x0004
-#define EXT3_FEATURE_INCOMPAT_JOURNAL_DEV   0x0008
-#define EXT2_FEATURE_INCOMPAT_META_BG       0x0010
-#define EXT4_FEATURE_INCOMPAT_EXTENTS       0x0040
-#define EXT4_FEATURE_INCOMPAT_64BIT         0x0080
-#define EXT4_FEATURE_INCOMPAT_MMP           0x0100
-#define EXT4_FEATURE_INCOMPAT_FLEX_BG       0x0200
+#define EXT2_FEATURE_INCOMPAT_COMPRESSION       0x0001
+#define EXT2_FEATURE_INCOMPAT_FILETYPE          0x0002
+#define EXT3_FEATURE_INCOMPAT_RECOVER           0x0004
+#define EXT3_FEATURE_INCOMPAT_JOURNAL_DEV       0x0008
+#define EXT2_FEATURE_INCOMPAT_META_BG           0x0010
+#define EXT4_FEATURE_INCOMPAT_EXTENTS           0x0040
+#define EXT4_FEATURE_INCOMPAT_64BIT             0x0080
+#define EXT4_FEATURE_INCOMPAT_MMP               0x0100
+#define EXT4_FEATURE_INCOMPAT_FLEX_BG           0x0200
 
-/** Structure sizes (for use in ASM code). */
-#define EXT2_SUPERBLOCK_SIZE    1024
-#define EXT2_INODE_SIZE         128
-#define EXT2_GROUP_DESC_SIZE    32
-#define EXT2_GROUP_DESC_SHIFT   5
-#define EXT2_DIRENT_SIZE        8
-#define EXT4_EXTENT_HEADER_SIZE 12
-#define EXT4_EXTENT_IDX_SIZE    12
-#define EXT4_EXTENT_SIZE        12
+/** Structure sizes. */
+#define EXT2_SUPERBLOCK_SIZE                    1024
+#define EXT2_INODE_SIZE                         128
+#define EXT2_MIN_GROUP_DESC_SIZE                32
+#define EXT2_MIN_GROUP_DESC_SHIFT               5
+#define EXT2_MIN_GROUP_DESC_SIZE_64BIT          64
+#define EXT2_MIN_GROUP_DESC_SHIFT_64BIT         6
+#define EXT2_MAX_GROUP_DESC_SIZE                1024
+#define EXT2_DIRENT_SIZE                        8
+#define EXT4_EXTENT_HEADER_SIZE                 12
+#define EXT4_EXTENT_IDX_SIZE                    12
+#define EXT4_EXTENT_SIZE                        12
 
 /** Structure offsets (for use in ASM code). */
 #define EXT2_SUPERBLOCK_OFF_FIRST_DATA_BLOCK    20
@@ -190,7 +193,7 @@ typedef struct ext2_superblock {
     uint8_t  s_prealloc_dir_blocks;         /**< Number to preallocate for dirs. */
     uint16_t s_padding1;
 
-    /** Journaling support (Ext3 compatibility). */
+    /** Journaling support (EXT3_FEATURE_COMPAT_HAS_JOURNAL). */
     uint8_t  s_journal_uuid[16];            /**< UUID of journal superblock. */
     uint32_t s_journal_inum;                /**< Inode number of journal file. */
     uint32_t s_journal_dev;                 /**< Device number of journal file. */
@@ -198,12 +201,28 @@ typedef struct ext2_superblock {
     uint32_t s_hash_seed[4];                /**< HTREE hash seed. */
     uint8_t  s_def_hash_version;            /**< Default hash version to use. */
     uint8_t  s_jnl_backup_type;
-    uint16_t s_reserved_word_pad;
-    uint32_t s_default_mount_opts;
+    uint16_t s_desc_size;                   /**< Size of group descriptor. */
+    uint32_t s_default_mount_opts;          /**< Default mount options. */
     uint32_t s_first_meta_bg;               /**< First metablock block group. */
     uint32_t s_mkfs_time;                   /**< When the filesystem was created. */
     uint32_t s_jnl_blocks[17];              /**< Backup of the journal inode. */
-    uint32_t s_reserved[172];               /**< Padding to the end of the block. */
+
+    /** 64-bit support (EXT4_FEATURE_INCOMPAT_64BIT). */
+    uint32_t s_blocks_count_hi;             /**< Blocks count (high 32 bits). */
+    uint32_t s_r_blocks_count_hi;           /**< Reserved blocks count (high 32 bits) */
+    uint32_t s_free_blocks_count_hi;        /**< Free blocks count (high 32 bits) */
+    uint16_t s_min_extra_isize;             /**< All inodes have at least # bytes. */
+    uint16_t s_want_extra_isize;            /**< New inodes should reserve # bytes. */
+    uint32_t s_flags;                       /**< Miscellaneous flags. */
+    uint16_t s_raid_stride;                 /**< RAID stride. */
+    uint16_t s_mmp_interval;                /**< # seconds to wait in MMP checking. */
+    uint64_t s_mmp_block;                   /**< Block for multi-mount protection. */
+    uint32_t s_raid_stripe_width;           /**< Blocks on all data disks (N*stride). */
+    uint8_t  s_log_groups_per_flex;         /**< FLEX_BG group size */
+    uint8_t  s_reserved_char_pad2;
+    uint16_t s_reserved_pad;
+
+    uint32_t s_reserved[162];               /**< Padding to the end of the block. */
 } __packed ext2_superblock_t;
 
 /** Group descriptor table. */
@@ -214,8 +233,23 @@ typedef struct ext2_group_desc {
     uint16_t bg_free_blocks_count;          /**< Number of free blocks. */
     uint16_t bg_free_inodes_count;          /**< Number of free inodes. */
     uint16_t bg_used_dirs_count;            /**< Number of used directories. */
-    uint16_t bg_pad;
-    uint32_t bg_reserved[3];
+    uint16_t bg_flags;                      /**< Flags. */
+    uint32_t bg_exclude_bitmap;             /**< Exclude bitmap for snapshots */
+    uint16_t bg_block_bitmap_csum;          /**< crc32c(s_uuid+grp_num+bbitmap). */
+    uint16_t bg_inode_bitmap_csum;          /**< crc32c(s_uuid+grp_num+ibitmap). */
+    uint16_t bg_itable_unused;              /**< Unused inodes count. */
+    uint16_t bg_checksum;                   /**< crc16(sb_uuid+group+desc). */
+    uint32_t bg_block_bitmap_hi;            /**< Blocks bitmap block. */
+    uint32_t bg_inode_bitmap_hi;            /**< Inode bitmap block. */
+    uint32_t bg_inode_table_hi;             /**< Inode table block. */
+    uint16_t bg_free_blocks_count_hi;       /**< Number of free blocks. */
+    uint16_t bg_free_inodes_count_hi;       /**< Number of free inodes. */
+    uint16_t bg_used_dirs_count_hi;         /**< Number of used directories. */
+    uint16_t bg_itable_unused_hi;           /**< Unused inodes count. */
+    uint32_t bg_exclude_bitmap_hi;          /**< Exclude bitmap block. */
+    uint16_t bg_block_bitmap_csum_hi;       /**< crc32c(s_uuid+grp_num+bbitmap). */
+    uint16_t bg_inode_bitmap_csum_hi;       /**< crc32c(s_uuid+grp_num+ibitmap). */
+    uint32_t bg_reserved;
 } __packed ext2_group_desc_t;
 
 /** Ext2 inode structure. */
