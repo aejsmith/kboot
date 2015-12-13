@@ -151,6 +151,12 @@ FUNCTION_START(_start)
     shlw    %cl, %ax
     movw    %ax, block_size
 
+    /* Check for a dynamic group descriptor size, if not put in a default. */
+    testb   $EXT4_FEATURE_INCOMPAT_64BIT, (superblock + EXT2_SUPERBLOCK_OFF_FEATURE_INCOMPAT)
+    jnz     .Lfind_inode
+    movw    $EXT2_MIN_GROUP_DESC_SIZE, (superblock + EXT2_SUPERBLOCK_OFF_DESC_SIZE)
+
+.Lfind_inode:
     /* Find the boot loader inode. */
     call    find_inode
 
@@ -224,17 +230,18 @@ PRIVATE_FUNCTION_START(read_inode)
     decl    %eax
     xorl    %edx, %edx
     divl    (superblock + EXT2_SUPERBLOCK_OFF_INODES_PER_GROUP)
-    pushl   %eax
+    movl    %eax, %ebx
     movl    %edx, %eax
     movzxw  (superblock + EXT2_SUPERBLOCK_OFF_INODE_SIZE), %ecx
     mull    %ecx
-    popl    %ebx
     pushl   %eax
 
     /* Read in the group table entry. Work out which sector of the table it is
      * in (EAX), and the offset into that entry (EBX), and read it in. */
-    shll    $EXT2_MIN_GROUP_DESC_SHIFT, %ebx
+    movzxw  (superblock + EXT2_SUPERBLOCK_OFF_DESC_SIZE), %ecx
     movl    %ebx, %eax
+    mull    %ecx
+    movl    %eax, %ebx
     shrl    $9, %eax
     andw    $511, %bx
     addl    group_table_offset, %eax
@@ -304,24 +311,6 @@ PRIVATE_FUNCTION_START(read_block)
     ret
 FUNCTION_END(read_block)
 
-/** Get total number of blocks in the current inode.
- * @return %ecx         Total number of blocks.
- * @return %eax         Trashed.
- * @return %edx         Remainder of data size in final block. */
-PRIVATE_FUNCTION_START(get_total_blocks)
-    movl    (inode + EXT2_INODE_OFF_SIZE), %eax
-    xorl    %edx, %edx
-    movzxw  block_size, %ecx
-    divl    %ecx
-
-    /* Increment if there is a remainder to cover final chunk of data. */
-    testl   %edx, %edx
-    jz      1f
-    incl    %eax
-1:  movl    %eax, %ecx
-    ret
-FUNCTION_END(get_total_blocks)
-
 /** Read all data for the inode to LOADER_LOAD_ADDR. */
 PRIVATE_FUNCTION_START(read_inode_data)
     /* Get total number of blocks we need to read. */
@@ -389,6 +378,24 @@ def_partition_lba:  .long 0
 boot_signature:     .word MBR_SIGNATURE
 
 second_half:
+
+/** Get total number of blocks in the current inode.
+ * @return %ecx         Total number of blocks.
+ * @return %eax         Trashed.
+ * @return %edx         Remainder of data size in final block. */
+PRIVATE_FUNCTION_START(get_total_blocks)
+    movl    (inode + EXT2_INODE_OFF_SIZE), %eax
+    xorl    %edx, %edx
+    movzxw  block_size, %ecx
+    divl    %ecx
+
+    /* Increment if there is a remainder to cover final chunk of data. */
+    testl   %edx, %edx
+    jz      1f
+    incl    %eax
+1:  movl    %eax, %ecx
+    ret
+FUNCTION_END(get_total_blocks)
 
 /** Look up a raw block number in the current inode.
  * @param %ebx      Block number (preserved).

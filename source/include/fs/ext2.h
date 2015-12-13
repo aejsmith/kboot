@@ -110,9 +110,7 @@
 #define EXT2_SUPERBLOCK_SIZE                    1024
 #define EXT2_INODE_SIZE                         128
 #define EXT2_MIN_GROUP_DESC_SIZE                32
-#define EXT2_MIN_GROUP_DESC_SHIFT               5
 #define EXT2_MIN_GROUP_DESC_SIZE_64BIT          64
-#define EXT2_MIN_GROUP_DESC_SHIFT_64BIT         6
 #define EXT2_MAX_GROUP_DESC_SIZE                1024
 #define EXT2_DIRENT_SIZE                        8
 #define EXT4_EXTENT_HEADER_SIZE                 12
@@ -125,6 +123,8 @@
 #define EXT2_SUPERBLOCK_OFF_INODES_PER_GROUP    40
 #define EXT2_SUPERBLOCK_OFF_MAGIC               56
 #define EXT2_SUPERBLOCK_OFF_INODE_SIZE          88
+#define EXT2_SUPERBLOCK_OFF_FEATURE_INCOMPAT    96
+#define EXT2_SUPERBLOCK_OFF_DESC_SIZE           254
 #define EXT2_GROUP_DESC_OFF_INODE_TABLE         8
 #define EXT2_INODE_OFF_MODE                     0
 #define EXT2_INODE_OFF_SIZE                     4
