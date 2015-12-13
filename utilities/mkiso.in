@@ -36,8 +36,8 @@ function usage() {
     echo
     echo "Options:"
     echo "  --help, -h         Show this help"
-    echo "  --label LABEL      Volume label"
-    echo "  --targets TARGETS  Comma-separated list of targets (bios and efi-* only)"
+    echo "  --label=LABEL      Volume label"
+    echo "  --targets=TARGETS  Comma-separated list of targets (bios and efi-* only)"
     echo "  --version          Display the KBoot version"
 }
 

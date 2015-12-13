@@ -95,6 +95,17 @@
 /** Inode flags. */
 #define EXT4_EXTENTS_FL         0x80000     /**< Inode uses extents. */
 
+/** Superblock backwards-incompatible feature flags. */
+#define EXT2_FEATURE_INCOMPAT_COMPRESSION   0x0001
+#define EXT2_FEATURE_INCOMPAT_FILETYPE      0x0002
+#define EXT3_FEATURE_INCOMPAT_RECOVER       0x0004
+#define EXT3_FEATURE_INCOMPAT_JOURNAL_DEV   0x0008
+#define EXT2_FEATURE_INCOMPAT_META_BG       0x0010
+#define EXT4_FEATURE_INCOMPAT_EXTENTS       0x0040
+#define EXT4_FEATURE_INCOMPAT_64BIT         0x0080
+#define EXT4_FEATURE_INCOMPAT_MMP           0x0100
+#define EXT4_FEATURE_INCOMPAT_FLEX_BG       0x0200
+
 /** Structure sizes (for use in ASM code). */
 #define EXT2_SUPERBLOCK_SIZE    1024
 #define EXT2_INODE_SIZE         128

@@ -38,6 +38,19 @@
 /** Symbolic link recursion limit. */
 #define EXT2_SYMLINK_LIMIT 8
 
+/**
+ * Backwards-incompatible features supported.
+ *
+ * A number of these are here because they don't really have any effect on a
+ * read-only driver. These are RECOVER, MMP and FLEX_BG.
+ */
+#define EXT2_SUPPORTED_INCOMPAT (       \
+    EXT2_FEATURE_INCOMPAT_FILETYPE |    \
+    EXT3_FEATURE_INCOMPAT_RECOVER |     \
+    EXT4_FEATURE_INCOMPAT_EXTENTS  |    \
+    EXT4_FEATURE_INCOMPAT_MMP |         \
+    EXT4_FEATURE_INCOMPAT_FLEX_BG)
+
 /** Mounted ext2 filesystem structure. */
 typedef struct ext2_mount {
     fs_mount_t mount;                   /**< Mount header. */
@@ -450,6 +463,7 @@ static status_t ext2_iterate(fs_handle_t *_handle, fs_iterate_cb_t cb, void *arg
  * @return              Status code describing the result of the operation. */
 static status_t ext2_mount(device_t *device, fs_mount_t **_mount) {
     ext2_mount_t *mount;
+    uint32_t incompat_features;
     offset_t offset;
     size_t size;
     status_t ret;
@@ -472,7 +486,16 @@ static status_t ext2_mount(device_t *device, fs_mount_t **_mount) {
     } else if (le32_to_cpu(mount->sb.s_rev_level) != EXT2_DYNAMIC_REV) {
         /* Reject this because GOOD_OLD_REV does not have a UUID or label. */
         dprintf("ext2: device %s is not EXT2_DYNAMIC_REV, unsupported\n", device->name);
-        ret = STATUS_UNKNOWN_FS;
+        ret = STATUS_NOT_SUPPORTED;
+        goto err;
+    }
+
+    incompat_features = le32_to_cpu(mount->sb.s_feature_incompat);
+    if (incompat_features & ~EXT2_SUPPORTED_INCOMPAT) {
+        dprintf(
+            "ext2: device %s has unsupported filesystem features: 0x%x\n",
+            device->name, incompat_features);
+        ret = STATUS_NOT_SUPPORTED;
         goto err;
     }
 

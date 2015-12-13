@@ -372,7 +372,7 @@ static bool config_cmd_ls_cb(const fs_entry_t *entry, void *arg) {
 
     ret = fs_open_entry(entry, FILE_TYPE_NONE, 0, &handle);
     if (ret != STATUS_SUCCESS) {
-        printf("ls: warning: Failed to open entry '%s'\n", entry->name);
+        printf("Warning: Failed to open entry '%s': %pS\n", entry->name, ret);
         return true;
     }
 
