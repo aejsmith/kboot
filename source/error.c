@@ -90,6 +90,7 @@ void __noreturn internal_error(const char *fmt, ...) {
 
     error_printf("\n\n");
     error_printf("Please report this error to https://github.com/aejsmith/kboot\n");
+    error_printf("Version: %s\n", KBOOT_LOADER_VERSION);
 
     backtrace(error_printf);
 
