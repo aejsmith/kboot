@@ -106,6 +106,9 @@ env.AddPostAction(target, [
 
 # Install all files in the output directory.
 for target in env.Glob('${OUTDIR}/*'):
-    env.Install(env['DESTTARGETDIR'], target)
+    target = env.Install(env['DESTTARGETDIR'], target)
+    Alias('install', target)
 
-Alias('install', env['DESTTARGETDIR'])
+# Add a debug install target to install the debug binary.
+target = env.Install(env['DESTTARGETDIR'], env['KBOOT'])
+Alias('install-debug', target)
