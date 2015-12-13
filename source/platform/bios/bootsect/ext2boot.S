@@ -557,7 +557,7 @@ PRIVATE_FUNCTION_START(find_inode)
     cmpb    $EXT2_FT_UNKNOWN, %es:EXT2_DIR_ENTRY_OFF_FILE_TYPE(%di)
     je      .Lnext_entry
     movb    %es:EXT2_DIR_ENTRY_OFF_NAME_LEN(%di), %al
-    test    %al, %al
+    testb   %al, %al
     jz      .Lnext_entry
 
     /* It is, lets try to compare the name string. */
@@ -602,6 +602,9 @@ PRIVATE_FUNCTION_START(find_inode)
     incl    %ebx
     decl    %ecx
     jz      .Lnot_found
+
+    /* Reset the buffer address for the next iteration. */
+    xorw    %di, %di
     jmp     .Lblock_begin
 
 .Lcompare_match:
@@ -610,7 +613,8 @@ PRIVATE_FUNCTION_START(find_inode)
     popw    %di
 
     /* Get the inode number and read it in. Clear DI as read_inode() uses it, so
-     * we want it to point to the bottom of the temporary buffer. */
+     * we want it to point to the bottom of the temporary buffer. Also needs to
+     * be clear for the start of the next iteration. */
     movl    %es:EXT2_DIR_ENTRY_OFF_INODE(%di), %eax
     xorw    %di, %di
     call    read_inode
