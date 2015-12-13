@@ -1,0 +1,242 @@
+#!/bin/bash
+#
+# Copyright (C) 2015 Alex Smith
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+
+KBOOT_LIBDIR="@KBOOT_LIBDIR@"
+KBOOT_LOADER_VERSION="@KBOOT_LOADER_VERSION@"
+
+# Default arguments.
+arg_label="KBOOT_ISO"
+
+function usage() {
+    echo "Usage: $0 [OPTIONS...] IMAGE [DIRS...]"
+    echo
+    echo "Creates a bootable KBoot ISO image. This tool supports both BIOS and EFI"
+    echo "targets, and can create hybrid images for booting both. The default behaviour"
+    echo "is to support all such platforms that are available in the current KBoot"
+    echo "installation, this can be overridden with the --targets option."
+    echo
+    echo "The optional list of directories can contain extra files to copy into the ISO"
+    echo "image: the contents of all specified directories will be copied into one tree"
+    echo "to generate the ISO image. The KBoot files will be placed in /boot on the"
+    echo "image. A configuration file can be placed in any of the default search paths."
+    echo
+    echo "Options:"
+    echo "  --help, -h         Show this help"
+    echo "  --label LABEL      Volume label"
+    echo "  --targets TARGETS  Comma-separated list of targets (bios and efi-* only)"
+    echo "  --version          Display the KBoot version"
+}
+
+# Save program name, otherwise lost by argument parsing.
+program_name="$0"
+
+while true; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --label)
+            if [ -n "$2" ]; then
+                arg_label="$2"
+                shift
+            else
+                echo "${program_name}: Option '--label' requires an argument" >&2
+                exit 1
+            fi
+            ;;
+        --label=?*)
+            arg_label="${1#*=}"
+            ;;
+        --label=)
+            echo "${program_name}: Option '--label' requires an argument" >&2
+            exit 1
+            ;;
+        --targets)
+            if [ -n "$2" ]; then
+                arg_targets="$2"
+                shift
+            else
+                echo "${program_name}: Option '--targets' requires an argument" >&2
+                exit 1
+            fi
+            ;;
+        --targets=?*)
+            arg_targets="${1#*=}"
+            ;;
+        --targets=)
+            echo "${program_name}: Option '--targets' requires an argument" >&2
+            exit 1
+            ;;
+        -?*)
+            echo "${program_name}: Unrecognized option '$1'" >&2
+            exit 1
+            ;;
+        *)
+            break
+    esac
+
+    shift
+done
+
+if [ $# -lt 1 ]; then
+    echo "${program_name}: No output filename specified" >&2
+    exit 1
+fi
+
+arg_filename="${1}"
+shift
+
+# Determine where the installation directory to use is.
+program_dir=$(dirname ${program_name})
+if [ -f "${program_dir}/../../../SConstruct" -a -d "${program_dir}/../../../build" ]; then
+    targets_dir=$(realpath "${program_dir}/../../../build")
+
+    function get_target_dir() {
+        eval "target_dir='${targets_dir}/${1}/bin'"
+    }
+else
+    targets_dir="${KBOOT_LIBDIR}"
+
+    function get_target_dir() {
+        eval "target_dir='${targets_dir}/${1}'"
+    }
+fi
+
+have_bios=0
+
+if [ -z "${arg_targets}" ]; then
+    # No targets specified, determine default.
+    for dir in "${targets_dir}/"*; do
+        if [ ! -d "${dir}" ]; then
+            continue
+        fi
+
+        target=$(basename "${dir}")
+        case "${target}" in
+            bios)
+                have_bios=1
+                ;;
+            efi-*)
+                efi_targets="${target} ${efi_targets}"
+                ;;
+        esac
+    done
+
+    if [ $have_bios -eq 0 -a -z "${efi_targets}" ]; then
+        echo "${program_name}: No targets available" >&2
+        exit 1
+    fi
+else
+    for target in $(echo "${arg_targets}" | tr "," " "); do
+        if [ ! -d "${targets_dir}/${target}" ]; then
+            echo "${program_name}: Target '${target}' does not exist" >&2
+            exit 1
+        fi
+
+        case "${target}" in
+            bios)
+                have_bios=1
+                ;;
+            efi-*)
+                efi_targets="${target} ${efi_targets}"
+                ;;
+            *)
+                echo "${program_name}: Target '${target}' is not supported" >&2
+                exit 1
+        esac
+    done
+fi
+
+# Check if we have the necessary tools.
+if ! which xorriso >/dev/null 2>&1; then
+    echo "${program_name}: xorriso is not installed" >&2
+    exit 1
+fi
+if [ -n "${efi_targets}" ]; then
+    if ! which mkfs.vfat >/dev/null 2>&1; then
+        echo "${program_name}: mkfs.vfat is not installed" >&2
+        exit 1
+    elif ! which mcopy >/dev/null 2>&1; then
+        echo "${program_name}: mtools is not installed" >&2
+        exit 1
+    fi
+fi
+
+# Create a temporary directory, clean it up on exit.
+work_dir=$(mktemp -d)
+function cleanup {
+    rm -rf "${work_dir}"
+}
+trap cleanup EXIT
+
+# Trap all errors.
+set -e
+
+mkdir "${work_dir}/boot"
+
+# Copy in BIOS boot image.
+if [ $have_bios -eq 1 ]; then
+    get_target_dir bios
+    cp "${target_dir}/cdkboot.img" "${work_dir}/boot"
+    bios_xorriso_args="-eltorito-boot boot/cdkboot.img -boot-load-size 4 -boot-info-table -no-emul-boot"
+fi
+
+# Create EFI boot image.
+if [ -n "${efi_targets}" ]; then
+    # EFI requires embedding a FAT filesystem image as a system partition.
+    # Create one containing images for all the targets we support.
+    truncate -s 16M "${work_dir}/boot/efikboot.img"
+    mkfs.vfat -n "KBOOT_EFI" "${work_dir}/boot/efikboot.img" >/dev/null
+    export MTOOLSRC="${work_dir}/mtoolsrc"
+    echo "drive c: file=\"${work_dir}/boot/efikboot.img\"" > "${MTOOLSRC}"
+    mmd c:/EFI
+    mmd c:/EFI/boot
+
+    for target in $efi_targets; do
+        get_target_dir $target
+
+        # Should be a single kboot<arch>.efi file in the target directory. This
+        # check covers both no matches and multiple matches.
+        source_name=$(echo "${target_dir}/kboot"*.efi)
+        if [ ! -f "${source_name}" ]; then
+            echo "${program_name}: Can't find EFI binary in '${target_dir}'" >&2
+            exit 1
+        fi
+
+        # Name it boot<arch>.efi in the image, so that it is in the default
+        # boot location.
+        target_name=$(basename "${source_name}" | sed 's/kboot/boot/')
+        mcopy "${source_name}" "c:/EFI/boot/${target_name}"
+    done
+
+    rm -f "${MTOOLSRC}"
+
+    efi_xorriso_args="-eltorito-alt-boot -e boot/efikboot.img -no-emul-boot"
+fi
+
+# Copy in specified directories. Be careful to ensure that paths with spaces
+# are handled properly.
+for dir in "$@"; do
+    cp -r "${dir}/." "${work_dir}"
+done
+
+# Create the image.
+xorriso \
+    -as mkisofs -J -R -l -V "${arg_label}" -eltorito-catalog boot/kboot.catalog \
+    ${bios_xorriso_args} ${efi_xorriso_args} \
+    -o "${arg_filename}" "${work_dir}"

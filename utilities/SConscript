@@ -14,6 +14,8 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
+import os
+
 Import('env')
 
 def build_utility(name, sources):
@@ -21,6 +23,18 @@ def build_utility(name, sources):
     install = env.Install(env['DESTBINDIR'], target)
     Alias('utilities', target)
 
+def build_script(name, sources):
+    subst_dict = {
+        '@KBOOT_LIBDIR@': env['LIBDIR'],
+        '@KBOOT_LOADER_VERSION@': env['VERSION'],
+    }
+
+    target = env.Substfile(env['OUTDIR'].File(name), sources, SUBST_DICT = subst_dict)
+    env.AddPostAction(target, env.Action(lambda target, source, env: os.chmod(str(target[0]), 0755), None))
+    install = env.Install(env['DESTBINDIR'], target)
+    Alias('utilities', target)
+
 build_utility('kboot-install', ['install.c'])
+build_script('kboot-mkiso', ['mkiso.in'])
 
 Alias('install-utilities', env['DESTBINDIR'])

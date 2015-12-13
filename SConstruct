@@ -88,7 +88,7 @@ opts.AddVariables(
 )
 
 # Create the build environment.
-env = Environment(ENV = os.environ, variables = opts)
+env = Environment(ENV = os.environ, variables = opts, tools = ['default', 'textfile'])
 opts.Save('.options.cache', env)
 
 # Define the version string.
@@ -111,9 +111,18 @@ helptext += '\n'
 helptext += 'For information on how to build KBoot, please refer to documentation/readme.txt.\n'
 Help(helptext)
 
+# Make build output nice.
 verbose = ARGUMENTS.get('V') == '1'
 def compile_str(msg):
     return '\033[0;32m%8s\033[0m $TARGET' % (msg)
+def compile_str_func(msg, target, source, env):
+    return '\033[0;32m%8s\033[0m %s' % (msg, str(target[0]))
+
+if not verbose:
+    env['INSTALLSTR'] = compile_str('INSTALL')
+
+    # Substfile doesn't provide a method to override the output. Hack around.
+    env['BUILDERS']['Substfile'].action.strfunction = lambda t, s, e: compile_str_func('GEN', t, s, e)
 
 # Merge in build flags.
 for (k, v) in build_flags.items():
@@ -153,7 +162,6 @@ if not verbose:
     host_env['RANLIBCOMSTR'] = compile_str('HOSTRL')
     host_env['GENCOMSTR']    = compile_str('HOSTGEN')
     host_env['STRIPCOMSTR']  = compile_str('HOSTSTRIP')
-    host_env['INSTALLSTR']   = compile_str('INSTALL')
 
 # Merge in build flags.
 for (k, v) in host_flags.items():
@@ -207,7 +215,6 @@ if not verbose:
     env['RANLIBCOMSTR'] = compile_str('RL')
     env['GENCOMSTR']    = compile_str('GEN')
     env['STRIPCOMSTR']  = compile_str('STRIP')
-    env['INSTALLSTR']   = compile_str('INSTALL')
 
 # Detect which compiler to use.
 compilers = ['cc', 'gcc', 'clang']
