@@ -30,10 +30,10 @@ Documentation
 
 The following pages give details on how to build, install and use KBoot:
 
- 1. [Building](building.md)
- 2. [Installation](installation.md)
- 3. [Configuration](configuration.md)
- 4. [GUI Menu](gui.md)
+ 1. [Building](documentation/guide/building.md)
+ 2. [Installation](documentation/guide/installation.md)
+ 3. [Configuration](documentation/guide/configuration.md)
+ 4. [GUI Menu](documentation/guide/gui.md)
 
 Reporting Issues
 ----------------
