@@ -101,8 +101,16 @@ fi
 arg_filename="${1}"
 shift
 
+# Determine our program directory.
+program_source="${BASH_SOURCE[0]}"
+while [ -h "${program_source}" ]; do
+    program_dir="$(cd -P "$(dirname "${program_source}")" && pwd)"
+    program_source="$(readlink "${program_source}")"
+    [[ $program_source != /* ]] && program_source="${program_dir}/${program_source}"
+done
+program_dir="$(cd -P "$(dirname "${program_source}" )" && pwd)"
+
 # Determine where the installation directory to use is.
-program_dir=$(dirname ${program_name})
 if [ -f "${program_dir}/../../../SConstruct" -a -d "${program_dir}/../../../build" ]; then
     targets_dir=$(realpath "${program_dir}/../../../build")
 
