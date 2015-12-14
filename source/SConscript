@@ -53,6 +53,7 @@ sources = FeatureSources(config, [
     'shell.c',
     'time.c',
     ('TARGET_HAS_UI', 'ui.c'),
+    'version.c',
     ('TARGET_HAS_VIDEO', 'video.c'),
 ])
 
@@ -77,6 +78,14 @@ for (k, v) in config.items():
     else:
         raise Exception, "Unsupported type %s in config" % (type(v))
 f.close()
+
+# Generate the version string.
+def gen_version_c(target, source, env):
+    f = open(str(target[0]), 'w')
+    f.write('/* This file is automatically-generated, do not edit. */\n\n')
+    f.write('const char *kboot_loader_version = "%s";\n' % (env['VERSION']))
+    f.close()
+AlwaysBuild(env.Command('version.c', [], env.Action(gen_version_c, None)))
 
 # Include the generated configuration header.
 env['CCFLAGS'] += ['-include', 'build/%s/source/config.h' % (env['CONFIG'])]

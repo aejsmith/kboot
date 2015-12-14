@@ -27,9 +27,6 @@ build_flags = {
     ],
     'CFLAGS': ['-std=gnu99'],
     'ASFLAGS': ['-D__ASM__'],
-    'CPPDEFINES': {
-        'KBOOT_LOADER_VERSION': '\\"${VERSION}\\"',
-    }
 }
 
 # GCC-specific build flags.
@@ -48,6 +45,7 @@ host_flags = {
     'CPPDEFINES': {
         'KBOOT_PREFIX': '\\"${PREFIX}\\"',
         'KBOOT_LIBDIR': '\\"${LIBDIR}\\"',
+        'KBOOT_LOADER_VERSION': '\\"${VERSION}\\"',
     }
 }
 
@@ -165,10 +163,13 @@ if not verbose:
 
 # Merge in build flags.
 for (k, v) in host_flags.items():
-    if type(v) == dict:
-        host_env[k].update(v)
+    if host_env.has_key(k):
+        if type(v) == dict:
+            host_env[k].update(v)
+        else:
+            host_env[k] += v
     else:
-        host_env[k] += v
+        host_env[k] = v
 
 # Add compiler-specific flags.
 output = Popen([host_env['CC'], '--version'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()

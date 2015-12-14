@@ -1191,7 +1191,7 @@ static bool config_cmd_version(value_list_t *args) {
         return false;
     }
 
-    printf("KBoot version %s\n", KBOOT_LOADER_VERSION);
+    printf("KBoot version %s\n", kboot_loader_version);
     return true;
 }
 

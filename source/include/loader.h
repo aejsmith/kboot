@@ -122,6 +122,8 @@ extern builtin_t __builtins_start[], __builtins_end[];
 /** Type of a hook function to call before booting an OS. */
 typedef void (*preboot_hook_t)(void);
 
+extern const char *kboot_loader_version;
+
 extern void target_halt(void) __noreturn;
 extern void target_reboot(void) __noreturn;
 

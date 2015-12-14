@@ -82,6 +82,10 @@ while true; do
             echo "${program_name}: Option '--targets' requires an argument" >&2
             exit 1
             ;;
+        --version)
+            echo "KBoot version ${KBOOT_LOADER_VERSION}"
+            exit 0
+            ;;
         -?*)
             echo "${program_name}: Unrecognized option '$1'" >&2
             exit 1
