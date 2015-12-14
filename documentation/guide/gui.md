@@ -1,9 +1,6 @@
 GUI Menu
 ========
 
-Overview
---------
-
 KBoot provides a basic graphical boot menu. An icon is assigned to each menu
 entry, and the icons will be laid out horizontally on screen. A selection colour
 or image is drawn over the currently selected menu entry.
@@ -69,4 +66,4 @@ The example below illustrates configuration of the GUI menu:
 
 This results in the following menu:
 
-![GUI Menu](https://raw.githubusercontent.com/aejsmith/kboot/master/documentation/images/gui.png)
+![GUI Menu](images/gui.png)
