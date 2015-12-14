@@ -63,6 +63,7 @@ void multiboot_platform_load(multiboot_loader_t *loader) {
          * know about. */
         *(uint32_t *)dest = entry_size;
         memcpy(dest + 4, entry, entry_size);
+        dest += entry_size + 4;
     }
 
     /* Try to get the boot device ID. */
