@@ -342,7 +342,7 @@ static __noreturn void multiboot_loader_load(void *_loader) {
     memory_finalize(&memory_map);
     memory_map_dump(&memory_map);
 
-    dprintf("multiboot: kernel entry point at 0x%x, info at 0x%" PRIxPHYS "\n", loader->entry, info_phys);
+    dprintf("multiboot: kernel entry point at 0x%" PRIx32 ", info at 0x%" PRIx32 "\n", loader->entry, info_phys);
 
     /* Perform pre-boot tasks. */
     loader_preboot();
