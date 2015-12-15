@@ -214,25 +214,35 @@ static void format_mode_string(video_mode_t *mode, char *buf, size_t size) {
  * @param types         Bitmask of allowed mode types.
  * @param def           Default mode to set, or NULL to pick. */
 void video_env_init(environ_t *env, const char *name, uint32_t types, video_mode_t *def) {
+    video_mode_t *mode = NULL;
     value_t *exist, value;
     char buf[20];
 
     /* Check if the value exists and is valid. */
     exist = environ_lookup(env, name);
     if (exist && exist->type == VALUE_TYPE_STRING) {
-        video_mode_t *mode = video_parse_and_find_mode(exist->string);
+        mode = video_parse_and_find_mode(exist->string);
 
-        if (mode && types & mode->type)
-            return;
+        if (mode && !(types & mode->type))
+            mode = NULL;
     }
 
-    if (!def) {
-        assert(current_video_mode);
-        def = current_video_mode;
+    if (!mode) {
+        /* Not valid, create an entry referring to the default mode. */
+        if (def) {
+            mode = def;
+        } else {
+            assert(current_video_mode);
+            mode = current_video_mode;
+        }
     }
 
-    /* Not valid, create an entry referring to the default mode. */
-    format_mode_string(def, buf, sizeof(buf));
+    /* Set the mode in the environment. This is done even if the existing value
+     * was valid, in case it was specified as a shortened string. In this case
+     * we have to set it to the actual mode it was expanded to, so that it
+     * matches exactly against a mode if we come to create a mode chooser UI
+     * for it later. */
+    format_mode_string(mode, buf, sizeof(buf));
     value.type = VALUE_TYPE_STRING;
     value.string = buf;
     environ_insert(env, name, &value);
