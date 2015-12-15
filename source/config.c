@@ -116,6 +116,7 @@ static int current_line;                /**< Current line in the file. */
 static int current_col;                 /**< Current column in the file (minus 1). */
 static unsigned current_nest_count;     /**< Current nesting count. */
 static int returned_char;               /**< Character returned with return_char() (0 is no char). */
+static bool in_comment;                 /**< Whether currently in a comment. */
 
 /** Current file state used by config_load(). */
 static char *current_file;              /**< Pointer to data for current file. */
@@ -809,21 +810,27 @@ void environ_boot(environ_t *env) {
 static int read_char(void) {
     int ch;
 
-    if (returned_char) {
-        ch = returned_char;
-        returned_char = 0;
-    } else {
-        ch = current_helper(current_nest_count);
-    }
+    do {
+        if (returned_char) {
+            ch = returned_char;
+            returned_char = 0;
+        } else {
+            ch = current_helper(current_nest_count);
+        }
 
-    if (ch == '\n') {
-        current_line++;
-        current_col = 0;
-    } else if (ch == '\t') {
-        current_col += 8 - (current_col % 8);
-    } else {
-        current_col++;
-    }
+        if (ch == '\n') {
+            current_line++;
+            current_col = 0;
+            in_comment = false;
+        } else if (ch == '\t') {
+            current_col += 8 - (current_col % 8);
+        } else {
+            if (ch == '#')
+                in_comment = true;
+
+            current_col++;
+        }
+    } while (in_comment);
 
     return ch;
 }
@@ -1058,20 +1065,15 @@ static value_list_t *parse_value_list(bool command) {
 static command_list_t *parse_command_list(void) {
     command_list_t *list;
     int endch;
-    bool in_comment;
 
     list = malloc(sizeof(*list));
     list_init(list);
 
     endch = (current_nest_count) ? '}' : EOF;
-    in_comment = false;
     while (true) {
         int ch = read_char();
 
-        if (in_comment) {
-            if (ch == '\n')
-                in_comment = false;
-        } else if (ch == endch || isspace(ch)) {
+        if (ch == endch || isspace(ch)) {
             command_list_entry_t *command;
 
             if (temp_buf_idx == 0) {
@@ -1084,11 +1086,6 @@ static command_list_t *parse_command_list(void) {
 
             temp_buf[temp_buf_idx] = 0;
             temp_buf_idx = 0;
-
-            if (temp_buf[0] == '#' && ch != '\n') {
-                in_comment = true;
-                continue;
-            }
 
             /* End of command name, push it onto the list. */
             command = malloc(sizeof(*command));
@@ -1128,6 +1125,7 @@ command_list_t *config_parse(const char *path, config_read_helper_t helper) {
     current_col = 0;
     current_nest_count = 0;
     returned_char = 0;
+    in_comment = false;
 
     list = parse_command_list();
     assert(!current_nest_count);
