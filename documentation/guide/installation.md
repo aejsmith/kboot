@@ -75,14 +75,14 @@ argument to `kboot-install` in addition to the other arguments.
 On UEFI systems, KBoot must be installed to the EFI System Partition of the
 device to make bootable. UEFI defines 2 ways a boot loader can be installed.
 
-Firstly, it can be installed into a vendor-specific subdirectory of `/EFI` in
-the system partition, e.g. `/EFI/kboot`, and an entry can be added to the
-firmware's EFI boot manager (stored in NVRAM) that refers to the boot loader
-that should be then selectable as a boot option in the firmware. This is the
-recommended way to install on internal hard drives.
+Firstly, it can be installed into a vendor-specific subdirectory of `EFI` in
+the system partition, e.g. `EFI/kboot`, and an entry can be added to the
+firmware's EFI boot manager (stored in NVRAM) that refers to the boot loader.
+That entry should then be selectable as a boot option in the firmware. This is
+the recommended way to install on internal hard drives.
 
 Secondly, it can be installed to a fallback location, i.e.
-`/EFI/boot/boot<arch>.efi`. This is the location looked in if no boot manager
+`EFI/boot/boot<arch>.efi`. This is the location looked in if no boot manager
 entries are available for a device. This should be used to install to a
 removable device such as a USB stick, as boot manager entries created referring
 to a removable device would not be present if it were booted on another system.

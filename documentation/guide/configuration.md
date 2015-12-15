@@ -33,7 +33,7 @@ character. For example:
 
     hello "world" 42
     hello \
-        "dummy" 1234
+        "world" 1234
 
 Arguments are typed, so you must use the correct types as expected by a command,
 and arbitrary text is not valid (i.e. the quotation marks around "meaning" in
@@ -284,3 +284,65 @@ The shell can be entered by pressing F10 at the boot menu, or at certain error
 screens. You could use the shell, for example, if you make an error in your
 configuration file that prevents it from being loaded, in order to manually
 load your OS.
+
+Examples
+--------
+
+This section includes some full example configurations.
+
+### Linux/Windows Dual Boot (EFI)
+
+    set "timeout" 5
+
+    video "lfb:1920x1080x32"
+
+    entry "Arch Linux" {
+        device "uuid:599802a2-bc78-405e-9d14-756c75ebea88"
+
+        set "kernel_cmdline" "/boot/vmlinuz-linux rw root=UUID=${device_uuid}"
+
+        entry "Options" {
+            entry "Fallback" {
+                linux \
+                    $kernel_cmdline \
+                    ["/boot/intel-ucode.img" "/boot/initramfs-linux-fallback.img"]
+            }
+        }
+
+        linux \
+            "${kernel_cmdline} quiet rd.udev.log-priority=3 loglevel=3" \
+            ["/boot/intel-ucode.img" "/boot/initramfs-linux.img"]
+    }
+
+    entry "Windows 10" {
+        efi "/EFI/Microsoft/Boot/bootmgfw.efi"
+    }
+
+### Linux/Windows Dual Boot (BIOS)
+
+    set "timeout" 5
+
+    video "lfb:1920x1080x32"
+
+    entry "Arch Linux" {
+        device "uuid:599802a2-bc78-405e-9d14-756c75ebea88"
+
+        set "kernel_cmdline" "/boot/vmlinuz-linux rw root=UUID=${device_uuid}"
+
+        entry "Options" {
+            entry "Fallback" {
+                linux \
+                    $kernel_cmdline \
+                    ["/boot/intel-ucode.img" "/boot/initramfs-linux-fallback.img"]
+            }
+        }
+
+        linux \
+            "${kernel_cmdline} quiet rd.udev.log-priority=3 loglevel=3" \
+            ["/boot/intel-ucode.img" "/boot/initramfs-linux.img"]
+    }
+
+    entry "Windows 10" {
+        device "hd0,1"
+        chain
+    }

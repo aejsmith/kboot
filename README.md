@@ -25,15 +25,16 @@ Current limitations:
  * No FAT boot sector - cannot boot directly from a FAT filesystem on legacy
    BIOS systems.
 
+Screenshots
+-----------
+
+![Text Menu](documentation/guide/images/menu.png)
+![GUI Menu](documentation/guide/images/gui.png)
+
 Documentation
 -------------
 
-The following pages give details on how to build, install and use KBoot:
-
- 1. [Building](documentation/guide/building.md)
- 2. [Installation](documentation/guide/installation.md)
- 3. [Configuration](documentation/guide/configuration.md)
- 4. [GUI Menu](documentation/guide/gui.md)
+User documentation is available [here](documentation/guide).
 
 Reporting Issues
 ----------------

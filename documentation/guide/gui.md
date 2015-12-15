@@ -19,14 +19,14 @@ To enable the GUI menu, set the `gui` environment variable to true at the top
 level scope of the menu. There are 3 customisable elements to the GUI menu, all
 controlled by environment variables:
 
-* `gui_icon` - Specifies the path to an icon for an entry, set inside the entry
+* `gui_icon`: Specifies the path to an icon for an entry, set inside the entry
   scope.
-* `gui_selection` - Specifies how to highlight a selected entry, set at the top
+* `gui_selection`: Specifies how to highlight a selected entry, set at the top
   level scope of the menu. This can either be set to an integer, in which case
   it is interpreted as an RGB colour that will be filled in the area behind a
   selected entry's icon, or to a string, in which case it is a path to an image
   that is drawn behind the icon (centred on it). Defaults to `0xffffff`.
-* `gui_background` - Specifies the background of the menu, set at the top level
+* `gui_background`: Specifies the background of the menu, set at the top level
   scope of the menu. Can either be an integer RGB colour, or a path to an image
   that is drawn centred on the screen (no scaling is done). Any area not covered
   by the image is filled in black. Defaults to `0x000000`.
@@ -45,22 +45,22 @@ The example below illustrates configuration of the GUI menu:
 
     set "timeout" 5
 
-    video "lfb:1024x768x32"
+    video "lfb:800x600x32"
 
     set "gui" true
     set "gui_background" 0x000000
     set "gui_selection" "theme/selection.tga"
 
-    entry "Arch" {
-        set "gui_icon" "theme/os_arch.tga"
-        device "hd0,0"
-        linux \
-            "boot/vmlinuz-linux root=UUID=${device_uuid} rw" \
-            "boot/initramfs-linux.img"
+    entry "Linux" {
+        set "gui_icon" "theme/os_linux.tga"
+
+        device "uuid:..."
+        linux "boot/vmlinuz root=UUID=${device_uuid} rw" "boot/initramfs.img"
     }
 
     entry "Windows" {
-        set "gui_icon" "theme/os_win.tga"
+        set "gui_icon" "theme/os_windows.tga"
+
         efi "/EFI/Microsoft/Boot/bootmgfw.efi"
     }
 
