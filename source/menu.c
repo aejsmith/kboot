@@ -593,15 +593,18 @@ static menu_entry_t *get_default_entry(void) {
 /** Check if the user requested the menu to be displayed with a key press.
  * @return              Whether the menu should be displayed. */
 static bool check_key_press(void) {
-    /* Wait half a second for F8 to be pressed. */
-    delay(500);
-    while (console_poll(current_console)) {
-        uint16_t key = console_getc(current_console);
+    /* Wait half a second for F8 or F10 to be pressed. */
+    mstime_t target = current_time() + 500;
 
-        if (key == CONSOLE_KEY_F8) {
-            return true;
-        } else if (key == CONSOLE_KEY_F10) {
-            shell_main();
+    while (current_time() < target) {
+        if (console_poll(current_console)) {
+            uint16_t key = console_getc(current_console);
+
+            if (key == CONSOLE_KEY_F8) {
+                return true;
+            } else if (key == CONSOLE_KEY_F10) {
+                shell_main();
+            }
         }
     }
 
