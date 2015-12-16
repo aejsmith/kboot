@@ -114,9 +114,9 @@ static const char *current_command;
 static const char *current_path;        /**< Current configuration file path. */
 static int current_line;                /**< Current line in the file. */
 static int current_col;                 /**< Current column in the file (minus 1). */
-static unsigned current_nest_count;     /**< Current nesting count. */
+static unsigned nesting_count;          /**< Parser nesting count. */
 static int returned_char;               /**< Character returned with return_char() (0 is no char). */
-static bool in_comment;                 /**< Whether currently in a comment. */
+static bool ignore_comments;            /**< Whether to ignore comments. */
 
 /** Current file state used by config_load(). */
 static char *current_file;              /**< Pointer to data for current file. */
@@ -808,6 +808,7 @@ void environ_boot(environ_t *env) {
 /** Read a character from the input.
  * @return              Character read. */
 static int read_char(void) {
+    bool in_comment = false;
     int ch;
 
     do {
@@ -815,17 +816,19 @@ static int read_char(void) {
             ch = returned_char;
             returned_char = 0;
         } else {
-            ch = current_helper(current_nest_count);
+            ch = current_helper(nesting_count);
         }
 
         if (ch == '\n') {
             current_line++;
             current_col = 0;
-            in_comment = false;
+
+            if (in_comment)
+                in_comment = false;
         } else if (ch == '\t') {
             current_col += 8 - (current_col % 8);
         } else {
-            if (ch == '#')
+            if (!ignore_comments && ch == '#')
                 in_comment = true;
 
             current_col++;
@@ -906,6 +909,9 @@ static uint64_t parse_integer(int ch) {
 static char *parse_string(void) {
     bool escaped = false;
 
+    /* Shouldn't treat # as comment inside a string. */
+    ignore_comments = true;
+
     while (true) {
         int ch = read_char();
 
@@ -914,6 +920,8 @@ static char *parse_string(void) {
             temp_buf_idx = 0;
             return NULL;
         } else if (!escaped && ch == '"') {
+            ignore_comments = false;
+
             temp_buf[temp_buf_idx] = 0;
             temp_buf_idx = 0;
             return strdup(temp_buf);
@@ -1013,27 +1021,27 @@ static value_list_t *parse_value_list(bool command) {
         } else if (ch == '"') {
             value->type = VALUE_TYPE_STRING;
 
-            current_nest_count++;
+            nesting_count++;
             value->string = parse_string();
-            current_nest_count--;
+            nesting_count--;
 
             if (!value->string)
                 break;
         } else if (ch == '[') {
             value->type = VALUE_TYPE_LIST;
 
-            current_nest_count++;
+            nesting_count++;
             value->list = parse_value_list(false);
-            current_nest_count--;
+            nesting_count--;
 
             if (!value->list)
                 break;
         } else if (ch == '{') {
             value->type = VALUE_TYPE_COMMAND_LIST;
 
-            current_nest_count++;
+            nesting_count++;
             value->cmds = parse_command_list();
-            current_nest_count--;
+            nesting_count--;
 
             if (!value->cmds)
                 break;
@@ -1069,7 +1077,7 @@ static command_list_t *parse_command_list(void) {
     list = malloc(sizeof(*list));
     list_init(list);
 
-    endch = (current_nest_count) ? '}' : EOF;
+    endch = (nesting_count) ? '}' : EOF;
     while (true) {
         int ch = read_char();
 
@@ -1123,12 +1131,12 @@ command_list_t *config_parse(const char *path, config_read_helper_t helper) {
     current_path = path;
     current_line = 1;
     current_col = 0;
-    current_nest_count = 0;
+    nesting_count = 0;
     returned_char = 0;
-    in_comment = false;
+    ignore_comments = false;
 
     list = parse_command_list();
-    assert(!current_nest_count);
+    assert(!nesting_count);
     return list;
 }
 
