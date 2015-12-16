@@ -72,6 +72,9 @@ argument to `kboot-install` in addition to the other arguments.
 
 ### UEFI
 
+**Note**: UEFI installation on Apple Macs is *not* currently supported. They
+do not follow the UEFI standard in terms of boot manager behaviour.
+
 On UEFI systems, KBoot must be installed to the EFI System Partition of the
 device to make bootable. UEFI defines 2 ways a boot loader can be installed.
 

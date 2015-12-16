@@ -24,6 +24,9 @@ Current limitations:
 
  * No FAT boot sector - cannot boot directly from a FAT filesystem on legacy
    BIOS systems.
+ * Floppy drives are not supported on BIOS systems.
+ * UEFI installation to disk on Macs is not supported (legacy BIOS, i.e. Boot
+   Camp, is OK).
 
 Screenshots
 -----------
