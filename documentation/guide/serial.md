@@ -14,7 +14,7 @@ list of available ports can be obtained with the `lsconsole` command):
 The default configuration for a serial port is as follows:
 
  * **Baud Rate**: 115200
- * **Data Bits*: 8
+ * **Data Bits**: 8
  * **Parity**: None
  * **Stop Bits**: 1
 
