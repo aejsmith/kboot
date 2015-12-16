@@ -487,7 +487,7 @@ static void add_other_bootdev_tag(kboot_loader_t *loader, const char *str) {
 
     len = strlen(str) + 1;
 
-    tag = kboot_alloc_tag(loader, KBOOT_TAG_BOOTDEV, sizeof(*tag));
+    tag = kboot_alloc_tag(loader, KBOOT_TAG_BOOTDEV, sizeof(*tag) + round_up(sizeof(*tag), 8) + len);
     tag->type = KBOOT_BOOTDEV_OTHER;
     tag->other.str_size = len;
 

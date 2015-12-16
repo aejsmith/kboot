@@ -122,6 +122,7 @@ static void dump_pagetables_tag(kboot_tag_pagetables_t *tag) {
 /** Dump a module tag. */
 static void dump_module_tag(kboot_tag_module_t *tag) {
     const char *name;
+
     printf("KBOOT_TAG_MODULE:\n");
     printf("  addr      = 0x%" PRIx64 "\n", tag->addr);
     printf("  size      = %" PRIu32 "\n", tag->size);
@@ -186,6 +187,8 @@ static void dump_video_tag(kboot_tag_video_t *tag) {
 
 /** Dump a boot device tag. */
 static void dump_bootdev_tag(kboot_tag_bootdev_t *tag) {
+    const char *str;
+
     printf("KBOOT_TAG_BOOTDEV:\n");
 
     switch (tag->type) {
@@ -216,6 +219,13 @@ static void dump_bootdev_tag(kboot_tag_bootdev_t *tag) {
         printf("  client_mac   = %pM\n", tag->net.client_mac);
         printf("  hw_addr_size = %u\n", tag->net.hw_addr_size);
         printf("  hw_type      = %u\n", tag->net.hw_type);
+        break;
+    case KBOOT_BOOTDEV_OTHER:
+        printf("  type         = %" PRIu32 " (KBOOT_BOOTDEV_OTHER)\n", tag->type);
+        printf("  str_size     = %" PRIu32 "\n", tag->other.str_size);
+
+        str = (const char *)round_up((ptr_t)tag + sizeof(*tag), 8);
+        printf("  str          = `%s'\n", str);
         break;
     default:
         printf("  type = %" PRIu32 " (unknown)\n", tag->type);

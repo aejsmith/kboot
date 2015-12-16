@@ -778,6 +778,8 @@ Fields (`KBOOT_BOOTDEV_OTHER`):
 
  * `str_size`: Size of the device specifier string following the structure,
    including null terminator.
+ * `str`: Device specifier string. The start of this field is the end of the
+   tag structure, aligned up to an 8 byte boundary.
 
 ### `KBOOT_TAG_LOG` (`9`)
 
