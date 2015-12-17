@@ -15,7 +15,7 @@
 #
 
 # Version number.
-version = 1
+version = 20151217
 
 # Build flags for both host and target.
 build_flags = {
