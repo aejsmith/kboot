@@ -8,8 +8,8 @@ image that can be loaded by another Multiboot-compliant boot loader.
 
 When loaded as a Multiboot kernel, the boot loader can optionally be loaded
 with a set of modules. When modules are present, the boot loader will use them
-to populate a virtual filesystem which will be used as set as the initial boot
-device in the environment.
+to populate a virtual filesystem which will be set as the initial boot device
+in the environment.
 
 In addition, if no file named `kboot.cfg` is present as a loaded module, a
 default configuration file will be generated. This configuration will treat the
