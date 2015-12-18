@@ -35,6 +35,7 @@ function usage() {
     echo "image. A configuration file can be placed in any of the default search paths."
     echo
     echo "Options:"
+    echo "  --bin-dir=DIR      Directory in which to search for target binaries\n"
     echo "  --help, -h         Show this help"
     echo "  --label=LABEL      Volume label"
     echo "  --targets=TARGETS  Comma-separated list of targets (bios and efi-* only)"
@@ -49,6 +50,22 @@ while true; do
         -h|--help)
             usage
             exit 0
+            ;;
+        --bin-dir)
+            if [ -n "$2" ]; then
+                arg_bin_dir="$2"
+                shift
+            else
+                echo "${program_name}: Option '--bin-dir' requires an argument" >&2
+                exit 1
+            fi
+            ;;
+        --bin-dir=?*)
+            arg_bin_dir="${1#*=}"
+            ;;
+        --bin-dir=)
+            echo "${program_name}: Option '--bin-dir' requires an argument" >&2
+            exit 1
             ;;
         --label)
             if [ -n "$2" ]; then
@@ -115,14 +132,18 @@ done
 program_dir="$(cd -P "$(dirname "${program_source}" )" && pwd)"
 
 # Determine where the installation directory to use is.
-if [ -f "${program_dir}/../../../SConstruct" -a -d "${program_dir}/../../../build" ]; then
+if [ -z "${arg_bin_dir}" -a -f "${program_dir}/../../../SConstruct" -a -d "${program_dir}/../../../build" ]; then
     targets_dir=$(realpath "${program_dir}/../../../build")
 
     function get_target_dir() {
         eval "target_dir='${targets_dir}/${1}/bin'"
     }
 else
-    targets_dir="${KBOOT_LIBDIR}"
+    if [ -n "${arg_bin_dir}" ]; then
+        targets_dir="${arg_bin_dir}"
+    else
+        targets_dir="${KBOOT_LIBDIR}"
+    fi
 
     function get_target_dir() {
         eval "target_dir='${targets_dir}/${1}'"
