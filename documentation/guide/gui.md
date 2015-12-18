@@ -31,6 +31,9 @@ controlled by environment variables:
   that is drawn centred on the screen (no scaling is done). Any area not covered
   by the image is filled in black. Defaults to `0x000000`.
 
+Currently, only TGA images are supported (uncompressed, with origin set to top
+left).
+
 At minimum each entry must have `gui_icon` set.
 
 If you are using a platform that does not set a framebuffer video mode by
