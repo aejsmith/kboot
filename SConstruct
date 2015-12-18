@@ -67,7 +67,7 @@ target_flags = {
 import os, sys
 from subprocess import Popen, PIPE
 
-sys.path = [os.path.abspath(os.path.join('utilities', 'build'))] + sys.path
+sys.path = [os.path.abspath(os.path.join('dev', 'build'))] + sys.path
 import util, vcs
 
 # Get revision.
