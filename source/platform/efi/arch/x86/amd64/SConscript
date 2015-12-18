@@ -14,7 +14,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-Import('config', 'defaults', 'env')
+Import('config', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
@@ -31,13 +31,12 @@ env['CCFLAGS'] += ['-fpic']
 env['ASFLAGS'] += ['-fpic']
 
 # Build the final EFI binary.
-kboot = env.Command(
+env.Command(
     env['OUTDIR'].File('kbootx64.efi'),
     env['KBOOT'],
     Action(
         '$OBJCOPY -j .text -j .reloc -j .data -j .dynamic -j .rela ' +
             '-j .dynsym -j .bss --target=efi-app-x86_64 $SOURCE $TARGET',
         '$GENCOMSTR'))
-defaults.append(kboot)
 
 Return('sources')

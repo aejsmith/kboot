@@ -14,7 +14,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-Import('config', 'defaults', 'env')
+Import('config', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
@@ -51,7 +51,6 @@ kboot = env.Command(
     env['OUTDIR'].File('kboot.bin'),
     env['KBOOT'],
     Action('$OBJCOPY -O binary --strip-all $SOURCE $TARGET', '$GENCOMSTR'))
-defaults.append(kboot)
 
 # Build the boot sectors.
 env.LDScript('bootsect/bootsect.ld', 'bootsect/bootsect.ld.in')
@@ -70,27 +69,19 @@ for bs in bootsects:
         Action('$OBJDUMP -d -m i386 -M i8086 $TARGET > ${TARGET.base}.lst', None))
 
     # Create the final stripped binary.
-    target = env.Command(
+    env.Command(
         env['OUTDIR'].File('%s.bin' % (name)) if copy else File('bootsect/%s.bin' % (name)),
         target,
         Action('$OBJCOPY -O binary --strip-all $SOURCE $TARGET', '$GENCOMSTR'))
 
-    if copy:
-        defaults.append(target)
-
 # Create CD/PXE boot images by concatenating the boot sector with the loader.
-target = env.Command(
+env.Command(
     env['OUTDIR'].File('cdkboot.img'),
     ['bootsect/cdboot.bin', kboot],
     Action('cat ${SOURCES[0]} ${SOURCES[1]} > $TARGET', '$GENCOMSTR'))
-defaults.append(target)
-target = env.Command(
+env.Command(
     env['OUTDIR'].File('pxekboot.img'),
     ['bootsect/pxeboot.bin', kboot],
     Action('cat ${SOURCES[0]} ${SOURCES[1]} > $TARGET', '$GENCOMSTR'))
-defaults.append(target)
-
-# Copy the disk boot sectors to the output directory.
-# TODO
 
 Return('sources')

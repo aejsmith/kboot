@@ -19,9 +19,7 @@ import os
 Import('env')
 
 def build_utility(name, sources):
-    target = env.Program(env['OUTDIR'].File(name), sources)
-    install = env.Install(env['DESTBINDIR'], target)
-    Alias('utilities', target)
+    env.Program(env['OUTDIR'].File(name), sources)
 
 def build_script(name, sources):
     subst_dict = {
@@ -31,10 +29,6 @@ def build_script(name, sources):
 
     target = env.Substfile(env['OUTDIR'].File(name), sources, SUBST_DICT = subst_dict)
     env.AddPostAction(target, env.Action(lambda target, source, env: os.chmod(str(target[0]), 0755), None))
-    install = env.Install(env['DESTBINDIR'], target)
-    Alias('utilities', target)
 
 build_utility('kboot-install', ['install.c'])
 build_script('kboot-mkiso', ['mkiso.in'])
-
-Alias('install-utilities', env['DESTBINDIR'])

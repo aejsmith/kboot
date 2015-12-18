@@ -14,7 +14,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-Import('config', 'defaults', 'env')
+Import('config', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [

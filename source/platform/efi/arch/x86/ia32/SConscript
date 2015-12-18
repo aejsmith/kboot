@@ -14,7 +14,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-Import('config', 'defaults', 'env')
+Import('config', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
@@ -26,13 +26,12 @@ sources = FeatureSources(config, [
 env['LDSCRIPT'] = env.LDScript('link.ld', 'link.ld.in')
 
 # Build the final EFI binary.
-kboot = env.Command(
+env.Command(
     env['OUTDIR'].File('kbootia32.efi'),
     env['KBOOT'],
     Action(
         '$OBJCOPY -j .text -j .reloc -j .data -j .dynamic -j .rel ' +
             '-j .dynsym -j .bss --target=efi-app-ia32 $SOURCE $TARGET',
         '$GENCOMSTR'))
-defaults.append(kboot)
 
 Return('sources')

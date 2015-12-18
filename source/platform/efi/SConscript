@@ -14,7 +14,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-vars = ['config', 'defaults', 'env']
+vars = ['config', 'env']
 
 Import(*vars)
 from util import FeatureSources

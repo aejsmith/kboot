@@ -14,7 +14,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-vars = ['config', 'defaults', 'env']
+vars = ['config', 'env']
 
 Import(*vars)
 from util import FeatureSources
@@ -112,12 +112,3 @@ env.AddPostAction(target, [
     Action('$READELF -aW $TARGET > ${TARGET.base}.rde', None),
     Action('$NM -C $TARGET | sort > ${TARGET.base}.sym', None),
 ])
-
-# Install all files in the output directory.
-for target in env.Glob('${OUTDIR}/*'):
-    target = env.Install(env['DESTTARGETDIR'], target)
-    Alias('install', target)
-
-# Add a debug install target to install the debug binary.
-target = env.Install(env['DESTTARGETDIR'], env['KBOOT'])
-Alias('install-debug', target)

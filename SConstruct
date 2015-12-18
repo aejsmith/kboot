@@ -109,6 +109,12 @@ helptext += '\n'
 helptext += 'For information on how to build KBoot, please refer to documentation/readme.txt.\n'
 Help(helptext)
 
+# Check if the configuration specified is invalid.
+if not env.has_key('CONFIG'):
+    util.StopError("No target system configuration specified. See 'scons -h'.")
+elif not env['CONFIG'] in configs:
+    util.StopError("Unknown configuration '%s'." % (env['CONFIG']))
+
 # Make build output nice.
 verbose = ARGUMENTS.get('V') == '1'
 def compile_str(msg):
@@ -189,15 +195,18 @@ SConscript('utilities/SConscript',
     variant_dir = os.path.join('build', 'host', 'utilities'),
     exports = {'env': host_env})
 
+# Create an alias to build the utilities.
+utilities = host_env.Glob('${OUTDIR}/*')
+Alias('utilities', utilities)
+
+# Create installation targets for the utilities.
+for target in utilities:
+    install = host_env.Install(host_env['DESTBINDIR'], target)
+    Alias('install-utilities', install)
+
 ##################################
 # Target build environment setup #
 ##################################
-
-# Check if the configuration specified is invalid.
-if not env.has_key('CONFIG'):
-    util.StopError("No target system configuration specified. See 'scons -h'.")
-elif not env['CONFIG'] in configs:
-    util.StopError("Unknown configuration '%s'." % (env['CONFIG']))
 
 config = configs[env['CONFIG']]['config']
 
@@ -273,15 +282,23 @@ Decider('MD5-timestamp')
 # We place the final output binaries in a single directory.
 env['OUTDIR'] = Dir('build/%s/bin' % (env['CONFIG']))
 
-# Don't use the Default function within the sub-SConscripts for compatibility
-# with the main Kiwi build system.
-defaults = []
-
+# Build the loader itself.
 SConscript('source/SConscript',
     variant_dir = os.path.join('build', env['CONFIG'], 'source'),
-    exports = ['config', 'defaults', 'env'])
+    exports = ['config', 'env'])
 
-Default(defaults)
+# Default targets are all output binaries.
+targets = env.Glob('${OUTDIR}/*')
+Default(Alias('loader', targets))
+
+# Install all files in the output directory.
+for target in targets:
+    install = env.Install(env['DESTTARGETDIR'], target)
+    Alias('install', install)
+
+# Add a debug install target to install the debug binary.
+install = env.Install(env['DESTTARGETDIR'], env['KBOOT'])
+Alias('install-debug', install)
 
 ################
 # Test targets #
@@ -289,7 +306,7 @@ Default(defaults)
 
 SConscript('test/SConscript',
     variant_dir = os.path.join('build', env['CONFIG'], 'test'),
-    exports = ['config', 'defaults', 'env'])
+    exports = ['config', 'env'])
 
 # Get QEMU script to run.
 qemu = ARGUMENTS.get('QEMU', '')
@@ -301,4 +318,4 @@ else:
 # Add a target to run the test script for this configuration (if it exists).
 script = os.path.join('test', 'qemu', qemu)
 if os.path.exists(script):
-    Alias('qemu', env.Command('__qemu', defaults + ['test', 'utilities'], Action(script, None)))
+    Alias('qemu', env.Command('__qemu', ['loader', 'test', 'utilities'], Action(script, None)))
