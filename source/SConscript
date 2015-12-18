@@ -88,8 +88,9 @@ def gen_version_c(target, source, env):
 AlwaysBuild(env.Command('version.c', [], env.Action(gen_version_c, None)))
 
 # Include the generated configuration header.
-env['CCFLAGS'] += ['-include', 'build/%s/source/config.h' % (env['CONFIG'])]
-env['ASFLAGS'] += ['-include', 'build/%s/source/config.h' % (env['CONFIG'])]
+env['CONFIG_H'] = File('config.h')
+env['CCFLAGS'] += ['-include', '${CONFIG_H}']
+env['ASFLAGS'] += ['-include', '${CONFIG_H}']
 
 # Platform code needs the location of the loader binary.
 env['KBOOT'] = File('kboot.elf')
