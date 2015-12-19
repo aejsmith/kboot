@@ -37,11 +37,13 @@ filesystem covering the whole device), KBoot's boot sector is intended to be
 installed to the partition containing the boot loader. Therefore, if you wish
 KBoot to be the primary boot loader on the device, you must ensure that the
 installation partition is marked as active in the MBR, and that the MBR has
-suitable boot code that will boot the active partition.
+suitable boot code that will boot the active partition (such as the MBR
+provided by [Syslinux](http://www.syslinux.org/wiki/index.php/Mbr)).
 
 Several limitations apply to hard drive booting on BIOS systems at present:
 
- * The boot filesystem must be ext2/3/4, FAT is not currently supported.
+ * The boot filesystem must be ext2/3/4. FAT is not currently supported, as no
+   boot sector has been implemented.
  * The boot filesystem must be completely within the first 2 TiB of the device.
 
 The filesystem you wish to install KBoot to must be mounted, and you must
@@ -176,8 +178,8 @@ include in the ISO image, then create an image with:
 
     $ kboot-mkiso image.iso <dir>
 
-The directory should contain a configuration file in one of the default search
-locations.
+The directory should contain a configuration file at either `boot/kboot.cfg`
+or `kboot.cfg`.
 
 If no directory is specified then an image will still be created containing
 only the boot loader, which will error on boot due to the lack of a

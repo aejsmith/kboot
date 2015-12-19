@@ -2,15 +2,19 @@ GUI Menu
 ========
 
 KBoot provides a basic graphical boot menu. An icon is assigned to each menu
-entry, and the icons will be laid out horizontally on screen. A selection colour
-or image is drawn over the currently selected menu entry.
+entry, and the icons will be laid out horizontally on screen, on top of a
+background image or colour. A selection colour or image is drawn over the
+currently selected menu entry.
 
 In addition to left/right to navigate the entries, the menu supports the same
 inputs as the text menu:
 
-* *F1* - Show configuration options for the currently selected entry.
-* *F9* - Display the debug log.
-* *F10* - Enter the shell.
+* *F1*: Show configuration options for the currently selected entry.
+* *F9*: Display the debug log.
+* *F10*: Enter the shell.
+
+Plus any other functions defined as nested menus for the currently selected
+entry.
 
 Usage
 -----

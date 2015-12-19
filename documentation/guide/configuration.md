@@ -1,8 +1,8 @@
-Configuration
-=============
+Configuration/Usage
+===================
 
-This section covers the configuration of KBoot. KBoot requires a configuration
-file to describe how to boot your system.
+This section covers the configuration and usage of KBoot. KBoot requires a
+configuration file to describe how to boot your system.
 
 Location
 --------
@@ -28,16 +28,17 @@ A full list of commands and details of their arguments is available in
 structure of the configuration file and basic examples.
 
 A command is given as a command name, followed by a set of arguments. The end
-of a line indicates the end of a command, unless the line ends with a `\`
-character. For example:
+of a line (that is not inside a string, list or command list - see below)
+indicates the end of a command, unless the line ends with a `\` character. For
+example:
 
     hello "world" 42
     hello \
         "world" 1234
 
-Arguments are typed, so you must use the correct types as expected by a command,
-and arbitrary text is not valid (i.e. the quotation marks around "meaning" in
-the above example are required).
+Arguments are typed, so you must use the correct types as expected by a
+command, and arbitrary text (aside from the command name) is not valid (i.e.
+the quotation marks around "world" in the above example are required).
 
 The following is a list of types supported and their syntax:
 
@@ -62,7 +63,7 @@ child).
 Operating system loaders are special types of commands. They determine the
 actual operating system that will be booted. They must be the last command in
 a command list. Compared to other commands, which are executed immediately as
-the configuration file is parsed (even within a child command list for a menu
+the configuration file is read (even within a child command list for a menu
 entry), the main action of the OS loader is deferred until later, e.g. when a
 menu entry is selected to boot.
 
@@ -104,13 +105,14 @@ Devices and Paths
 Devices (hard disks, CD drives, etc) in KBoot are given a name that they can be
 referred to with. For hard disks, the name takes the form `hdX`, where X is the
 number of the drive, and partitions on the disk are named `hdX,Y`, where Y is
-the partition number. A list of all detected devices on a system can be obtained
+the partition number. CDs are named `cdromX`, floppies `floppyX` and network
+boot servers `netX`. A list of all detected devices on a system can be obtained
 using the `lsdevice` command in the shell.
 
 In addition, where supported by the filesystem, devices can be referred to by
 UUID and by label. These should be used where possible, as device names are not
 always stable, they depend on the order the firmware presents them. UUIDs and
-labels can be used in place of a device string by using `uuid:...` and
+labels can be used in place of a device name by using `uuid:...` and
 `label:...`, respectively.
 
 An environment has a current device. This can be changed using the `device`
@@ -154,9 +156,9 @@ Multi-OS Configuration
 
 When you have multiple OSes that you wish to choose between, you can use a boot
 menu. To use a boot menu, rather than having an OS loader command in the top
-level of the configuration, you define set of entries with the `entry` command.
-The `entry` command is passed an entry name, and a command list to execute for
-that entry. For example:
+level of the configuration, you define a set of entries with the `entry`
+command. The `entry` command is passed an entry name, and a command list to
+execute for that entry. For example:
 
     set "timeout" 5
 
@@ -284,6 +286,16 @@ The shell can be entered by pressing F10 at the boot menu, or at certain error
 screens. You could use the shell, for example, if you make an error in your
 configuration file that prevents it from being loaded, in order to manually
 load your OS.
+
+Debug Log
+---------
+
+KBoot maintains an internal debug log, which may contain useful information to
+help solve problems. On debug builds (the default when built from git, or
+selected by passing `DEBUG=1` on the SCons command line), the debug log is by
+default directed to the first serial port. It is also possible to access the
+log by pressing F9 from the boot menu or error screens, or using the `log`
+command in the shell.
 
 Examples
 --------
