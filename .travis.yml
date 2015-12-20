@@ -1,19 +1,15 @@
 sudo: false
 language: c
-matrix:
-  include:
-  - os: linux
-    env: CONFIG=bios
-  - os: linux
-    env: CONFIG=efi-amd64
-  - os: linux
-    env: CONFIG=efi-ia32
+compiler:
+  - clang
+  - gcc
+os: linux
+env:
+  - CONFIG=bios
+  - CONFIG=efi-amd64
+  - CONFIG=efi-ia32
 install: true
 script:
   - scons CONFIG=$CONFIG loader
+  - scons CONFIG=$CONFIG test
   - scons utilities
-addons:
-  apt:
-    packages:
-      - scons
-
