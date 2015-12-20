@@ -227,23 +227,23 @@ if not verbose:
     env['STRIPCOMSTR']  = compile_str('STRIP')
 
 # Detect which compiler to use.
-compilers = ['cc', 'gcc', 'clang']
-compiler = None
-for name in compilers:
-    path = env['CROSS_COMPILE'] + name
-    if util.which(path):
-        compiler = path
-        break
-if not compiler:
+def guess_compiler(name):
+    if os.environ.has_key(name):
+        compilers = [os.environ[name]]
+    else:
+        compilers = [env['CROSS_COMPILE'] + x for x in ['cc', 'gcc', 'clang']]
+    for compiler in compilers:
+        if util.which(compiler):
+            return compiler
     util.StopError('Toolchain has no usable compiler available.')
-
-# Set paths to the various build utilities. The stuff below is to support use
-# of clang's static analyzer.
 if os.environ.has_key('CC') and os.path.basename(os.environ['CC']) == 'ccc-analyzer':
+    # Support the clang static analyzer.
     env['CC'] = os.environ['CC']
-    env['ENV']['CCC_CC'] = compiler
+    env['ENV']['CCC_CC'] = guess_compiler('CCC_CC')
 else:
-    env['CC'] = compiler
+    env['CC'] = guess_compiler('CC')
+
+# Set paths to other build utilities.
 env['AS']      = env['CROSS_COMPILE'] + 'as'
 env['OBJDUMP'] = env['CROSS_COMPILE'] + 'objdump'
 env['READELF'] = env['CROSS_COMPILE'] + 'readelf'
@@ -262,7 +262,7 @@ for (k, v) in target_flags.items():
     env[k] += v
 
 # Add compiler-specific flags.
-output = Popen([compiler, '--version'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
+output = Popen([env['CC'], '--version'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
 env['IS_CLANG'] = output.find('clang') >= 0
 if env['IS_CLANG']:
     for (k, v) in clang_flags.items():
@@ -272,7 +272,7 @@ else:
         env[k] += v
 
 # Add the compiler include directory for some standard headers.
-incdir = Popen([compiler, '-print-file-name=include'], stdout=PIPE).communicate()[0].strip()
+incdir = Popen([env['CC'], '-print-file-name=include'], stdout=PIPE).communicate()[0].strip()
 env['CCFLAGS'] += ['-isystem%s' % (incdir)]
 env['ASFLAGS'] += ['-isystem%s' % (incdir)]
 
