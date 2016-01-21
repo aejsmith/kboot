@@ -96,17 +96,17 @@ env['VERSION'] = '%d+%s' % (version, revision) if revision is not None else '%d'
 configs = SConscript('config/SConscript')
 
 # Generate help text.
-helptext  = 'To build KBoot, a target system configuration must be specified on the command\n'
-helptext += 'line with the CONFIG option. The following configurations are available:\n'
-helptext += '\n'
-for name in sorted(configs.iterkeys()):
-    helptext += '  %-12s - %s\n' % (name, configs[name]['description'])
-helptext += '\n'
-helptext += 'The following build options can be set on the command line. These will be saved\n'
-helptext += 'for later invocations of SCons, so you do not need to specify them every time:\n'
-helptext += opts.GenerateHelpText(env)
-helptext += '\n'
-helptext += 'For information on how to build KBoot, please refer to documentation/readme.txt.\n'
+helptext = \
+    'To build KBoot, a target system configuration must be specified on the command\n' + \
+    'line with the CONFIG option. The following configurations are available:\n' + \
+    '\n' + \
+    ''.join(['  %-12s - %s\n' % (c, configs[c]['description']) for c in sorted(configs.iterkeys())]) + \
+    '\n' + \
+    'The following build options can be set on the command line. These will be saved\n' + \
+    'for later invocations of SCons, so you do not need to specify them every time:\n' + \
+    opts.GenerateHelpText(env) + \
+    '\n' + \
+    'For information on how to build KBoot, please refer to documentation/readme.txt.\n'
 Help(helptext)
 
 # Check if the configuration specified is invalid.
