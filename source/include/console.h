@@ -188,6 +188,8 @@ typedef struct console_out {
 #define CONSOLE_KEY_F8          0x10d
 #define CONSOLE_KEY_F9          0x10e
 #define CONSOLE_KEY_F10         0x10f
+#define CONSOLE_KEY_PGUP        0x110
+#define CONSOLE_KEY_PGDOWN      0x111
 
 /** Console input operations structure. */
 typedef struct console_in_ops {

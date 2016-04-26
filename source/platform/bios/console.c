@@ -86,6 +86,10 @@ static uint16_t bios_console_getc(console_in_t *console) {
         return CONSOLE_KEY_HOME;
     case 0x4f:
         return CONSOLE_KEY_END;
+    case 0x49:
+        return CONSOLE_KEY_PGUP;
+    case 0x51:
+        return CONSOLE_KEY_PGDOWN;
     case 0x53:
         return 0x7f;
     case 0x3b ... 0x44:

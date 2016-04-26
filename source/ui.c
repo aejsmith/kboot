@@ -192,6 +192,12 @@ void ui_print_action(uint16_t key, const char *name) {
     case CONSOLE_KEY_F1 ... CONSOLE_KEY_F10:
         printf("F%u", key + 1 - CONSOLE_KEY_F1);
         break;
+    case CONSOLE_KEY_PGUP:
+        printf("PgUp");
+        break;
+    case CONSOLE_KEY_PGDOWN:
+        printf("PgDown");
+        break;
     case '\n':
         printf("Enter");
         break;
@@ -1274,6 +1280,7 @@ static input_result_t ui_textview_input(ui_window_t *window, uint16_t key) {
             console_set_cursor_pos(current_console, 0, 0);
             render_textview_line(textview, --textview->offset);
 
+            /* Available actions may change if we're now at the top. */
             return INPUT_RENDER_HELP;
         }
 
@@ -1285,6 +1292,22 @@ static input_result_t ui_textview_input(ui_window_t *window, uint16_t key) {
             render_textview_line(textview, textview->offset++ + CONTENT_HEIGHT);
 
             return INPUT_RENDER_HELP;
+        }
+
+        return INPUT_HANDLED;
+    case CONSOLE_KEY_PGUP:
+        if (textview->offset) {
+            textview->offset -= min(textview->offset, CONTENT_HEIGHT);
+            return INPUT_RENDER_WINDOW;
+        }
+
+        return INPUT_HANDLED;
+    case CONSOLE_KEY_PGDOWN:
+        if (textview->count - textview->offset > CONTENT_HEIGHT) {
+            textview->offset += min(
+                textview->count - textview->offset - CONTENT_HEIGHT,
+                CONTENT_HEIGHT);
+            return INPUT_RENDER_WINDOW;
         }
 
         return INPUT_HANDLED;
