@@ -133,7 +133,7 @@ program_dir="$(cd -P "$(dirname "${program_source}" )" && pwd)"
 
 # Determine where the installation directory to use is.
 if [ -z "${arg_bin_dir}" -a -f "${program_dir}/../../../SConstruct" -a -d "${program_dir}/../../../build" ]; then
-    targets_dir=$(realpath "${program_dir}/../../../build")
+    targets_dir="$(cd -P "${program_dir}/../../../build" && pwd)"
 
     function get_target_dir() {
         eval "target_dir='${targets_dir}/${1}/bin'"
@@ -201,8 +201,8 @@ if ! which xorriso >/dev/null 2>&1; then
     exit 1
 fi
 if [ -n "${efi_targets}" ]; then
-    if ! which mkfs.vfat >/dev/null 2>&1; then
-        echo "${program_name}: mkfs.vfat is not installed" >&2
+    if ! which mkfs.fat >/dev/null 2>&1; then
+        echo "${program_name}: mkfs.fat is not installed" >&2
         exit 1
     elif ! which mcopy >/dev/null 2>&1; then
         echo "${program_name}: mtools is not installed" >&2
@@ -233,8 +233,8 @@ fi
 if [ -n "${efi_targets}" ]; then
     # EFI requires embedding a FAT filesystem image as a system partition.
     # Create one containing images for all the targets we support.
-    truncate -s 16M "${work_dir}/boot/efikboot.img"
-    mkfs.vfat -n "KBOOT_EFI" "${work_dir}/boot/efikboot.img" >/dev/null
+    dd if=/dev/zero of="${work_dir}/boot/efikboot.img" bs=16m count=1
+    mkfs.fat -n "KBOOT_EFI" "${work_dir}/boot/efikboot.img" >/dev/null
     export MTOOLSRC="${work_dir}/mtoolsrc"
     echo "drive c: file=\"${work_dir}/boot/efikboot.img\"" > "${MTOOLSRC}"
     mmd c:/EFI
