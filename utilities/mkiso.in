@@ -233,7 +233,7 @@ fi
 if [ -n "${efi_targets}" ]; then
     # EFI requires embedding a FAT filesystem image as a system partition.
     # Create one containing images for all the targets we support.
-    dd if=/dev/zero of="${work_dir}/boot/efikboot.img" bs=16m count=1
+    dd if=/dev/zero of="${work_dir}/boot/efikboot.img" bs=16777216 count=1
     mkfs.fat -n "KBOOT_EFI" "${work_dir}/boot/efikboot.img" >/dev/null
     export MTOOLSRC="${work_dir}/mtoolsrc"
     echo "drive c: file=\"${work_dir}/boot/efikboot.img\"" > "${MTOOLSRC}"
