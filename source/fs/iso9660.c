@@ -228,7 +228,7 @@ static char *make_uuid(iso9660_primary_volume_desc_t *pri) {
      * fields are '0' and the offset is 0. */
     time = &pri->vol_mod_time;
     for (i = 0; i < 16; i++) {
-        if (((uint8_t *)time)[i] != 0)
+        if (((uint8_t *)time)[i] != '0')
             break;
     }
     if (i == 16 && time->offset == 0)
