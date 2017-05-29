@@ -28,6 +28,7 @@
 #   include <sys/types.h>
 #   include <sys/sysctl.h>
 #elif defined(__linux__)
+#   include <sys/sysmacros.h>
 #   include <sys/stat.h>
 #   include <mntent.h>
 #endif
