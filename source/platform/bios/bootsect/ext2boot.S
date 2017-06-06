@@ -151,6 +151,10 @@ FUNCTION_START(_start)
     shlw    %cl, %ax
     movw    %ax, block_size
 
+    /* Reject non-EXT2_DYNAMIC_REV filesystems. */
+    cmpl    $EXT2_DYNAMIC_REV, (superblock + EXT2_SUPERBLOCK_OFF_REV_LEVEL)
+    jne     .Lunsupported
+
     /* Check for a dynamic group descriptor size, if not put in a default. */
     testb   $EXT4_FEATURE_INCOMPAT_64BIT, (superblock + EXT2_SUPERBLOCK_OFF_FEATURE_INCOMPAT)
     jnz     .Lfind_inode
