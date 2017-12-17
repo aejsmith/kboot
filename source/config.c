@@ -979,7 +979,7 @@ static value_list_t *parse_value_list(bool command) {
             if (ch == '\\') {
                 escaped = true;
                 continue;
-            } else if (ch == '\n' && command) {
+            } else if ((ch == '\n' || ch == EOF) && command) {
                 return list;
             }
         }
