@@ -29,7 +29,7 @@ if config['ARCH'] == 'x86':
             'arch': 'ia32',
             'ccflags': ['-m32', '-mno-sse', '-mno-mmx', '-mno-sse2', '-mno-3dnow', '-fno-pic'],
             'asflags': ['-m32', '-fno-pic'],
-            'linkflags': ['-m32', '-no-pie'],
+            'linkflags': ['-m32', '$NO_PIE'],
             'sources': x86_sources + [
                 'arch/ia32/mmu.c',
                 '../source/lib/runtime/i386/udivdi3.S',
@@ -40,7 +40,7 @@ if config['ARCH'] == 'x86':
             'arch': 'amd64',
             'ccflags': ['-m64', '-mcmodel=kernel', '-mno-red-zone', '-mno-sse', '-mno-mmx', '-mno-sse2', '-mno-3dnow', '-fno-pic'],
             'asflags': ['-m64', '-fno-pic'],
-            'linkflags': ['-m64', '-no-pie'],
+            'linkflags': ['-m64', '$NO_PIE'],
             'sources': x86_sources + [
                 'arch/amd64/mmu.c',
             ],

@@ -271,6 +271,10 @@ else:
     for (k, v) in gcc_flags.items():
         env[k] += v
 
+# Test if the compiler supports the -no-pie option.
+output = Popen([env['CC'], '-no-pie'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
+env['NO_PIE'] = '-no-pie' if output.find('unrecognized') < 0 else ''
+
 # Add the compiler include directory for some standard headers.
 incdir = Popen([env['CC'], '-print-file-name=include'], stdout=PIPE).communicate()[0].strip()
 env['CCFLAGS'] += ['-isystem%s' % (incdir)]

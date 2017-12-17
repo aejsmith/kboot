@@ -37,11 +37,11 @@ sources = FeatureSources(config, [
 if config['64BIT']:
     env['CCFLAGS'] += ['-m64', '-mcmodel=small', '-mno-red-zone']
     env['ASFLAGS'] += ['-m64']
-    env['LINKFLAGS'] += ['-m64', '-no-pie']
+    env['LINKFLAGS'] += ['-m64', '$NO_PIE']
 else:
     env['CCFLAGS'] += ['-m32']
     env['ASFLAGS'] += ['-m32']
-    env['LINKFLAGS'] += ['-m32', '-no-pie']
+    env['LINKFLAGS'] += ['-m32', '$NO_PIE']
 
     # 32-bit needs some support functions from compiler-rt.
     sources += map(lambda x : File('../../lib/runtime/' + x), [
