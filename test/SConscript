@@ -34,6 +34,7 @@ if config['ARCH'] == 'x86':
                 'arch/ia32/mmu.c',
                 '../source/lib/runtime/i386/udivdi3.S',
                 '../source/lib/runtime/i386/umoddi3.S',
+                '../source/lib/runtime/udivmoddi4.c',
             ],
         }, {
             'arch': 'amd64',
