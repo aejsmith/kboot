@@ -535,6 +535,7 @@ int do_vprintf(printf_helper_t helper, void *data, const char *fmt, va_list args
             break;
         case 'x':
             state.flags |= PRINTF_LOW_CASE;
+            /* Fall-through. */
         case 'X':
             state.base = 16;
             break;
