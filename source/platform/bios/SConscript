@@ -46,6 +46,11 @@ bootsects = [
 # Set the linker script path.
 env['LDSCRIPT'] = env.LDScript('link.ld', 'link.ld.in')
 
+# Some Linux distributions have their toolchain configured to build position
+# independent executables by default. Make sure we disable PIC on these.
+env['CCFLAGS'] += ['-fno-pic']
+env['ASFLAGS'] += ['-fno-pic']
+
 # Build the final loader binary.
 kboot = env.Command(
     env['OUTDIR'].File('kboot.bin'),
