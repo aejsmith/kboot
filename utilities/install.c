@@ -567,6 +567,8 @@ static void usage(const char *argv0, FILE *stream) {
         "  --target=TARGET   Specify target system type\n"
         "  --update          Perform an update (behaviour target-specific)\n"
         "  --version         Display the KBoot version\n"
+        "  --dry-run         Only print the steps which would be performed, don't make\n"
+        "                    any changes.\n"
         "\n"
         "Installation location options:\n"
         "  --device=DEVICE   Install to a device\n"
