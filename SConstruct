@@ -23,7 +23,7 @@ build_flags = {
         '-Wall', '-Wextra', '-Wno-variadic-macros', '-Wno-unused-parameter',
         '-Wwrite-strings', '-Wmissing-declarations', '-Wredundant-decls',
         '-Wno-format', '-Werror', '-Wno-error=unused', '-pipe',
-        '-Wno-error=unused-function', '-Wno-cast-function-type',
+        '-Wno-error=unused-function',
     ],
     'CFLAGS': ['-std=gnu99'],
     'ASFLAGS': ['-D__ASM__'],
@@ -31,7 +31,7 @@ build_flags = {
 
 # GCC-specific build flags.
 gcc_flags = {
-    'CCFLAGS': ['-Wno-unused-but-set-variable'],
+    'CCFLAGS': ['-Wno-unused-but-set-variable', '-Wno-cast-function-type'],
 }
 
 # Clang-specific build flags.
