@@ -23,7 +23,7 @@ build_flags = {
         '-Wall', '-Wextra', '-Wno-variadic-macros', '-Wno-unused-parameter',
         '-Wwrite-strings', '-Wmissing-declarations', '-Wredundant-decls',
         '-Wno-format', '-Werror', '-Wno-error=unused', '-pipe',
-        '-Wno-error=unused-function',
+        '-Wno-error=unused-function', '-Wno-cast-function-type',
     ],
     'CFLAGS': ['-std=gnu99'],
     'ASFLAGS': ['-D__ASM__'],
