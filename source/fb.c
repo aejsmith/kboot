@@ -37,6 +37,7 @@ typedef struct fb_buffer {
     uint16_t width;                 /**< Width of the buffer. */
     uint16_t height;                /**< Height of the buffer. */
     uint32_t pitch;                 /**< Pitch between lines (in bytes). */
+    bool autoflush;                 /**< Whether to automatically flush updates. */
 } fb_buffer_t;
 
 /** TGA header structure. */
@@ -192,7 +193,7 @@ static void buffer_put_pixel(const fb_buffer_t *buffer, uint16_t x, uint16_t y, 
         break;
     }
 
-    if (buffer->mapping) {
+    if (buffer->mapping && buffer->autoflush) {
         main = buffer->mapping + offset;
 
         switch (buffer->format->bpp >> 3) {
@@ -235,7 +236,7 @@ static void buffer_fill_rect(
             (uint8_t)rgb,
             height * buffer->pitch);
 
-        if (buffer->mapping) {
+        if (buffer->mapping && buffer->autoflush) {
             memset(
                 buffer->mapping + (y * buffer->pitch),
                 (uint8_t)rgb,
@@ -276,7 +277,7 @@ static void buffer_copy_rect(
             height * buffer->pitch);
 
         /* Copy the affected area to the main buffer. */
-        if (buffer->mapping) {
+        if (buffer->mapping && buffer->autoflush) {
             memcpy(
                 buffer->mapping + dest_offset,
                 buffer->back + dest_offset,
@@ -293,7 +294,7 @@ static void buffer_copy_rect(
                 buffer->back + source_offset,
                 width * (buffer->format->bpp >> 3));
 
-            if (buffer->mapping) {
+            if (buffer->mapping && buffer->autoflush) {
                 memcpy(
                     buffer->mapping + dest_offset,
                     buffer->back + dest_offset,
@@ -301,6 +302,72 @@ static void buffer_copy_rect(
             }
         }
     }
+}
+
+/** Explicitly flush changes to a framebuffer rectangle.
+ * @param buffer        Buffer to flush.
+ * @param x             X position of rectangle.
+ * @param y             Y position of rectangle.
+ * @param width         Width of rectangle.
+ * @param height        Height of rectangle. */
+static void buffer_flush_rect(
+    const fb_buffer_t *buffer, uint16_t x, uint16_t y, uint16_t width,
+    uint16_t height)
+{
+    size_t offset;
+
+    if (!buffer->mapping)
+        return;
+
+    if (x == 0 && width == buffer->width) {
+        /* Fast path where we can copy everything in one go. */
+        offset = y * buffer->pitch;
+
+        memcpy(
+            buffer->mapping + offset,
+            buffer->back + offset,
+            height * current_video_mode->pitch);
+    } else {
+        /* Copy line by line. */
+        for (uint16_t i = 0; i < height; i++) {
+            offset = buffer_offset(buffer, x, y + i);
+
+            memcpy(
+                buffer->mapping + offset,
+                buffer->back + offset,
+                width * (buffer->format->bpp >> 3));
+        }
+    }
+}
+
+/**
+ * Set whether framebuffer modifications are automatically flushed.
+ *
+ * The framebuffer is double buffered such that each operation on it is
+ * performed on a backbuffer and then the result is copied to the real
+ * framebuffer. This is because some operations (ones which require reading the
+ * current content) are slow on the real framebuffer which is usually uncached
+ * or write-combined memory.
+ *
+ * Normally, this copy is automatically done at the end of each operation.
+ * This function can be used to disable that automatic copy, so instead the
+ * changes must be manually flushed to the real framebuffer with
+ * fb_flush_rect(). This can be used to perform a series of operations without
+ * causing user-visible glitches in between.
+ *
+ * @param autoflush     Whether to automatically flush framebuffer updates.
+ */
+void fb_set_autoflush(bool autoflush) {
+    fb_buffer.autoflush = autoflush;
+}
+
+/** Explicitly flush changes to a framebuffer rectangle.
+ * @param x             X position of rectangle.
+ * @param y             Y position of rectangle.
+ * @param width         Width of rectangle.
+ * @param height        Height of rectangle. */
+void fb_flush_rect(uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+    buffer_flush_rect(&fb_buffer, x, y, width, height);
 }
 
 /** Put a pixel on the framebuffer.
@@ -484,6 +551,7 @@ void fb_init(void) {
     fb_buffer.width = current_video_mode->width;
     fb_buffer.height = current_video_mode->height;
     fb_buffer.pitch = current_video_mode->pitch;
+    fb_buffer.autoflush = true;
 
     /* Allocate a backbuffer. */
     fb_buffer.back = malloc_large(fb_buffer.pitch * fb_buffer.height);

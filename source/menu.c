@@ -396,9 +396,10 @@ static void draw_gui_background(uint16_t x, uint16_t y, uint16_t width, uint16_t
 /** Draw an entry.
  * @param entry         Entry to draw below.
  * @param selected      Whether the entry is selected.
- * @param draw_bg       Whether it is necessary to draw the background. */
-static void draw_gui_entry(menu_entry_t *entry, bool selected, bool draw_bg) {
+ * @param redraw        Whether redrawing over a previously drawn icon. */
+static void draw_gui_entry(menu_entry_t *entry, bool selected, bool redraw) {
     uint16_t selection_x, selection_y, selection_width, selection_height;
+    uint16_t total_x, total_y, total_width, total_height;
 
     /* Determine where the selection should be drawn. */
     if (current_menu->selection.type == MENU_RESOURCE_IMAGE) {
@@ -413,14 +414,15 @@ static void draw_gui_entry(menu_entry_t *entry, bool selected, bool draw_bg) {
         selection_y = entry->icon_y;
     }
 
+    total_x = min(entry->icon_x, selection_x);
+    total_y = min(entry->icon_y, selection_y);
+    total_width = max(entry->icon.width, selection_width);
+    total_height = max(entry->icon.height, selection_height);
+
     /* Draw the background. */
-    if (draw_bg) {
+    if (redraw) {
         /* Must fill the area including both the selection and the entry icon. */
-        draw_gui_background(
-            min(entry->icon_x, selection_x),
-            min(entry->icon_y, selection_y),
-            max(entry->icon.width, selection_width),
-            max(entry->icon.height, selection_height));
+        draw_gui_background(total_x, total_y, total_width, total_height);
     }
 
     /* Draw the selection image. */
@@ -436,6 +438,9 @@ static void draw_gui_entry(menu_entry_t *entry, bool selected, bool draw_bg) {
 
     /* Draw the icon. */
     fb_draw_image(&entry->icon, entry->icon_x, entry->icon_y, 0, 0, 0, 0);
+
+    if (redraw)
+        fb_flush_rect(total_x, total_y, total_width, total_height);
 }
 
 /** Draw the GUI menu. */
@@ -449,6 +454,18 @@ static void draw_gui_menu(void) {
 
         draw_gui_entry(entry, entry == current_menu->selected, false);
     }
+}
+
+/** Change the selected entry.
+ * @param next          Next selection. */
+static void change_gui_selection(menu_entry_t *next) {
+    fb_set_autoflush(false);
+
+    draw_gui_entry(current_menu->selected, false, true);
+    current_menu->selected = next;
+    draw_gui_entry(current_menu->selected, true, true);
+
+    fb_set_autoflush(true);
 }
 
 /** Display the GUI menu.
@@ -513,19 +530,13 @@ static bool display_gui_menu(const char *title, unsigned timeout) {
             } else if (key == CONSOLE_KEY_LEFT) {
                 menu_entry_t *first = list_first(&current_menu->env->menu_entries, menu_entry_t, header);
 
-                if (current_menu->selected != first) {
-                    draw_gui_entry(current_menu->selected, false, true);
-                    current_menu->selected = list_prev(current_menu->selected, header);
-                    draw_gui_entry(current_menu->selected, true, true);
-                }
+                if (current_menu->selected != first)
+                    change_gui_selection(list_prev(current_menu->selected, header));
             } else if (key == CONSOLE_KEY_RIGHT) {
                 menu_entry_t *last = list_last(&current_menu->env->menu_entries, menu_entry_t, header);
 
-                if (current_menu->selected != last) {
-                    draw_gui_entry(current_menu->selected, false, true);
-                    current_menu->selected = list_next(current_menu->selected, header);
-                    draw_gui_entry(current_menu->selected, true, true);
-                }
+                if (current_menu->selected != last)
+                    change_gui_selection(list_next(current_menu->selected, header));
             } else {
                 /* Reuse the text menu input code. */
                 input_result_t result = menu_entry_input(&current_menu->selected->entry, key);
