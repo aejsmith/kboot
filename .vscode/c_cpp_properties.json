@@ -1,0 +1,46 @@
+{
+    "configurations": [
+        {
+            "name": "efi-amd64",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "${workspaceFolder}/source/include",
+                "${workspaceFolder}/source/platform/efi/include",
+                "${workspaceFolder}/source/platform/efi/arch/x86/include",
+                "${workspaceFolder}/source/arch/x86/include"
+            ],
+            "defines": [
+                "CONFIG_TARGET_HAS_LINUX=1",
+                "CONFIG_TARGET_HAS_VIDEO=1",
+                "CONFIG_TARGET_HAS_KBOOT64=1",
+                "CONFIG_GUI_MENU=1",
+                "CONFIG_64BIT=1",
+                "CONFIG_EFI_ARCH_X86=1",
+                "CONFIG_DEBUG=1",
+                "CONFIG_FB=1",
+                "CONFIG_TARGET_HAS_NET=1",
+                "CONFIG_ARCH=\"x86\"",
+                "CONFIG_TARGET_HAS_KBOOT32=1",
+                "CONFIG_PLATFORM_EFI=1",
+                "CONFIG_EFI_ARCH=\"x86\"",
+                "CONFIG_DRIVER_CONSOLE_FB=1",
+                "CONFIG_PLATFORM=\"efi\"",
+                "CONFIG_ARCH_X86=1",
+                "CONFIG_TARGET_HAS_DISK=1",
+                "CONFIG_TARGET_NS16550_IO=1",
+                "CONFIG_TARGET_HAS_UI=1",
+                "CONFIG_DRIVER_SERIAL_NS16550=1"
+            ],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "clang-x64"
+        }
+    ],
+    "version": 4
+}

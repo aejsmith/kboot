@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.h": "c",
+        "SConscript": "python",
+        "SConstruct": "python"
+    }
+}
