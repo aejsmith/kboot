@@ -1,8 +1,6 @@
 KBoot
 =====
 
-[![Build Status](https://travis-ci.org/aejsmith/kboot.svg?branch=master)](https://travis-ci.org/aejsmith/kboot)
-
 KBoot is a general-purpose boot loader, which currently supports both BIOS- and
 UEFI-based x86 PCs.
 
