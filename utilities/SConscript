@@ -28,7 +28,7 @@ def build_script(name, sources):
     }
 
     target = env.Substfile(env['OUTDIR'].File(name), sources, SUBST_DICT = subst_dict)
-    env.AddPostAction(target, env.Action(lambda target, source, env: os.chmod(str(target[0]), 0755), None))
+    env.AddPostAction(target, env.Action(lambda target, source, env: os.chmod(str(target[0]), 0o755), None))
 
 build_utility('kboot-install', ['install.c'])
 build_script('kboot-mkiso', ['mkiso.in'])

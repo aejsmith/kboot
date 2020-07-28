@@ -100,7 +100,7 @@ helptext = \
     'To build KBoot, a target system configuration must be specified on the command\n' + \
     'line with the CONFIG option. The following configurations are available:\n' + \
     '\n' + \
-    ''.join(['  %-12s - %s\n' % (c, configs[c]['description']) for c in sorted(configs.iterkeys())]) + \
+    ''.join(['  %-12s - %s\n' % (c, configs[c]['description']) for c in sorted(iter(configs))]) + \
     '\n' + \
     'The following build options can be set on the command line. These will be saved\n' + \
     'for later invocations of SCons, so you do not need to specify them every time:\n' + \
@@ -110,7 +110,7 @@ helptext = \
 Help(helptext)
 
 # Check if the configuration specified is invalid.
-if not env.has_key('CONFIG'):
+if not 'CONFIG' in env:
     util.StopError("No target system configuration specified. See 'scons -h'.")
 elif not env['CONFIG'] in configs:
     util.StopError("Unknown configuration '%s'." % (env['CONFIG']))
@@ -169,7 +169,7 @@ if not verbose:
 
 # Merge in build flags.
 for (k, v) in host_flags.items():
-    if host_env.has_key(k):
+    if k in host_env:
         if type(v) == dict:
             host_env[k].update(v)
         else:
@@ -178,7 +178,7 @@ for (k, v) in host_flags.items():
         host_env[k] = v
 
 # Add compiler-specific flags.
-output = Popen([host_env['CC'], '--version'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
+output = Popen([host_env['CC'], '--version'], stdout=PIPE, stderr=PIPE).communicate()[0].decode('utf-8').strip()
 host_env['IS_CLANG'] = output.find('clang') >= 0
 if host_env['IS_CLANG']:
     for (k, v) in clang_flags.items():
@@ -228,7 +228,7 @@ if not verbose:
 
 # Detect which compiler to use.
 def guess_compiler(name):
-    if os.environ.has_key(name):
+    if name in os.environ:
         compilers = [os.environ[name]]
     else:
         compilers = [env['CROSS_COMPILE'] + x for x in ['cc', 'gcc', 'clang']]
@@ -236,7 +236,7 @@ def guess_compiler(name):
         if util.which(compiler):
             return compiler
     util.StopError('Toolchain has no usable compiler available.')
-if os.environ.has_key('CC') and os.path.basename(os.environ['CC']) == 'ccc-analyzer':
+if 'CC' in os.environ and os.path.basename(os.environ['CC']) == 'ccc-analyzer':
     # Support the clang static analyzer.
     env['CC'] = os.environ['CC']
     env['ENV']['CCC_CC'] = guess_compiler('CCC_CC')
@@ -262,7 +262,7 @@ for (k, v) in target_flags.items():
     env[k] += v
 
 # Add compiler-specific flags.
-output = Popen([env['CC'], '--version'], stdout=PIPE, stderr=PIPE).communicate()[0].strip()
+output = Popen([env['CC'], '--version'], stdout=PIPE, stderr=PIPE).communicate()[0].decode('utf-8').strip()
 env['IS_CLANG'] = output.find('clang') >= 0
 if env['IS_CLANG']:
     for (k, v) in clang_flags.items():
@@ -282,7 +282,7 @@ else:
         env['NO_PIE'] = '-no-pie'
 
 # Add the compiler include directory for some standard headers.
-incdir = Popen([env['CC'], '-print-file-name=include'], stdout=PIPE).communicate()[0].strip()
+incdir = Popen([env['CC'], '-print-file-name=include'], stdout=PIPE).communicate()[0].strip().decode('utf-8')
 env['CCFLAGS'] += ['-isystem%s' % (incdir)]
 env['ASFLAGS'] += ['-isystem%s' % (incdir)]
 

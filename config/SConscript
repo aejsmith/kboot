@@ -30,7 +30,7 @@ class ConfigDict(dict):
 
 def load_file(path, var):
     vars = {}
-    execfile(path, vars, vars)
+    exec(open(path).read(), vars, vars)
     return vars[var]
 
 # Build a list of known configurations.
@@ -40,13 +40,13 @@ for entry in entries:
     config = load_file(entry.name, 'config')
 
     def load_includes(curr):
-        if not curr.has_key('includes'):
+        if not 'includes' in curr:
             return
         for include in curr['includes']:
             included = load_file('%s.inc' % (include), 'include')
-            a = included['config'].items() if included.has_key('config') else []
-            b = config['config'].items() if config.has_key('config') else []
-            config['config'] = dict(a + b)
+            a = included['config'] if 'config' in included else dict()
+            b = config['config'] if 'config' in config else dict()
+            config['config'] = {**a, **b}
             load_includes(included)
 
     load_includes(config)

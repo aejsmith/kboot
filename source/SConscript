@@ -76,7 +76,7 @@ for (k, v) in config.items():
     elif isinstance(v, int):
         f.write("#define CONFIG_%s %d\n" % (k, int(v)))
     else:
-        raise Exception, "Unsupported type %s in config" % (type(v))
+        raise Exception("Unsupported type %s in config" % (type(v)))
 f.close()
 
 # Generate the version string.
@@ -100,7 +100,7 @@ arch_sources = SConscript(dirs = ['arch/' + config['ARCH']], exports = vars)
 platform_sources = SConscript(dirs = ['platform/' + config['PLATFORM']], exports = vars)
 drivers_sources = SConscript(dirs = ['drivers'], exports = vars)
 sources = arch_sources + platform_sources + drivers_sources + sources
-objects = map(env.Object, sources)
+objects = list(map(env.Object, sources))
 
 # Link the loader.
 linkflags = env['LINKFLAGS'] + ['-Wl,-T,$LDSCRIPT']

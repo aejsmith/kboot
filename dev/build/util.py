@@ -16,6 +16,7 @@
 
 import os, SCons.Errors
 from SCons.Script import *
+from functools import reduce
 
 # Helper for creating source lists with certain files only enabled by config
 # settings.
