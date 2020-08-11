@@ -3,7 +3,7 @@
 builddir=build/efi-ia32
 fsdir=${builddir}/testfs
 
-mkdir ${fsdir}
+mkdir -p ${fsdir}
 mkdir -p ${fsdir}/efi/boot
 
 cp ${builddir}/bin/kbootia32.efi ${fsdir}/efi/boot/bootia32.efi
@@ -25,6 +25,6 @@ if [ ! -e ".ovmf-ia32.bin" ]; then
     cp test/qemu/efi/ovmf-ia32.bin .ovmf-ia32.bin
 fi
 
-qemu-system-x86_64 -pflash .ovmf-ia32.bin -hda fat:${fsdir} -serial stdio -m 512 -monitor vc:1024x768 -s
+qemu-system-x86_64 -pflash .ovmf-ia32.bin -drive file=fat:rw:${fsdir} -serial stdio -m 512 -monitor vc:1024x768 -s
 
 rm -rf ${fsdir}

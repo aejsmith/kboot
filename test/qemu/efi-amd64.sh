@@ -3,7 +3,7 @@
 builddir=build/efi-amd64
 fsdir=${builddir}/testfs
 
-mkdir ${fsdir}
+mkdir -p ${fsdir}
 mkdir -p ${fsdir}/efi/boot
 
 cp ${builddir}/bin/kbootx64.efi ${fsdir}/efi/boot/bootx64.efi
@@ -25,6 +25,6 @@ if [ ! -e ".ovmf-amd64.bin" ]; then
     cp test/qemu/efi/ovmf-amd64.bin .ovmf-amd64.bin
 fi
 
-qemu-system-x86_64 -pflash .ovmf-amd64.bin -hda fat:${fsdir} -serial stdio -m 512 -monitor vc:1024x768 -s
+qemu-system-x86_64 -pflash .ovmf-amd64.bin -drive file=fat:rw:${fsdir} -serial stdio -m 512 -monitor vc:1024x768 -s
 
 rm -rf ${fsdir}
