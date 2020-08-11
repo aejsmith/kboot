@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2015 Alex Smith
+ * Copyright (C) 2009-2020 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,50 +25,67 @@ ENTRY(kmain)
 OUTPUT_ARCH("i386:x86-64")
 OUTPUT_FORMAT("elf64-x86-64")
 
-SECTIONS {
-    . = 0xffffffff80000000 + SIZEOF_HEADERS;
+PHDRS {
+    text PT_LOAD FILEHDR PHDRS FLAGS(5);    /* R_X - Code + read-only data. */
+    data PT_LOAD FLAGS(6);                  /* RW_ - Data. */
+    note PT_NOTE FLAGS(0);
+}
 
+SECTIONS {
+    /DISCARD/ : {
+        *(.note.GNU-stack)
+        *(.note.gnu.*)
+        *(.comment*)
+    }
+
+    . = 0xffffffff80000000;
+    __text_seg_start = .;
+
+    . = . + SIZEOF_HEADERS;
     .text : {
         __text_start = .;
         *(.text)
         *(.text.*)
         . = ALIGN(PAGE_SIZE);
         __text_end = .;
-    }
+    } :text
 
     .notes : {
         *(.note.*)
-    }
+    } :text :note
 
-    .rodata ALIGN(PAGE_SIZE) : {
+    . = ALIGN(PAGE_SIZE);
+    .rodata : {
         __rodata_start = .;
         *(.rodata)
         *(.rodata.*)
         . = ALIGN(PAGE_SIZE);
         __rodata_end = .;
-    }
+    } :text
 
-    .data ALIGN(PAGE_SIZE) : {
+    __text_seg_end = .;
+
+    . = ALIGN(PAGE_SIZE);
+    __data_seg_start = .;
+
+    .data : {
         __data_start = .;
         *(.data)
         *(.data.*)
         . = ALIGN(PAGE_SIZE);
         __data_end = .;
-    }
+    } :data
 
-    .bss ALIGN(PAGE_SIZE) : {
+    . = ALIGN(PAGE_SIZE);
+    .bss : {
         __bss_start = .;
         *(.bss)
         *(.bss.*)
         *(COMMON)
         . = ALIGN(PAGE_SIZE);
         __bss_end = .;
-    }
+    } :data
 
+    __data_seg_end = .;
     __end = .;
-
-    /DISCARD/ : {
-        *(.note.GNU-stack)
-        *(.comment*)
-    }
 }
