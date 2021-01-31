@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2020 Alex Smith
+ * Copyright (C) 2009-2021 Alex Smith
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above

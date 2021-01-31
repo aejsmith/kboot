@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2015 Alex Smith
+ * Copyright (C) 2009-2021 Alex Smith
  * Copyright (C) 2012 Daniel Collins
  *
  * Permission to use, copy, modify, and/or distribute this software for any
