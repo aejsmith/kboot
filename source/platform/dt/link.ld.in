@@ -1,0 +1,78 @@
+/*
+ * Copyright (C) 2021 Alex Smith
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/**
+ * @file
+ * @brief               ARM64 loader linker script.
+ */
+
+/* TODO... */
+
+#include <arch/page.h>
+
+#include <platform/loader.h>
+
+OUTPUT_FORMAT("elf64-littleaarch64")
+OUTPUT_ARCH("aarch64")
+ENTRY(loader_entry)
+
+SECTIONS {
+    . = LOADER_LOAD_ADDR;
+    __start = .;
+
+    /* Init code in start.S must be placed first: execution begins from the very
+     * start of the loader image. */
+    .init.text : { *(.init.text) }
+    .init.data : { *(.init.data) }
+
+    .text ALIGN(32) : {
+        *(.text)
+        *(.text.*)
+    }
+
+    .rodata ALIGN(32) : {
+        *(.rodata)
+        *(.rodata.*)
+    }
+
+    .data ALIGN(32) : {
+        *(.data)
+        *(.data.*)
+
+        __builtins_start = .;
+        *(.builtins)
+        __builtins_end = .;
+
+        __data_end = .;
+    }
+
+    .bss ALIGN(32) : {
+        __bss_start = .;
+        *(.bss)
+        *(.bss.*)
+        *(COMMON)
+        __bss_end = .;
+    }
+
+    . = ALIGN(PAGE_SIZE);
+    __end = .;
+
+    /DISCARD/ : {
+        *(.note.*)
+        *(.comment*)
+        *(.eh_frame*)
+    }
+}
