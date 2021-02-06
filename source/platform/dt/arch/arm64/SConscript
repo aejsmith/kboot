@@ -14,27 +14,14 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-vars = ['config', 'env']
-
-Import(*vars)
+Import('config', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
-    'memory.c',
-    'platform.c',
+
 ])
 
-# Add architecture-specific headers.
-env['CPPPATH'] += [Dir('arch/%s/include' % (config['ARCH']))]
-
-# Get architecture-specific sources.
-arch_sources = SConscript(dirs = ['arch/' + config['ARCH']], exports = vars)
-sources = arch_sources + sources
-
-# Build the final loader binary.
-kboot = env.Command(
-    env['OUTDIR'].File('kboot.bin'),
-    env['KBOOT'],
-    Action('$OBJCOPY -O binary --strip-all $SOURCE $TARGET', '$GENCOMSTR'))
+# Set the linker script path.
+env['LDSCRIPT'] = env.LDScript('link.ld', 'link.ld.in')
 
 Return('sources')
