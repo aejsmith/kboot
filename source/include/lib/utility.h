@@ -22,8 +22,6 @@
 #ifndef __LIB_UTILITY_H
 #define __LIB_UTILITY_H
 
-#include <arch/bitops.h>
-
 #include <types.h>
 
 /** Get the number of bits in a type. */
@@ -97,6 +95,23 @@
         const typeof(((type *)0)->member) *__mptr = ptr; \
         (type *)((char *)__mptr - offsetof(type, member)); \
     })
+
+/** Find first set bit in a native-sized value.
+ * @param value         Value to test.
+ * @return              Position of first set bit plus 1, or 0 if value is 0. */
+static inline unsigned long ffs(unsigned long value) {
+    return __builtin_ffsl(value);
+}
+
+/** Find last set bit in a native-sized value.
+ * @param value     Value to test.
+ * @return          Position of last set bit plus 1, or 0 if value is 0. */
+static inline unsigned long fls(unsigned long value) {
+    if (!value)
+        return 0;
+
+    return bits(unsigned long) - __builtin_clzl(value);
+}
 
 /** Checksum a memory range.
  * @param start         Start of range to check.
