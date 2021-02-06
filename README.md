@@ -49,3 +49,11 @@ License
 -------
 
 KBoot is licensed under the terms of the [ISC license](documentation/license.md).
+
+Credits
+-------
+
+KBoot is primarily authored by [Alex Smith](https://github.com/aejsmith).
+Other major contributors include:
+
+ * [froggey](https://github.com/froggey) - parts of ARM64 support, bug fixes.
