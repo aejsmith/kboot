@@ -181,7 +181,7 @@ typedef struct {
 #define ELF_EM_OPENRISC             92      /**< OpenRISC 32-bit embedded processor. */
 #define ELF_EM_ARC_A5               93      /**< ARC Cores Tangent-A5. */
 #define ELF_EM_XTENSA               94      /**< Tensilica Xtensa Architecture. */
-#define ELF_EM_NUM                  95
+#define ELF_EM_AARCH64              183     /**< AArch64. */
 
 /** ELF OS/ABI types. */
 #define ELFOSABI_NONE               0       /**< UNIX System V ABI. */
