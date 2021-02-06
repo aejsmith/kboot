@@ -89,6 +89,8 @@ opts.AddVariables(
 env = Environment(ENV = os.environ, variables = opts, tools = ['default', 'textfile'])
 opts.Save('.options.cache', env)
 
+env.Tool('compilation_db', toolpath = ['dev/build'])
+
 # Define the version string.
 env['VERSION'] = '%d+%s' % (version, revision) if revision is not None else '%d' % (version)
 
@@ -216,15 +218,16 @@ if env['DEBUG']:
 
 # Make build output nice.
 if not verbose:
-    env['ARCOMSTR']     = compile_str('AR')
-    env['ASCOMSTR']     = compile_str('AS')
-    env['ASPPCOMSTR']   = compile_str('AS')
-    env['CCCOMSTR']     = compile_str('CC')
-    env['CXXCOMSTR']    = compile_str('CXX')
-    env['LINKCOMSTR']   = compile_str('LINK')
-    env['RANLIBCOMSTR'] = compile_str('RL')
-    env['GENCOMSTR']    = compile_str('GEN')
-    env['STRIPCOMSTR']  = compile_str('STRIP')
+    env['ARCOMSTR']             = compile_str('AR')
+    env['ASCOMSTR']             = compile_str('AS')
+    env['ASPPCOMSTR']           = compile_str('AS')
+    env['CCCOMSTR']             = compile_str('CC')
+    env['CXXCOMSTR']            = compile_str('CXX')
+    env['LINKCOMSTR']           = compile_str('LINK')
+    env['RANLIBCOMSTR']         = compile_str('RL')
+    env['GENCOMSTR']            = compile_str('GEN')
+    env['STRIPCOMSTR']          = compile_str('STRIP')
+    env['COMPILATIONDB_COMSTR'] = compile_str('DB')
 
 # Detect which compiler to use.
 def guess_compiler(name):
@@ -329,3 +332,8 @@ else:
 script = os.path.join('test', 'qemu', qemu)
 if os.path.exists(script):
     Alias('qemu', env.Command('__qemu', ['loader', 'test', 'utilities'], Action(script, None)))
+
+# Generation compilation database.
+compile_commands = env.CompilationDatabase(os.path.join('build', env['CONFIG'], 'compile_commands.json'))
+env.Default(compile_commands)
+env.Alias("compiledb", compile_commands)
