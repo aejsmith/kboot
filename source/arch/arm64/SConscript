@@ -18,7 +18,9 @@ Import('config', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
-
+    'arch.c',
+    'backtrace.c',
+    'time.c',
 ])
 
 # Prevent FPU code generation.

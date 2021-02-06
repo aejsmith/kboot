@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief               ARM64 loader linker script.
+ * @brief               DT ARM64 loader linker script.
  */
 
 /* TODO... */
@@ -30,7 +30,7 @@ OUTPUT_ARCH("aarch64")
 ENTRY(loader_entry)
 
 SECTIONS {
-    . = LOADER_LOAD_ADDR;
+    . = 0;
     __start = .;
 
     /* Init code in start.S must be placed first: execution begins from the very

@@ -18,7 +18,8 @@ Import('config', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
-
+    'memory.c',
+    'platform.c',
 ])
 
 # Set the linker script path.
