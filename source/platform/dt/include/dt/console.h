@@ -16,33 +16,12 @@
 
 /**
  * @file
- * @brief               DT platform main functions.
+ * @brief               DT platform console functions.
  */
 
-#include <dt/console.h>
+#ifndef __DT_CONSOLE_H
+#define __DT_CONSOLE_H
 
-#include <console.h>
-#include <device.h>
-#include <loader.h>
+extern void dt_early_console_init(void);
 
-/** Main function of the DT loader.
- * @param dtb_addr      Address of DTB. */
-__noreturn void dt_main(void *dtb_addr) {
-    /* If we've built for a specific platform we can initialize an early debug
-     * console. */
-    dt_early_console_init();
-
-    dprintf("\ndt: base @ %p, dtb @ %p\n", __start, dtb_addr);
-
-    /* TODO: Parse DT. */
-
-    console_init();
-
-    while (true)
-        ;
-}
-
-/** Detect and register all devices. */
-void target_device_probe(void) {
-
-}
+#endif /* __DT_CONSOLE_H */

@@ -76,6 +76,9 @@ static status_t ns16550_port_config(serial_port_t *_port, const serial_config_t 
     uint16_t divisor;
     uint8_t lcr;
 
+    if (port->clock_rate == 0)
+        return STATUS_NOT_SUPPORTED;
+
     /* Disable all interrupts, disable the UART while configuring. */
     ns16550_write(port, NS16550_REG_IER, 0);
     ns16550_write(port, NS16550_REG_FCR, 0);
@@ -161,11 +164,11 @@ static serial_port_ops_t ns16550_port_ops = {
  * Registers a NS16650 UART as a console. This function does not reconfigure
  * the UART, to do so use serial_port_config(). If no reconfiguration is done,
  * the UART will continue to use whichever parameters are currently set (e.g.
- * ones set by platform firmware.
+ * ones set by platform firmware).
  *
  * @param base          Base of UART registers.
  * @param index         Index of the UART, used to name the console.
- * @param clock_rate    UART base clock rate.
+ * @param clock_rate    UART base clock rate (0 will forbid reconfiguration).
  *
  * @return              Created port, or NULL if port does not exist.
  */

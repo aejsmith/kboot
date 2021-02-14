@@ -16,5 +16,6 @@
 
 include = {
     'config': {
+        'DRIVER_SERIAL_NS16550': True,
     },
 }
