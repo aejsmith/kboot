@@ -21,10 +21,22 @@
 
 #include <arm64/asm.h>
 
+/* Define to a platform-specific UART TX register address for some debug output. */
+//#define UART_TX         0x09000000    /* QEMU virt machine */
+//#define UART_TX         0x3f215040    /* Raspberry Pi 3B. */
+
+.macro PUTC c
+#ifdef UART_TX
+    ldr     x29, =UART_TX
+    ldr     x30, =\c
+    str     x30, [x29]
+#endif
+.endm
+
 /* Ensure that this code is linked in first. */
 .section .init.text, "ax", @progbits
 
-FUNCTION_START(loader_entry)
+linux_header:
     /*
      * The very start of the image is the Linux kernel header. We begin
      * execution here so it starts with a jump over the header.
@@ -32,10 +44,10 @@ FUNCTION_START(loader_entry)
      * https://www.kernel.org/doc/html/latest/arm64/booting.html
      */
 
-    b       _start                  /* code0 */
+    b       loader_entry            /* code0 */
     .long   0                       /* code1 */
     .quad   0                       /* text_offset - image load offset */
-    .quad   0                       /* image_size - effective image size */
+    .quad   __image_size            /* image_size - effective image size */
     .quad   0                       /* flags - kernel flags */
     .quad   0                       /* reserved */
     .quad   0                       /* reserved */
@@ -43,19 +55,12 @@ FUNCTION_START(loader_entry)
     .long   0x644d5241              /* magic - Magic number, "ARM\x64". */
     .long   0                       /* reserved. */
 
-_start:
-    ldr     x1, =0x3f215040
-    ldr     x2, ='K'
-    str     x2, [x1]
-    ldr     x2, ='B'
-    str     x2, [x1]
-    ldr     x2, ='o'
-    str     x2, [x1]
-    ldr     x2, ='o'
-    str     x2, [x1]
-    ldr     x2, ='t'
-    str     x2, [x1]
-
+FUNCTION_START(loader_entry)
+    PUTC    'K'
+    PUTC    'B'
+    PUTC    'o'
+    PUTC    'o'
+    PUTC    't'
 
 1:  b       1b
 

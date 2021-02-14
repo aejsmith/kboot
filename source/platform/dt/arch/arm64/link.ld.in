@@ -70,6 +70,8 @@ SECTIONS {
     . = ALIGN(PAGE_SIZE);
     __end = .;
 
+    __image_size = __end - __start;
+
     /DISCARD/ : {
         *(.note.*)
         *(.comment*)
