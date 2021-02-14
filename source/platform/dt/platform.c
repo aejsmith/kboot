@@ -23,6 +23,13 @@
 #include <device.h>
 #include <loader.h>
 
+/** Main function of the DT loader.
+ * @param dtb_addr      Address of DTB. */
+__noreturn void dt_main(void *dtb_addr) {
+    while (true)
+        ;
+}
+
 /** Initialize the console. */
 void target_console_init(void) {
 

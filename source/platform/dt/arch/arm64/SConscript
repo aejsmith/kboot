@@ -18,10 +18,17 @@ Import('config', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
+    'relocate.c',
     'start.S',
 ])
 
 # Set the linker script path.
 env['LDSCRIPT'] = env.LDScript('link.ld', 'link.ld.in')
+
+# To have an image that is usable on all platforms, we need to be position-
+# independent. We have no guarantee on where the image will be loaded to.
+env['CCFLAGS']   += ['-fPIC']
+env['ASFLAGS']   += ['-fPIC']
+env['LINKFLAGS'] += ['-Wl,-Bsymbolic', '-Wl,-shared', '-Wl,-znocombreloc', '-Wl,--no-undefined']
 
 Return('sources')

@@ -25,11 +25,12 @@
 //#define UART_TX         0x09000000    /* QEMU virt machine */
 //#define UART_TX         0x3f215040    /* Raspberry Pi 3B. */
 
+/** Print a character if enabled. Clobbers x27/x28. */
 .macro PUTC c
 #ifdef UART_TX
-    ldr     x29, =UART_TX
-    ldr     x30, =\c
-    str     x30, [x29]
+    ldr     x27, =UART_TX
+    mov     w28, #\c
+    strb    w28, [x27]
 #endif
 .endm
 
@@ -55,13 +56,53 @@ linux_header:
     .long   0x644d5241              /* magic - Magic number, "ARM\x64". */
     .long   0                       /* reserved. */
 
+/** Entry point.
+ * @param x0            Physical address of DTB.
+ * @param x1            0 (reserved for future use).
+ * @param x2            0 (reserved for future use).
+ * @param x3            0 (reserved for future use). */
 FUNCTION_START(loader_entry)
-    PUTC    'K'
+    /*
+     * Expected state:
+     *  - MMU off.
+     *  - DCache off.
+     *  - ICache on or off with no stale references to the kernel image.
+     *  - All interrupts disabled.
+     */
+
+    PUTC    'S'
+
+    /* Preserve DTB address. */
+    mov     x21, x0
+
+    /* Relocate ourself. */
+    adr     x0, __start
+    adr     x1, __rela_start
+    adr     x2, __rela_end
+    bl      dt_arch_relocate
+    cmp     w0, #0
+    b.ne    .Lerr_relocate
+
+    PUTC    'R'
+
+    /* Clear out the BSS section. */
+    adr     x0, __bss_start
+    mov     x1, #0
+    adr     x2, __bss_end
+    sub     x2, x2, x0
+    bl      memset
+
     PUTC    'B'
-    PUTC    'o'
-    PUTC    'o'
-    PUTC    't'
 
-1:  b       1b
+    /* Call the entry point. */
+    mov     fp, #0
+    mov     x0, x21
+    bl      dt_main
 
+.Lerr_relocate:
+    PUTC    'E'
+    PUTC    'R'
+
+.Lerr:
+    b       .Lerr
 FUNCTION_END(loader_entry)

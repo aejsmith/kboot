@@ -19,8 +19,6 @@
  * @brief               DT ARM64 loader linker script.
  */
 
-/* TODO... */
-
 #include <arch/page.h>
 
 #include <platform/loader.h>
@@ -43,6 +41,9 @@ SECTIONS {
         *(.text.*)
     }
 
+    .got ALIGN(32) : { *(.got) }
+    .got.plt ALIGN(32) : { *(.got.plt) }
+
     .rodata ALIGN(32) : {
         *(.rodata)
         *(.rodata.*)
@@ -57,6 +58,13 @@ SECTIONS {
         __builtins_end = .;
 
         __data_end = .;
+    }
+
+    .rela ALIGN(32) : {
+        __rela_start = .;
+        *(.rela)
+        *(.rela.*)
+        __rela_end = .;
     }
 
     .bss ALIGN(32) : {
@@ -76,5 +84,11 @@ SECTIONS {
         *(.note.*)
         *(.comment*)
         *(.eh_frame*)
+        *(.interp)
+        *(.dynamic)
+        *(.dynsym)
+        *(.dynstr)
+        *(.hash)
+        *(.gnu.hash)
     }
 }
