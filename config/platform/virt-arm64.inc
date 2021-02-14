@@ -16,5 +16,6 @@
 
 include = {
     'config': {
+        'DRIVER_SERIAL_PL011': True,
     },
 }

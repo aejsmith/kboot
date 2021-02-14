@@ -20,6 +20,7 @@
  */
 
 #include <drivers/serial/ns16550.h>
+#include <drivers/serial/pl011.h>
 
 #include <dt/console.h>
 
@@ -36,6 +37,13 @@
         #define EARLY_CONSOLE_NS16550       1
         #define EARLY_CONSOLE_ADDR          0x3f215040
         #define EARLY_CONSOLE_CLOCK         0
+    #elif CONFIG_DT_PLATFORM_VIRT_ARM64
+        /* QEMU virt machine. According to the docs we shouldn't rely on any
+         * fixed address for it, but *shrug*, it's hardcoded to this in the code
+         * right now. */
+        #define EARLY_CONSOLE_PL011         1
+        #define EARLY_CONSOLE_ADDR          0x9000000
+        #define EARLY_CONSOLE_CLOCK         24000000
     #endif
 #endif
 
@@ -46,10 +54,12 @@ void dt_early_console_init(void) {
 
         #if EARLY_CONSOLE_NS16550
             port = ns16550_register(EARLY_CONSOLE_ADDR, 0, EARLY_CONSOLE_CLOCK);
+        #elif EARLY_CONSOLE_PL011
+            port = pl011_register(EARLY_CONSOLE_ADDR, 0, EARLY_CONSOLE_CLOCK);
         #endif
 
         if (port) {
-            #if EARLY_CONSOLE_CONFIG
+            #if EARLY_CONSOLE_CLOCK
                 serial_config_t config;
 
                 config.baud_rate = SERIAL_DEFAULT_BAUD_RATE;
