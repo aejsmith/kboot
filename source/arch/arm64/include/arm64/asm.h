@@ -48,7 +48,7 @@
 
 /** Macro to define a global symbol with alignment. */
 #define SYMBOL_ALIGNED(_name, _align) \
-    .align _align; \
+    .balign _align; \
     .global _name; \
     _name:
 

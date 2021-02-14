@@ -19,6 +19,8 @@
  * @brief               ARM64 DT startup code.
  */
 
+#include <arch/page.h>
+
 #include <arm64/asm.h>
 
 /* Define to a platform-specific UART TX register address for some debug output. */
@@ -85,6 +87,10 @@ FUNCTION_START(loader_entry)
 
     PUTC    'R'
 
+    /* Load the stack address. */
+    adr     x0, .Lloader_stack_end
+    mov     sp, x0
+
     /* Clear out the BSS section. */
     adr     x0, __bss_start
     mov     x1, #0
@@ -106,3 +112,10 @@ FUNCTION_START(loader_entry)
 .Lerr:
     b       .Lerr
 FUNCTION_END(loader_entry)
+
+.section .bss, "aw", @nobits
+
+/** Stack. */
+SYMBOL_ALIGNED(loader_stack, PAGE_SIZE)
+    .fill   PAGE_SIZE
+.Lloader_stack_end:
