@@ -14,26 +14,11 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-# This platform is a generic ARM64 platform that includes support for all
-# Device Tree-based platforms.
-#
-# There are also configurations for individual platforms which can be used to
-# build a smaller loader binary when only a single platform is required.
-#
-# Using an individual platform also allows better debugging of early
-# initialization, as it allows using a hardcoded platform-specific UART
-# location rather than having to probe the DT to get it.
-
 config = {
-    'description': 'All ARM64 Device Tree-based platforms',
-    'includes': [
-        # Core architecture/platform.
-        'arch/arm64',
-        'platform/dt',
-
-        # Supported platforms.
-        'platform/bcm2837',
-        'platform/virt-arm64',
-    ],
-    'config': {},
+    'description': 'QEMU ARM64 virt machine',
+    'includes': ['arch/arm64', 'platform/dt', 'platform/virt-arm64'],
+    'config': {
+        'DT_SINGLE_PLATFORM': True,
+        'DT_PLATFORM_VIRT_ARM64': True,
+    },
 }
