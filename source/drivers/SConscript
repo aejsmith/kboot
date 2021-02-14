@@ -23,9 +23,10 @@ if any(k.startswith('DRIVER_SERIAL_') and v for k, v in config.items()):
 
 sources = FeatureSources(config, [
     ('DRIVER_SERIAL_NS16550', 'serial/ns16550.c'),
+    ('DRIVER_SERIAL_PL011', 'serial/pl011.c'),
 
-    ('DRIVER_CONSOLE_FB',  'console/fb.c'),
-    ('DRIVER_CONSOLE_FB',  'console/font.c'),
+    ('DRIVER_CONSOLE_FB', 'console/fb.c'),
+    ('DRIVER_CONSOLE_FB', 'console/font.c'),
     ('DRIVER_CONSOLE_SERIAL', 'console/serial.c'),
     ('DRIVER_CONSOLE_VGA', 'console/vga.c'),
 ])

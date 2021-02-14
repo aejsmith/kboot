@@ -161,7 +161,7 @@ static serial_port_ops_t ns16550_port_ops = {
 /**
  * Register a NS16550 UART.
  *
- * Registers a NS16650 UART as a console. This function does not reconfigure
+ * Registers a NS16550 UART as a console. This function does not reconfigure
  * the UART, to do so use serial_port_config(). If no reconfiguration is done,
  * the UART will continue to use whichever parameters are currently set (e.g.
  * ones set by platform firmware).
