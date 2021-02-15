@@ -70,6 +70,10 @@ from subprocess import Popen, PIPE
 sys.path = [os.path.abspath(os.path.join('dev', 'build'))] + sys.path
 import util, vcs
 
+# Create symlinks instead of hardlinks in the build tree, which stops VSCode
+# from finding files in the build tree instead of the main source.
+SetOption('duplicate', 'soft-hard-copy')
+
 # Get revision.
 revision = vcs.revision_id()
 
@@ -334,6 +338,6 @@ if os.path.exists(script):
     Alias('qemu', env.Command('__qemu', ['loader', 'test', 'utilities'], Action(script, None)))
 
 # Generation compilation database.
-compile_commands = env.CompilationDatabase(os.path.join('build', env['CONFIG'], 'compile_commands.json'))
+compile_commands = env.CompilationDatabase(os.path.join('build', 'compile_commands.json'))
 env.Default(compile_commands)
 env.Alias("compiledb", compile_commands)

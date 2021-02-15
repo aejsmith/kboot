@@ -1,42 +1,14 @@
 {
     "configurations": [
         {
-            "name": "bios",
+            "name": "Current",
             "browse": {
                 "path": [
                     "${workspaceFolder}"
                 ],
                 "limitSymbolsToIncludedHeaders": true
             },
-            "compileCommands": "${workspaceFolder}/build/bios/compile_commands.json",
-            "compilerPath": "/usr/bin/clang",
-            "cStandard": "c11",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "clang-x64"
-        },
-        {
-            "name": "dt-arm64",
-            "browse": {
-                "path": [
-                    "${workspaceFolder}"
-                ],
-                "limitSymbolsToIncludedHeaders": true
-            },
-            "compileCommands": "${workspaceFolder}/build/dt-arm64/compile_commands.json",
-            "compilerPath": "/usr/bin/clang",
-            "cStandard": "c11",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "clang-x64"
-        },
-        {
-            "name": "efi-amd64",
-            "browse": {
-                "path": [
-                    "${workspaceFolder}"
-                ],
-                "limitSymbolsToIncludedHeaders": true
-            },
-            "compileCommands": "${workspaceFolder}/build/efi-amd64/compile_commands.json",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
             "compilerPath": "/usr/bin/clang",
             "cStandard": "c11",
             "cppStandard": "c++17",
