@@ -16,33 +16,23 @@
 
 /**
  * @file
- * @brief               DT platform main functions.
+ * @brief               Device Tree (DT) support.
+ *
+ * This provides some common functionality for platforms which use a Device
+ * Tree. It is in generic code rather than the DT platform, since other
+ * platforms might make use of a DT in some way (e.g. EFI on ARM).
  */
 
-#include <dt/console.h>
+#ifndef __DT_H
+#define __DT_H
 
-#include <console.h>
-#include <device.h>
-#include <dt.h>
-#include <loader.h>
+#ifdef CONFIG_TARGET_HAS_FDT
 
-/** Main function of the DT loader.
- * @param fdt           Address of FDT. */
-__noreturn void dt_main(void *fdt) {
-    /* If we've built for a specific platform we can initialize an early debug
-     * console. */
-    dt_early_console_init();
+#include <libfdt.h>
 
-    dprintf("\ndt: base @ %p, fdt @ %p\n", __start, fdt);
-    dt_init(fdt);
+extern void *fdt_address;
 
-    console_init();
+extern void dt_init(void *fdt);
 
-    while (true)
-        ;
-}
-
-/** Detect and register all devices. */
-void target_device_probe(void) {
-
-}
+#endif /* CONFIG_TARGET_HAS_FDT */
+#endif /* __DT_H */

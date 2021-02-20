@@ -26,5 +26,5 @@
 /** Print out a backtrace.
  * @param func          Print function to use. */
 void backtrace(printf_t func) {
-    func("Backtrace TODO");
+    func("Backtrace TODO\n");
 }

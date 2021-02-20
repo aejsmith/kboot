@@ -16,33 +16,20 @@
 
 /**
  * @file
- * @brief               DT platform main functions.
+ * @brief               Device Tree (DT) support.
  */
 
-#include <dt/console.h>
-
-#include <console.h>
-#include <device.h>
 #include <dt.h>
 #include <loader.h>
 
-/** Main function of the DT loader.
- * @param fdt           Address of FDT. */
-__noreturn void dt_main(void *fdt) {
-    /* If we've built for a specific platform we can initialize an early debug
-     * console. */
-    dt_early_console_init();
+/** Address of Flattened Device Tree (FDT) blob. */
+void *fdt_address;
 
-    dprintf("\ndt: base @ %p, fdt @ %p\n", __start, fdt);
-    dt_init(fdt);
+/** Validate the FDT and set fdt_address.
+ * @param fdt           Platform-supplied FDT blob. */
+void dt_init(void *fdt) {
+    if (fdt_check_header(fdt) != 0)
+        internal_error("Flattened Device Tree (FDT) is invalid");
 
-    console_init();
-
-    while (true)
-        ;
-}
-
-/** Detect and register all devices. */
-void target_device_probe(void) {
-
+    fdt_address = fdt;
 }
