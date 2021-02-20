@@ -1,0 +1,2 @@
+git://git.kernel.org/pub/scm/utils/dtc/dtc.git
+9d2279e7e6ee937d7c47250720c92dd58fa1aa68

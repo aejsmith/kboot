@@ -70,6 +70,18 @@ typedef uint64_t offset_t;              /**< Type used to store an offset into a
 typedef int64_t mstime_t;               /**< Type used to store a time value in milliseconds. */
 
 /** Type limit macros. */
+#define SHRT_MIN        (-SHRT_MAX - 1)
+#define SHRT_MAX        __SHRT_MAX__
+#define USHRT_MAX       ((SHRT_MAX * 2) + 1)
+#define INT_MIN         (-INT_MAX - 1)
+#define INT_MAX         __INT_MAX__
+#define UINT_MAX        ((INT_MAX * 2U) + 1U)
+#define LONG_MIN        (-LONG_MAX - 1L)
+#define LONG_MAX        __LONG_MAX__
+#define ULONG_MAX       ((LONG_MAX * 2UL) + 1UL)
+#define LLONG_MIN       (-LLONG_MAX - 1LL)
+#define LLONG_MAX       __LONG_LONG_MAX__
+#define ULLONG_MAX      ((LLONG_MAX * 2ULL) + 1ULL)
 #define INT8_MIN        (-128)
 #define INT8_MAX        127
 #define UINT8_MAX       255u
@@ -92,5 +104,8 @@ typedef int64_t mstime_t;               /**< Type used to store a time value in 
 #define CHAR_BIT        8
 
 #include <arch/types.h>
+
+/** For compatibility with 3rd party code. */
+typedef ptr_t uintptr_t;
 
 #endif /* __TYPES_H */

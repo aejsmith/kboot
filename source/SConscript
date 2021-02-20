@@ -25,6 +25,17 @@ sources = FeatureSources(config, [
     ('TARGET_HAS_DISK', 'fs/fat.c'),
     ('TARGET_HAS_DISK', 'fs/iso9660.c'),
 
+    ('TARGET_HAS_FDT', 'lib/fdt/fdt_addresses.c'),
+    ('TARGET_HAS_FDT', 'lib/fdt/fdt.c'),
+    ('TARGET_HAS_FDT', 'lib/fdt/fdt_check.c'),
+    ('TARGET_HAS_FDT', 'lib/fdt/fdt_empty_tree.c'),
+    ('TARGET_HAS_FDT', 'lib/fdt/fdt_overlay.c'),
+    ('TARGET_HAS_FDT', 'lib/fdt/fdt_ro.c'),
+    ('TARGET_HAS_FDT', 'lib/fdt/fdt_rw.c'),
+    ('TARGET_HAS_FDT', 'lib/fdt/fdt_strerror.c'),
+    ('TARGET_HAS_FDT', 'lib/fdt/fdt_sw.c'),
+    ('TARGET_HAS_FDT', 'lib/fdt/fdt_wip.c'),
+
     'lib/allocator.c',
     'lib/charset.c',
     'lib/line_editor.c',
@@ -63,6 +74,9 @@ env['CPPPATH'] = [
     Dir('arch/%s/include' % (config['ARCH'])),
     Dir('platform/%s/include' % (config['PLATFORM'])),
 ]
+
+if config['TARGET_HAS_FDT']:
+    env['CPPPATH'] += [Dir('lib/fdt/include')]
 
 # Generate the configuration header.
 f = open('config.h', 'w')

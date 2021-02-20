@@ -196,6 +196,23 @@ int memcmp(const void *p1, const void *p2, size_t count) {
     return 0;
 }
 
+/** Scan memory for a character.
+ * @param src           Memory to scan.
+ * @param c             Character to scan for.
+ * @param count         Number of bytes to scan.
+ * @return              Pointer to match or NULL if not found. */
+void *memchr(const void *src, int c, size_t count) {
+    const unsigned char *buf = src;
+    unsigned char ch = c & 0xff;
+
+    for (size_t i = 0; i < count; i++) {
+        if (buf[i] == ch)
+            return (void *)&buf[i];
+    }
+
+    return NULL;
+}
+
 /**
  * Duplicate memory.
  *

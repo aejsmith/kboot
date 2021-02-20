@@ -18,5 +18,6 @@ include = {
     'config': {
         'PLATFORM': 'dt',
         'PLATFORM_DT': True,
+        'TARGET_HAS_FDT': True,
     },
 }
