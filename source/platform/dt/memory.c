@@ -19,6 +19,8 @@
  * @brief               DT platform main functions.
  */
 
+#include <lib/utility.h>
+
 #include <dt.h>
 #include <loader.h>
 #include <memory.h>
@@ -56,6 +58,22 @@ void target_memory_probe(void) {
 
     /* Protect the FDT. */
     memory_protect((phys_ptr_t)fdt_address, fdt_totalsize(fdt_address));
+
+    /* Protect memory reservations from the DT. */
+    for (uint32_t i = 0; ; i++) {
+        uint64_t address, size;
+        fdt_get_mem_rsv(fdt_address, i, &address, &size);
+        if (!size)
+            break;
+
+        /* No guarantee that these are page-aligned. */
+        phys_ptr_t start = round_down(address, PAGE_SIZE);
+        phys_ptr_t end   = round_up(address + size, PAGE_SIZE);
+
+        dprintf("memory: DT reservation @ 0x%" PRIxPHYS "-0x%" PRIxPHYS "\n", start, end);
+
+        memory_remove(start, end - start);
+    }
 
     // TODO: initrd
 }

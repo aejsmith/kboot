@@ -77,6 +77,7 @@ static inline void free_largep(void *p) {
 #define __cleanup_free_large    __cleanup(free_largep)
 
 extern void memory_map_insert(list_t *map, phys_ptr_t start, phys_size_t size, uint8_t type);
+extern void memory_map_remove(list_t *map, phys_ptr_t start, phys_size_t size);
 extern void memory_map_dump(list_t *map);
 extern void memory_map_free(list_t *map);
 
@@ -94,6 +95,7 @@ extern void target_memory_probe(void);
 
 extern void memory_add(phys_ptr_t start, phys_size_t size, uint8_t type);
 extern void memory_protect(phys_ptr_t start, phys_size_t size);
+extern void memory_remove(phys_ptr_t start, phys_size_t size);
 extern void memory_init(void);
 
 #else

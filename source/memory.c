@@ -233,10 +233,7 @@ void free_large(void *addr) {
  * Physical memory manager.
  */
 
-/** Merge adjacent ranges.
- * @param map           Memory map to add to.
- * @param range         Range to merge. */
-static inline void merge_ranges(list_t *maps, memory_range_t *range) {
+static void merge_ranges(list_t *maps, memory_range_t *range) {
     memory_range_t *other;
     phys_ptr_t end;
 
@@ -264,12 +261,7 @@ static inline void merge_ranges(list_t *maps, memory_range_t *range) {
     }
 }
 
-/** Add a range of physical memory.
- * @param map           Memory map to add to.
- * @param start         Start of the range (must be page-aligned).
- * @param size          Size of the range (must be page-aligned).
- * @param type          Type of the range. */
-void memory_map_insert(list_t *map, phys_ptr_t start, phys_size_t size, uint8_t type) {
+static memory_range_t *insert_range(list_t *map, phys_ptr_t start, phys_size_t size, uint8_t type) {
     memory_range_t *range, *other, *split;
     phys_ptr_t range_end, other_end;
 
@@ -340,8 +332,31 @@ void memory_map_insert(list_t *map, phys_ptr_t start, phys_size_t size, uint8_t 
         }
     }
 
-    /* Finally, merge the region with adjacent ranges of the same type. */
+    return range;
+}
+
+/** Add a range of physical memory.
+ * @param map           Memory map to add to.
+ * @param start         Start of the range (must be page-aligned).
+ * @param size          Size of the range (must be page-aligned).
+ * @param type          Type of the range. */
+void memory_map_insert(list_t *map, phys_ptr_t start, phys_size_t size, uint8_t type) {
+    memory_range_t *range = insert_range(map, start, size, type);
+
+    /* Merge the range with adjacent ranges of the same type. */
     merge_ranges(map, range);
+}
+
+
+/** Remove a range of physical memory.
+ * @param map           Memory map to remove from.
+ * @param start         Start of the range (must be page-aligned).
+ * @param size          Size of the range (must be page-aligned). */
+void memory_map_remove(list_t *map, phys_ptr_t start, phys_size_t size) {
+    /* The lazy approach. */
+    memory_range_t *range = insert_range(map, start, size, MEMORY_TYPE_INTERNAL);
+    list_remove(&range->header);
+    free(range);
 }
 
 /** Print a memory map.
@@ -577,6 +592,13 @@ void memory_protect(phys_ptr_t start, phys_size_t size) {
 
         memory_map_insert(&memory_ranges, match_start, match_end - match_start + 1, MEMORY_TYPE_INTERNAL);
     }
+}
+
+/** Remove a range of physical memory.
+ * @param start         Start of the range (must be page-aligned).
+ * @param size          Size of the range (must be page-aligned). */
+void memory_remove(phys_ptr_t start, phys_size_t size) {
+    memory_map_remove(&memory_ranges, start, size);
 }
 
 /** Initialise the memory manager. */
