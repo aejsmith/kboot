@@ -19,10 +19,43 @@
  * @brief               DT platform main functions.
  */
 
+#include <dt.h>
 #include <loader.h>
 #include <memory.h>
 
 /** Detect physical memory. */
 void target_memory_probe(void) {
-    internal_error("TODO: target_memory_probe");
+    /* Find the /memory node */
+    int memory_offset = fdt_path_offset(fdt_address, "/memory");
+    if (memory_offset < 0)
+        internal_error("Missing '/memory' FDT node");
+
+    /* reg property contains address/size pairs. */
+    int len;
+    const uint32_t *prop = fdt_getprop(fdt_address, memory_offset, "reg", &len);
+    if (!prop)
+        internal_error("Missing '/memory/reg' FDT property");
+
+    uint32_t address_cells = dt_get_address_cells(memory_offset);
+    uint32_t size_cells    = dt_get_size_cells(memory_offset);
+    uint32_t total_cells   = address_cells + size_cells;
+    uint32_t num_entries   = dt_get_num_entries(len, total_cells);
+
+    dprintf(
+        "memory: DT contains %" PRIu32 " entries (%" PRIu32 " address cells, %" PRIu32 " size cells)\n",
+        num_entries, address_cells, size_cells);
+
+    for (uint32_t i = 0; i < num_entries; i++) {
+        uint64_t address = dt_get_value(prop, address_cells);
+        prop += address_cells;
+        uint64_t size    = dt_get_value(prop, size_cells);
+        prop += size_cells;
+
+        memory_add(address, size, MEMORY_TYPE_FREE);
+    }
+
+    /* Protect the FDT. */
+    memory_protect((phys_ptr_t)fdt_address, fdt_totalsize(fdt_address));
+
+    // TODO: initrd
 }

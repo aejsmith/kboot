@@ -32,7 +32,18 @@
 
 extern const void *fdt_address;
 
+/** Get the number of entries in a property.
+ * @param len           Byte length of the property.
+ * @param num_cells     Number of cells per entry. */
+static inline uint32_t dt_get_num_entries(int len, uint32_t num_cells) {
+    return len / 4 / num_cells;
+}
+
+extern uint32_t dt_get_address_cells(int node_offset);
+extern uint32_t dt_get_size_cells(int node_offset);
+extern uint64_t dt_get_value(const uint32_t *ptr, uint32_t num_cells);
 extern bool dt_get_reg(int node_offset, int index, phys_ptr_t *_address, phys_size_t *_size);
+
 extern bool dt_is_compatible(int node_offset, const char **strings, size_t count);
 
 extern void dt_init(void *fdt);

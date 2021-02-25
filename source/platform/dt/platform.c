@@ -44,10 +44,8 @@ __noreturn void dt_main(void *fdt) {
     if (!had_debug_console)
         dprintf("\ndt: base @ %p, fdt @ %p\n", __start, fdt);
 
-    dprintf("console done...\n");
-
-    while (true)
-        ;
+    arch_init();
+    loader_main();
 }
 
 /** Detect and register all devices. */

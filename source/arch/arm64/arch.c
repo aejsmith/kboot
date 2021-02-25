@@ -21,6 +21,15 @@
 
 #include <loader.h>
 
+/** Architecture-specific initialization. */
+void arch_init(void) {
+    unsigned long current_el;
+    __asm__ __volatile__("mrs %0, CurrentEl" : "=r"(current_el));
+    unsigned long el = (current_el >> 2) & 3;
+
+    dprintf("arch: booted in EL%d\n", el);
+}
+
 /** Halt the system. */
 __noreturn void target_halt(void) {
     __asm__ __volatile__("msr DAIFSet, #2");

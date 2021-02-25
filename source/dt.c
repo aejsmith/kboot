@@ -41,15 +41,21 @@ static uint32_t get_num_cells(int node_offset, const char *name, uint32_t def) {
     }
 }
 
-static uint32_t get_num_address_cells(int node_offset) {
+/** Get the number of address cells for a node. */
+uint32_t dt_get_address_cells(int node_offset) {
     return get_num_cells(node_offset, "#address-cells", 2);
 }
 
-static uint32_t get_num_size_cells(int node_offset) {
+/** Get the number of size cells for a node. */
+uint32_t dt_get_size_cells(int node_offset) {
     return get_num_cells(node_offset, "#size-cells", 1);
 }
 
-static uint64_t get_cell_value(const uint32_t *ptr, uint32_t num_cells) {
+/** Get a value from a property.
+ * @param ptr           Pointer to value.
+ * @param num_cells     Number of cells per value.
+ * @return              Value read. */
+uint64_t dt_get_value(const uint32_t *ptr, uint32_t num_cells) {
     uint64_t value = 0;
 
     for (uint32_t i = 0; i < num_cells; i++) {
@@ -78,8 +84,8 @@ static phys_ptr_t translate_address(int node_offset, phys_ptr_t address) {
             if (parent_offset < 0)
                 break;
 
-            parent_address_cells = get_num_address_cells(parent_offset);
-            parent_size_cells    = get_num_size_cells(parent_offset);
+            parent_address_cells = dt_get_address_cells(parent_offset);
+            parent_size_cells    = dt_get_size_cells(parent_offset);
         } else {
             parent_address_cells = 2;
             parent_size_cells    = 1;
@@ -97,14 +103,14 @@ static phys_ptr_t translate_address(int node_offset, phys_ptr_t address) {
         if (prop) {
             /* Each entry is a (child-address, parent-address, child-length) triplet. */
             uint32_t entry_cells = node_address_cells + parent_address_cells + node_size_cells;
-            uint32_t entries     = len / 4 / entry_cells;
+            uint32_t entries     = dt_get_num_entries(len, entry_cells);
 
             for (uint32_t i = 0; i < entries; i++) {
-                uint64_t node_base   = get_cell_value(prop, node_address_cells);
+                uint64_t node_base   = dt_get_value(prop, node_address_cells);
                 prop += node_address_cells;
-                uint64_t parent_base = get_cell_value(prop, parent_address_cells);
+                uint64_t parent_base = dt_get_value(prop, parent_address_cells);
                 prop += parent_address_cells;
-                uint64_t length      = get_cell_value(prop, node_size_cells);
+                uint64_t length      = dt_get_value(prop, node_size_cells);
                 prop += node_size_cells;
 
                 /* Translate if within the range. */
@@ -126,21 +132,21 @@ static phys_ptr_t translate_address(int node_offset, phys_ptr_t address) {
  * @param _size         Where to store register size.
  * @return              Whether found. */
 bool dt_get_reg(int node_offset, int index, phys_ptr_t *_address, phys_size_t *_size) {
-    uint32_t address_cells = get_num_address_cells(node_offset);
-    uint32_t size_cells = get_num_size_cells(node_offset);
-    uint32_t total_cells = address_cells + size_cells;
+    uint32_t address_cells = dt_get_address_cells(node_offset);
+    uint32_t size_cells    = dt_get_size_cells(node_offset);
+    uint32_t total_cells   = address_cells + size_cells;
 
     int len;
     const uint32_t *prop = fdt_getprop(fdt_address, node_offset, "reg", &len);
     if (!prop)
         return false;
 
-    int entries = len / 4 / total_cells;
+    int entries = dt_get_num_entries(len, total_cells);
     if (index >= entries)
         return false;
 
-    phys_ptr_t address = get_cell_value(&prop[index * total_cells], address_cells);
-    phys_size_t size   = get_cell_value(&prop[(index * total_cells) + address_cells], size_cells);
+    phys_ptr_t address = dt_get_value(&prop[index * total_cells], address_cells);
+    phys_size_t size   = dt_get_value(&prop[(index * total_cells) + address_cells], size_cells);
 
     *_address = translate_address(node_offset, address);
     *_size    = size;
