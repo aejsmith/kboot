@@ -96,8 +96,15 @@ static int shell_input_helper(unsigned nest) {
 __noreturn void shell_main(void) {
     assert(shell_enabled);
 
-    if (!console_has_caps(current_console, CONSOLE_CAP_OUT | CONSOLE_CAP_IN))
-        target_reboot();
+    if (!console_has_caps(current_console, CONSOLE_CAP_OUT | CONSOLE_CAP_IN)) {
+        /* If there's a capable debug console, set it as the current. */
+        if (console_has_caps(debug_console, CONSOLE_CAP_OUT | CONSOLE_CAP_IN)) {
+            console_set_current(debug_console);
+        } else {
+            printf("Console not capable of running shell, halting\n");
+            target_halt();
+        }
+    }
 
     current_environ = environ_create(root_environ);
     config_set_error_handler(shell_error_handler);
