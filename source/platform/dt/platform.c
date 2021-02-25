@@ -33,10 +33,18 @@ __noreturn void dt_main(void *fdt) {
      * console. */
     dt_early_console_init();
 
+    bool had_debug_console = debug_console != NULL;
+
     dprintf("\ndt: base @ %p, fdt @ %p\n", __start, fdt);
     dt_init(fdt);
 
     console_init();
+
+    /* Print this now if we didn't have an early platform-specific console. */
+    if (!had_debug_console)
+        dprintf("\ndt: base @ %p, fdt @ %p\n", __start, fdt);
+
+    dprintf("console done...\n");
 
     while (true)
         ;

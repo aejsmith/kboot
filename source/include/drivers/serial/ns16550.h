@@ -24,6 +24,8 @@
 
 #include <drivers/console/serial.h>
 
+#ifdef CONFIG_DRIVER_SERIAL_NS16550
+
 /** UART port definitions. */
 #define NS16550_REG_RHR         0       /**< Receive Holding Register (R). */
 #define NS16550_REG_THR         0       /**< Transmit Holding Register (W). */
@@ -77,4 +79,11 @@
 
 extern serial_port_t *ns16550_register(ns16550_base_t base, unsigned index, uint32_t clock_rate);
 
+#ifdef CONFIG_TARGET_HAS_FDT
+
+extern serial_port_t *dt_ns16550_register(int node_offset);
+
+#endif
+
+#endif /* CONFIG_DRIVER_SERIAL_NS16550 */
 #endif /* __DRIVERS_SERIAL_NS16550_H */

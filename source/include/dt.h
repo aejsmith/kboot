@@ -30,7 +30,10 @@
 
 #include <libfdt.h>
 
-extern void *fdt_address;
+extern const void *fdt_address;
+
+extern bool dt_get_reg(int node_offset, int index, phys_ptr_t *_address, phys_size_t *_size);
+extern bool dt_is_compatible(int node_offset, const char **strings, size_t count);
 
 extern void dt_init(void *fdt);
 

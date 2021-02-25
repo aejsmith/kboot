@@ -24,6 +24,8 @@
 
 #include <drivers/console/serial.h>
 
+#ifdef CONFIG_DRIVER_SERIAL_PL011
+
 /** PL011 UART port definitions. */
 #define PL011_REG_DR            0   /**< Data Register. */
 #define PL011_REG_RSR           1   /**< Receive Status Register. */
@@ -56,10 +58,17 @@
 #define PL011_LCRH_WLEN8        (3<<5)  /**< 8 data bits. */
 
 /** PL011 control register bit definitions. */
-#define PL011_CR_UARTEN     (1<<0)  /**< UART enable. */
-#define PL011_CR_TXE        (1<<8)  /**< Transmit enable. */
-#define PL011_CR_RXE        (1<<9)  /**< Receive enable. */
+#define PL011_CR_UARTEN         (1<<0)  /**< UART enable. */
+#define PL011_CR_TXE            (1<<8)  /**< Transmit enable. */
+#define PL011_CR_RXE            (1<<9)  /**< Receive enable. */
 
 extern serial_port_t *pl011_register(ptr_t base, unsigned index, uint32_t clock_rate);
 
+#ifdef CONFIG_TARGET_HAS_FDT
+
+extern serial_port_t *dt_pl011_register(int node_offset);
+
+#endif
+
+#endif /* CONFIG_DRIVER_SERIAL_PL011 */
 #endif /* __DRIVERS_SERIAL_PL011_H */

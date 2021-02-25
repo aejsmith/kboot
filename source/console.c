@@ -324,18 +324,6 @@ console_t *console_lookup(const char *name) {
     return NULL;
 }
 
-/** Register a console.
- * @param console       Console to register (details filled in). */
-void console_register(console_t *console) {
-    if (console_lookup(console->name))
-        internal_error("Console named '%s' already exists", console->name);
-
-    list_init(&console->header);
-    list_append(&console_list, &console->header);
-
-    console->active = 0;
-}
-
 /** Make a console active.
  * @param var           Pointer to console variable to set.
  * @param console       Console to set. */
@@ -359,6 +347,29 @@ static void set_console(console_t **var, console_t *console) {
                 console->in->ops->init(console->in);
         }
     }
+}
+
+/** Register a console.
+ * @param console       Console to register (details filled in). */
+void console_register(console_t *console) {
+    if (console_lookup(console->name))
+        internal_error("Console named '%s' already exists", console->name);
+
+    list_init(&console->header);
+    list_append(&console_list, &console->header);
+
+    console->active = 0;
+}
+
+/** Unregister a console.
+ * @param console       Console to unregister. */
+void console_unregister(console_t *console) {
+    if (console == current_console)
+        set_console(&current_console, NULL);
+    if (console == debug_console)
+        set_console(&debug_console, NULL);
+
+    list_remove(&console->header);
 }
 
 /** Set a console as the current console.

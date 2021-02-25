@@ -267,6 +267,7 @@ extern int console_printf(console_t *console, const char *fmt, ...) __printf(2, 
 
 extern console_t *console_lookup(const char *name);
 extern void console_register(console_t *console);
+extern void console_unregister(console_t *console);
 extern void console_set_current(console_t *console);
 extern void console_set_debug(console_t *console);
 

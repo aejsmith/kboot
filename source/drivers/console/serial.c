@@ -21,6 +21,9 @@
 
 #include <drivers/console/serial.h>
 
+#include <drivers/serial/ns16550.h>
+#include <drivers/serial/pl011.h>
+
 #include <lib/ctype.h>
 #include <lib/printf.h>
 #include <lib/string.h>
@@ -649,6 +652,38 @@ status_t serial_port_register(serial_port_t *port) {
     console_register(&port->console);
     return STATUS_SUCCESS;
 }
+
+/**
+ * Device Tree support.
+ */
+
+#if defined(CONFIG_TARGET_HAS_FDT) && !defined(__TEST)
+
+typedef serial_port_t *(*dt_serial_driver_t)(int);
+
+static dt_serial_driver_t dt_serial_drivers[] = {
+    #ifdef CONFIG_DRIVER_SERIAL_NS16550
+    dt_ns16550_register,
+    #endif
+    #ifdef CONFIG_DRIVER_SERIAL_PL011
+    dt_pl011_register,
+    #endif
+};
+
+/** Register a serial port from a device tree node.
+ * @param node_offset   Offset of DT node.
+ * @return              Registered port, or null if not supported. */
+serial_port_t *dt_serial_port_register(int node_offset) {
+    for (size_t i = 0; i < array_size(dt_serial_drivers); i++) {
+        serial_port_t *port = dt_serial_drivers[i](node_offset);
+        if (port)
+            return port;
+    }
+
+    return NULL;
+}
+
+#endif
 
 /**
  * Configuration commands.

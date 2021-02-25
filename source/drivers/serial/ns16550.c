@@ -23,6 +23,8 @@
 
 #include <drivers/serial/ns16550.h>
 
+#include <lib/utility.h>
+
 #include <console.h>
 #include <loader.h>
 #include <memory.h>
@@ -193,3 +195,30 @@ serial_port_t *ns16550_register(ns16550_base_t base, unsigned index, uint32_t cl
 
     return &port->port;
 }
+
+#if defined(CONFIG_TARGET_HAS_FDT) && !defined(__TEST)
+
+static const char *dt_ns16550_compatible[] = {
+    "ns8250",
+    "ns16550",
+    "ns16550a",
+    "brcm,bcm2835-aux-uart",
+};
+
+/** Register a NS16550 from a device tree node if compatible.
+ * @param node_offset   Offset of DT node.
+ * @return              Registered port, or null if not supported. */
+serial_port_t *dt_ns16550_register(int node_offset) {
+    if (!dt_is_compatible(node_offset, dt_ns16550_compatible, array_size(dt_ns16550_compatible)))
+        return NULL;
+
+    phys_ptr_t base;
+    phys_ptr_t size;
+    if (!dt_get_reg(node_offset, 0, &base, &size))
+        return NULL;
+
+    /* TODO: Get clock rate. For now we just don't allow reconfiguration. */
+    return ns16550_register(base, 0, 0);
+}
+
+#endif

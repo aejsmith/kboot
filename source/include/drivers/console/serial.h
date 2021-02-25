@@ -23,6 +23,7 @@
 #define __DRIVERS_CONSOLE_SERIAL_H
 
 #include <console.h>
+#include <dt.h>
 #include <status.h>
 
 struct serial_port;
@@ -117,4 +118,9 @@ static inline status_t serial_port_config(serial_port_t *port, const serial_conf
 
 extern status_t serial_port_register(serial_port_t *port);
 
+#ifdef CONFIG_TARGET_HAS_FDT
+
+extern serial_port_t *dt_serial_port_register(int node_offset);
+
+#endif /* CONFIG_TARGET_HAS_FDT */
 #endif /* __DRIVERS_CONSOLE_SERIAL_H */
