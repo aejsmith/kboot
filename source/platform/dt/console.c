@@ -30,7 +30,11 @@
 
 /* Early console configuration. */
 #if CONFIG_DEBUG && CONFIG_DT_SINGLE_PLATFORM
-    #if CONFIG_DT_PLATFORM_BCM2837
+    #if CONFIG_DT_PLATFORM_BCM2711
+        /* Raspberry Pi 4 - mini UART is the primary UART by default. */
+        #define EARLY_CONSOLE_NS16550       1
+        #define EARLY_CONSOLE_ADDR          0xfe215040
+    #elif CONFIG_DT_PLATFORM_BCM2837
         /* Raspberry Pi 3 - mini UART is the primary UART by default. */
         #define EARLY_CONSOLE_NS16550       1
         #define EARLY_CONSOLE_ADDR          0x3f215040
