@@ -24,6 +24,7 @@ sources = FeatureSources(config, [
     ('TARGET_HAS_DISK', 'fs/ext2.c'),
     ('TARGET_HAS_DISK', 'fs/fat.c'),
     ('TARGET_HAS_DISK', 'fs/iso9660.c'),
+    ('TARGET_HAS_DISK', 'fs/tar.c'),
 
     ('TARGET_HAS_FDT', 'lib/fdt/fdt_addresses.c'),
     ('TARGET_HAS_FDT', 'lib/fdt/fdt.c'),
