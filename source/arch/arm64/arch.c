@@ -19,20 +19,28 @@
  * @brief               ARM64 architecture main functions.
  */
 
+#include <arm64/cpu.h>
+#include <arm64/exception.h>
+
 #include <loader.h>
+
+/** Exception Level the loader is running in (EL1 or EL2). */
+int arm64_loader_el;
 
 /** Architecture-specific initialization. */
 void arch_init(void) {
-    unsigned long current_el;
-    __asm__ __volatile__("mrs %0, CurrentEl" : "=r"(current_el));
-    unsigned long el = (current_el >> 2) & 3;
+    unsigned long currentel;
+    __asm__ __volatile__("mrs %0, currentel" : "=r"(currentel));
+    arm64_loader_el = (currentel >> 2) & 3;
 
-    dprintf("arch: booted in EL%d\n", el);
+    dprintf("arch: booted in EL%d\n", arm64_loader_el);
+
+    arm64_exception_init();
 }
 
 /** Halt the system. */
 __noreturn void target_halt(void) {
-    __asm__ __volatile__("msr DAIFSet, #2");
+    __asm__ __volatile__("msr daifset, #2");
 
     while (true)
         ;

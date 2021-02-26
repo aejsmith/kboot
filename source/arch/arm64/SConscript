@@ -20,6 +20,8 @@ from util import FeatureSources
 sources = FeatureSources(config, [
     'arch.c',
     'backtrace.c',
+    'entry.S',
+    'exception.c',
     'time.c',
 ])
 

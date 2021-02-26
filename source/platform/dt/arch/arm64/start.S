@@ -69,7 +69,8 @@ FUNCTION_START(loader_entry)
      *  - MMU off.
      *  - DCache off.
      *  - ICache on or off with no stale references to the kernel image.
-     *  - All interrupts disabled.
+     *  - All interrupts disabled (PSTATE.DAIF = 1)
+     *  - EL2 (recommended if virtualization is supported) or EL1.
      */
 
     PUTC    'S'
