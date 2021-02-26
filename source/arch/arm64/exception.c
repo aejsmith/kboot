@@ -28,7 +28,10 @@ extern uint8_t arm64_exception_vectors[];
 
 /** Synchronous exception handler. */
 void arm64_sync_exception_handler(exception_frame_t *frame) {
-    internal_error("Unhandled synchronous exception\n"
+    unsigned long esr   = arm64_read_sysreg_el(esr);
+    unsigned long class = ARM64_ESR_ELx_EC(esr);
+
+    internal_error("Unhandled synchronous exception (class %lu)\n"
         "x0:   0x%016lx  x1:  0x%016lx  x2:  0x%016lx\n"
         "x3:   0x%016lx  x4:  0x%016lx  x5:  0x%016lx\n"
         "x6:   0x%016lx  x7:  0x%016lx  x8:  0x%016lx\n"
@@ -40,7 +43,8 @@ void arm64_sync_exception_handler(exception_frame_t *frame) {
         "x24:  0x%016lx  x25: 0x%016lx  x26: 0x%016lx\n"
         "x27:  0x%016lx  x28: 0x%016lx  x29: 0x%016lx\n"
         "x30:  0x%016lx  sp:  0x%016lx  elr: 0x%016lx\n"
-        "spsr: 0x%016lx",
+        "spsr: 0x%016lx  esr: 0x%08lx",
+        class,
         frame->x0,  frame->x1,  frame->x2,
         frame->x3,  frame->x4,  frame->x5,
         frame->x6,  frame->x7,  frame->x8,
@@ -52,7 +56,7 @@ void arm64_sync_exception_handler(exception_frame_t *frame) {
         frame->x24, frame->x25, frame->x26,
         frame->x27, frame->x28, frame->x29,
         frame->x30, frame->sp,  frame->elr,
-        frame->spsr);
+        frame->spsr, esr);
 }
 
 void arm64_exception_init(void) {

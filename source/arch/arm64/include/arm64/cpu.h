@@ -28,6 +28,11 @@
 #define ARM64_CURRENTEL_EL2     (2<<2)
 #define ARM64_CURRENTEL_EL3     (3<<2)
 
+/** Exception Syndrome Register (ESR_ELx). */
+#define ARM64_ESR_ELx_EC_SHIFT  26
+#define ARM64_ESR_ELx_EC_MASK   (0x3ful << ARM64_ESR_ELx_EC_SHIFT)
+#define ARM64_ESR_ELx_EC(esr)   (((esr) & ARM64_ESR_ELx_EC_MASK) >> ARM64_ESR_ELx_EC_SHIFT)
+
 #ifndef __ASM__
 
 #include <types.h>
