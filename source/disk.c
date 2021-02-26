@@ -339,7 +339,7 @@ void disk_image_register(const char *name, fs_handle_t *handle, bool boot) {
 
     /* If the image is on a disk, use its block size so we match I/O size there. */
     image->disk.block_size = 512;
-    if (handle->mount->device->type == DEVICE_TYPE_DISK) {
+    if (handle->mount->device && handle->mount->device->type == DEVICE_TYPE_DISK) {
         disk_device_t *disk = (disk_device_t *)handle->mount->device;
         image->disk.block_size = disk->block_size;
     }
