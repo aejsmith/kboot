@@ -45,6 +45,7 @@ extern uint64_t dt_get_value(const uint32_t *ptr, uint32_t num_cells);
 extern bool dt_get_reg(int node_offset, int index, phys_ptr_t *_address, phys_size_t *_size);
 
 extern bool dt_is_compatible(int node_offset, const char **strings, size_t count);
+extern bool dt_is_available(int node_offset);
 
 extern void dt_init(void *fdt);
 

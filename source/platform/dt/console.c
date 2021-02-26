@@ -102,7 +102,7 @@ void target_console_init(void) {
 
     dprintf("dt: console path is '%s'\n", path);
 
-    if (dev < 0)
+    if (dev < 0 || !dt_is_available(dev))
         return;
 
     serial_port_t *port = dt_serial_port_register(dev);

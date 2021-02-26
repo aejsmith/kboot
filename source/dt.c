@@ -167,6 +167,28 @@ bool dt_is_compatible(int node_offset, const char **strings, size_t count) {
     return false;
 }
 
+/**
+ * Checks the status of a DT node. A device should not be used if this returns
+ * false.
+ *
+ * @param node_offset   Node offset.
+ *
+ * @return              True if the status is OK or not present.
+ */
+bool dt_is_available(int node_offset) {
+    int len;
+    const char *prop = fdt_getprop(fdt_address, node_offset, "status", &len);
+    if (!prop)
+        return true;
+
+    if (len == 0) {
+        /* Present but invalid. */
+        return false;
+    }
+
+    return strcmp(prop, "ok") == 0 || strcmp(prop, "okay") == 0;
+}
+
 /** Validate the FDT and set fdt_address.
  * @param fdt           Platform-supplied FDT blob. */
 void dt_init(void *fdt) {
