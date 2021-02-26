@@ -20,8 +20,10 @@
  */
 
 #include <lib/string.h>
+#include <lib/utility.h>
 
 #include <assert.h>
+#include <config.h>
 #include <disk.h>
 #include <fs.h>
 #include <loader.h>
@@ -264,3 +266,131 @@ void disk_device_register(disk_device_t *disk, bool boot) {
 
     probe_disk(disk);
 }
+
+/*
+ * Disk image support.
+ */
+
+typedef struct disk_image {
+    disk_device_t disk;                 /**< Disk device header. */
+
+    fs_handle_t *source;                /**< Source file handle. */
+} disk_image_t;
+
+static status_t disk_image_read_blocks(disk_device_t *_disk, void *buf, size_t count, uint64_t block) {
+    disk_image_t *disk = (disk_image_t *)_disk;
+
+    size_t size     = count * disk->disk.block_size;
+    uint64_t offset = block * disk->disk.block_size;
+
+    /* File size may not be block-aligned. */
+    size_t padding = (offset + size > disk->source->size) ? disk->source->size - offset : 0;
+    size -= padding;
+
+    status_t ret = fs_read(disk->source, buf, size, offset);
+    if (ret != STATUS_SUCCESS)
+        return ret;
+
+    if (padding > 0)
+        memset((uint8_t *)buf + size, 0, padding);
+
+    return STATUS_SUCCESS;
+}
+
+static bool disk_image_is_boot_partition(disk_device_t *_disk, uint8_t id, uint64_t lba) {
+    /* Assume partition 0 is the boot partition if the image has been set as the
+     * boot device. */
+    return id == 1;
+}
+
+static void disk_image_identify(disk_device_t *_disk, device_identify_t type, char *buf, size_t size) {
+    if (type == DEVICE_IDENTIFY_SHORT)
+        snprintf(buf, size, "Disk image");
+}
+
+static disk_ops_t disk_image_ops = {
+    .read_blocks       = disk_image_read_blocks,
+    .is_boot_partition = disk_image_is_boot_partition,
+    .identify          = disk_image_identify,
+};
+
+/**
+ * Register a disk image. This creates a new disk device that is backed by a
+ * file.
+ *
+ * @param name          Name for the device.
+ * @param handle        File handle.
+ * @param boot          Whether the disk is the boot device.
+ */
+void disk_image_register(const char *name, fs_handle_t *handle, bool boot) {
+    disk_image_t *image = malloc(sizeof(*image));
+
+    list_init(&image->disk.partitions);
+
+    image->disk.device.type   = DEVICE_TYPE_DISK;
+    image->disk.device.ops    = &disk_device_ops;
+    image->disk.device.name   = strdup(name);
+    image->disk.type          = DISK_TYPE_HD;
+    image->disk.ops           = &disk_image_ops;
+    image->disk.parent        = NULL;
+    image->disk.partition_ops = NULL;
+    image->disk.id            = 0;
+    image->source             = handle;
+
+    /* If the image is on a disk, use its block size so we match I/O size there. */
+    image->disk.block_size = 512;
+    if (handle->mount->device->type == DEVICE_TYPE_DISK) {
+        disk_device_t *disk = (disk_device_t *)handle->mount->device;
+        image->disk.block_size = disk->block_size;
+    }
+
+    /* Round up to block size, when reading we'll pad with 0 if not a multiple. */
+    image->disk.blocks = round_up(handle->size, image->disk.block_size) / image->disk.block_size;
+
+    device_register(&image->disk.device);
+
+    if (boot)
+        boot_device = &image->disk.device;
+
+    probe_disk(&image->disk);
+}
+
+/** Mount a disk image.
+ * @param args          Argument list.
+ * @return              Whether successful. */
+static bool config_cmd_diskimage(value_list_t *args) {
+    // command should open compressed, check existance of devic.
+
+    if (args->count != 2 ||
+        args->values[0].type != VALUE_TYPE_STRING ||
+        args->values[1].type != VALUE_TYPE_STRING)
+    {
+        config_error("Invalid arguments");
+        return false;
+    }
+
+    const char *name = args->values[0].string;
+    const char *path = args->values[1].string;
+
+    if (strchr(name, '(') || strchr(name, ')') || strchr(name, ',') || strchr(name, '/')) {
+        config_error("Device name '%s' is invalid", name);
+        return false;
+    }
+
+    if (device_lookup(name)) {
+        config_error("Device '%s' already exists", name);
+        return false;
+    }
+
+    fs_handle_t *handle;
+    status_t ret = fs_open(path, NULL, FILE_TYPE_REGULAR, FS_OPEN_DECOMPRESS, &handle);
+    if (ret != STATUS_SUCCESS) {
+        config_error("Error opening '%s': %pS", path, ret);
+        return false;
+    }
+
+    disk_image_register(name, handle, false);
+    return true;
+}
+
+BUILTIN_COMMAND("diskimage", "Mount a disk image", config_cmd_diskimage);

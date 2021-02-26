@@ -27,6 +27,7 @@
 #ifdef CONFIG_TARGET_HAS_DISK
 
 struct disk_device;
+struct fs_handle;
 
 /** Partition map iteration callback function type.
  * @param disk          Disk containing the partition.
@@ -114,6 +115,8 @@ static inline bool disk_device_is_partition(disk_device_t *disk) {
 }
 
 extern void disk_device_register(disk_device_t *disk, bool boot);
+
+extern void disk_image_register(const char *name, struct fs_handle *handle, bool boot);
 
 #endif /* CONFIG_TARGET_HAS_DISK */
 #endif /* __DISK_H */

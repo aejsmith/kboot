@@ -244,6 +244,20 @@ This command will set the current directory to the root of the new device, and
 will set the `device`, `device_uuid` and `device_label` environment variables
 to reflect the new device.
 
+### `diskimage`
+
+Mounts a disk image.
+
+**Usage**: `diskimage <name> <path>`
+
+**Arguments**:
+
+ * `name` (string): Name string for the device.
+ * `path` (string): Path to file to mount as a disk image.
+
+This command will create a new disk device with the given name, which is backed
+by the file at the specified path.
+
 ### `include`
 
 Includes another configuration file into the current one.

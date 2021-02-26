@@ -29,11 +29,12 @@ int arm64_loader_el;
 
 /** Architecture-specific initialization. */
 void arch_init(void) {
-    unsigned long currentel;
-    __asm__ __volatile__("mrs %0, currentel" : "=r"(currentel));
+    unsigned long currentel = arm64_read_sysreg(currentel);
     arm64_loader_el = (currentel >> 2) & 3;
 
-    dprintf("arch: booted in EL%d\n", arm64_loader_el);
+    unsigned long sctlr = arm64_read_sysreg_el(sctlr);
+
+    dprintf("arch: booted in EL%d, SCTLR = 0x%lx\n", arm64_loader_el, sctlr);
 
     arm64_exception_init();
 }

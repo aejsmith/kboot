@@ -18,6 +18,8 @@ include = {
     'config': {
         'PLATFORM': 'dt',
         'PLATFORM_DT': True,
+        'TARGET_HAS_DISK': True,
         'TARGET_HAS_FDT': True,
+        'DRIVER_DISK_RAMDISK': True,
     },
 }
