@@ -16,18 +16,15 @@
 
 /**
  * @file
- * @brief               RAM disk driver.
+ * @brief               DT platform memory functions.
  */
 
-#ifndef __DRIVERS_DISK_RAMDISK_H
-#define __DRIVERS_DISK_RAMDISK_H
+#ifndef __DT_MEMORY_H
+#define __DT_MEMORY_H
 
-#include <status.h>
 #include <types.h>
 
-#ifdef CONFIG_DRIVER_DISK_RAMDISK
+extern phys_ptr_t dt_initrd_address;
+extern phys_size_t dt_initrd_size;
 
-extern void ramdisk_create(const char *name, void *data, size_t size, bool boot);
-
-#endif /* CONFIG_DRIVER_DISK_RAMDISK */
-#endif /* __DRIVERS_DISK_RAMDISK_H */
+#endif /* __DT_MEMORY_H */

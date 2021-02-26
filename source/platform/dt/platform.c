@@ -19,7 +19,10 @@
  * @brief               DT platform main functions.
  */
 
+#include <drivers/disk/ramdisk.h>
+
 #include <dt/console.h>
+#include <dt/memory.h>
 
 #include <console.h>
 #include <device.h>
@@ -69,5 +72,6 @@ __noreturn void dt_main(void *fdt) {
 
 /** Detect and register all devices. */
 void target_device_probe(void) {
-
+    if (dt_initrd_size != 0)
+        ramdisk_create("initrd", (void *)dt_initrd_address, dt_initrd_size, true);
 }

@@ -16,14 +16,50 @@
 
 /**
  * @file
- * @brief               DT platform main functions.
+ * @brief               DT platform memory functions.
  */
+
+#include <dt/memory.h>
 
 #include <lib/utility.h>
 
 #include <dt.h>
 #include <loader.h>
 #include <memory.h>
+
+phys_ptr_t dt_initrd_address = 0;
+phys_size_t dt_initrd_size = 0;
+
+static void find_initrd(void) {
+    int chosen_offset = fdt_path_offset(fdt_address, "/chosen");
+    if (chosen_offset < 0)
+        return;
+
+    uint64_t start = 0;
+    uint64_t end = 0;
+
+    int len;
+    const void *prop = fdt_getprop(fdt_address, chosen_offset, "linux,initrd-start", &len);
+    if (prop) {
+        if (len == 4) {
+            start = fdt32_to_cpu(*(const uint32_t *)prop);
+        } else if (len == 8) {
+            start = fdt64_to_cpu(*(const uint64_t *)prop);
+        }
+    }
+
+    prop = fdt_getprop(fdt_address, chosen_offset, "linux,initrd-end", &len);
+    if (prop) {
+        if (len == 4) {
+            end = fdt32_to_cpu(*(const uint32_t *)prop);
+        } else if (len == 8) {
+            end = fdt64_to_cpu(*(const uint64_t *)prop);
+        }
+    }
+
+    dt_initrd_address = start;
+    dt_initrd_size    = end - start;
+}
 
 /** Detect physical memory. */
 void target_memory_probe(void) {
@@ -75,5 +111,9 @@ void target_memory_probe(void) {
         memory_remove(start, end - start);
     }
 
-    // TODO: initrd
+    find_initrd();
+    if (dt_initrd_size != 0) {
+        /* Protect the initrd. */
+        memory_protect(dt_initrd_address, dt_initrd_size);
+    }
 }
