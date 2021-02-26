@@ -45,6 +45,25 @@ __noreturn void dt_main(void *fdt) {
         dprintf("\ndt: base @ %p, fdt @ %p\n", __start, fdt);
 
     arch_init();
+
+	int len;
+	const char *compatible = fdt_getprop(fdt, 0, "compatible", &len);
+	if (compatible) {
+        dprintf("dt: platform compatibility:");
+
+        const char *end = compatible + len;
+        while (compatible < end) {
+            dprintf(" %s", compatible);
+            compatible += strlen(compatible) + 1;
+        }
+
+        dprintf("\n");
+    }
+
+    const char *model = fdt_getprop(fdt, 0, "model", &len);
+    if (model)
+        dprintf("dt: platform model: %s\n", model);
+
     loader_main();
 }
 
