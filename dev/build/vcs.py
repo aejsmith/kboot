@@ -19,7 +19,7 @@ def revision_id():
     from subprocess import Popen, PIPE
 
     git = Popen(['git', 'rev-parse', '--short', 'HEAD'], stdout = PIPE, stderr = PIPE)
-    revision = git.communicate()[0].strip()
+    revision = git.communicate()[0].strip().decode('utf-8')
     if git.returncode != 0:
         return None
     return revision
