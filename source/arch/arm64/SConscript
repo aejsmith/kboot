@@ -25,6 +25,9 @@ sources = FeatureSources(config, [
     'time.c',
 ])
 
+# No unaligned access (see loader.h).
+env['CCFLAGS'] += ['-mno-unaligned-access']
+
 # Prevent FPU code generation.
 env['CCFLAGS'] += ['-mgeneral-regs-only']
 

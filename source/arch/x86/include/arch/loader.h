@@ -24,6 +24,9 @@
 
 #include <types.h>
 
+/** We support unaligned memory accesses. */
+#define TARGET_SUPPORTS_UNALIGNED_ACCESS  1
+
 /** Spin loop hint. */
 static inline void arch_pause(void) {
     __asm__ __volatile__("pause");

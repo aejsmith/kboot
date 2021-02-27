@@ -47,36 +47,43 @@ void *memcpy(void *__restrict dest, const void *__restrict src, size_t count) {
     char *d = (char *)dest;
     unsigned long *nd;
 
-    /* Align the destination. */
-    while ((ptr_t)d & (sizeof(unsigned long) - 1)) {
-        if (count--) {
-            *d++ = *s++;
-        } else {
-            return dest;
+#if !TARGET_SUPPORTS_UNALIGNED_ACCESS
+    /* Both pointers must have the same alignment. */
+    if (((ptr_t)d & (sizeof(unsigned long) - 1)) == ((ptr_t)s & (sizeof(unsigned long) - 1))) {
+#endif
+        /* Align the destination. */
+        while ((ptr_t)d & (sizeof(unsigned long) - 1)) {
+            if (count--) {
+                *d++ = *s++;
+            } else {
+                return dest;
+            }
         }
+
+        /* Write in native-sized blocks if we can. */
+        if (count >= sizeof(unsigned long)) {
+            nd = (unsigned long *)d;
+            ns = (const unsigned long *)s;
+
+            /* Unroll the loop if possible. */
+            while (count >= (sizeof(unsigned long) * 4)) {
+                *nd++ = *ns++;
+                *nd++ = *ns++;
+                *nd++ = *ns++;
+                *nd++ = *ns++;
+                count -= sizeof(unsigned long) * 4;
+            }
+            while (count >= sizeof(unsigned long)) {
+                *nd++ = *ns++;
+                count -= sizeof(unsigned long);
+            }
+
+            d = (char *)nd;
+            s = (const char *)ns;
+        }
+#if !TARGET_SUPPORTS_UNALIGNED_ACCESS
     }
-
-    /* Write in native-sized blocks if we can. */
-    if (count >= sizeof(unsigned long)) {
-        nd = (unsigned long *)d;
-        ns = (const unsigned long *)s;
-
-        /* Unroll the loop if possible. */
-        while (count >= (sizeof(unsigned long) * 4)) {
-            *nd++ = *ns++;
-            *nd++ = *ns++;
-            *nd++ = *ns++;
-            *nd++ = *ns++;
-            count -= sizeof(unsigned long) * 4;
-        }
-        while (count >= sizeof(unsigned long)) {
-            *nd++ = *ns++;
-            count -= sizeof(unsigned long);
-        }
-
-        d = (char *)nd;
-        s = (const char *)ns;
-    }
+#endif
 
     /* Write remaining bytes. */
     while (count--)
