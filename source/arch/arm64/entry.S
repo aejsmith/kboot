@@ -76,18 +76,22 @@ sync_ELch_handler:
     b.eq    .Lel2
 
 .Lel1:
-    mrs     x0, elr_el1
-    mrs     x1, spsr_el1
+    mrs     x0, spsr_el1
+    mrs     x1, elr_el1
     b       .Lhandle
 
 .Lel2:
-    mrs     x0, elr_el2
-    mrs     x1, spsr_el2
+    mrs     x0, spsr_el2
+    mrs     x1, elr_el2
     b       .Lhandle
 
 .Lhandle:
-    stp     x0, x1, [sp,#-16]!
+    stp     x1, x0, [sp,#-16]!
     mov     x0, sp
+
+    /* Stack frame with ELR as return address. */
+    stp     x29, x1, [sp, #-16]!
+    mov     x29, sp
     bl      arm64_sync_exception_handler
 
 .p2align 7
