@@ -183,8 +183,6 @@ static status_t tar_mount(device_t *device, fs_mount_t **_mount) {
         char *dir __cleanup_free  = dirname(header->name);
         char *name __cleanup_free = basename(header->name);
 
-        dprintf("'%s' -> '%s' '%s'\n", header->name, dir, name);
-
         fs_handle_t *_parent __cleanup_close = NULL;
         ret = fs_open(dir, &root->handle, FILE_TYPE_DIR, 0, &_parent);
         if (ret != STATUS_SUCCESS) {
