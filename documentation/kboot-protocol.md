@@ -4,7 +4,7 @@ KBoot Boot Protocol
 License
 -------
 
-Copyright &copy; 2012-2014 Alex Smith
+Copyright &copy; 2012-2021 Alex Smith
 
 This document is distributed under the terms of the [Creative Commons
 Attribution-ShareAlike 3.0 Unported](http://creativecommons.org/licenses/
@@ -890,6 +890,54 @@ Fields:
  * `num`/`entsize`/`shstrndx`: These fields correspond to the fields with the
    same name in the ELF executable header.
  * `sections`: Array of section headers, each `entsize` bytes long.
+
+### `KBOOT_TAG_SERIAL` (`13`)
+
+This tag describes a serial port that has been configured by the boot loader to
+the kernel. This can, for example, be used by the kernel as a debug console
+early during boot before it is able to discover serial ports via
+platform-specific methods.
+
+If the boot loader set the port configuration itself, then details of this will
+be included in the tag.
+
+However, the boot loader may not always support reconfiguration of ports and
+may instead be relying on configuration that was set by platform firmware. In
+this case, the `baud_rate` field will be set to 0, which indicates that the
+configuration is unknown and therefore the other configuration fields
+(`data_bits`, `stop_bits`, `parity`) are also invalid.
+
+    typedef struct kboot_tag_serial {
+        kboot_tag_t header;
+
+        kboot_paddr_t addr;
+        uint8_t io_type;
+
+        uint32_t type;
+
+        uint32_t baud_rate;
+        uint8_t data_bits;
+        uint8_t stop_bits;
+        uint8_t parity;
+    } kboot_tag_serial_t;
+
+Fields:
+
+ * `addr`: Base I/O address of the serial port.
+ * `io_type`: I/O address space that `addr` is in:
+    - `KBOOT_IO_TYPE_MMIO` (0): Memory-mapped I/O.
+    - `KBOOT_IO_TYPE_PIO` (1): Port I/O.
+ * `type`: Type of the port. The following types are currently defined:
+    - `KBOOT_SERIAL_TYPE_NS16550` (0): Standard 16550.
+    - `KBOOT_SERIAL_TYPE_BCM2835_AUX` (1): BCM2835 auxiliary UART (16550-like).
+    - `KBOOT_SERIAL_TYPE_PL011` (2): ARM PL011.
+ * `baud_rate`: Baud rate that was configured by the boot loader.
+ * `data_bits`: Number of data bits that was configured by the boot loader.
+ * `stop_bits`: Number of stop bits that was configured by the boot loader.
+ * `parity`: Parity mode that was configured by the boot loader:
+    - `KBOOT_SERIAL_PARITY_NONE` (0): No parity.
+    - `KBOOT_SERIAL_PARITY_ODD` (1): Odd parity.
+    - `KBOOT_SERIAL_PARITY_EVEN` (2): Even parity.
 
 Platform Specifics
 ------------------

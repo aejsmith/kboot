@@ -26,6 +26,7 @@
 #include <lib/utility.h>
 
 #include <console.h>
+#include <kboot.h>
 #include <loader.h>
 #include <memory.h>
 
@@ -40,6 +41,7 @@ typedef struct ns16550_port {
     serial_port_t port;                 /**< Serial port header. */
 
     ns16550_base_t base;                /**< Base of the 16550 registers. */
+    ns16550_type_t type;                /**< Type of the UART. */
     uint32_t clock_rate;                /**< Clock rate. */
 } ns16550_port_t;
 
@@ -151,6 +153,33 @@ static void ns16550_port_write(serial_port_t *_port, uint8_t val) {
     ns16550_write(port, NS16550_REG_THR, val);
 }
 
+#if CONFIG_TARGET_HAS_KBOOT32 || CONFIG_TARGET_HAS_KBOOT64
+
+/** Get KBoot parameters for the port.
+ * @param port          Port to get parameters for.
+ * @param tag           KBoot tag to fill in (type, addr, io_type). */
+static void ns16550_port_get_kboot_params(serial_port_t *_port, kboot_tag_serial_t *tag) {
+    ns16550_port_t *port = (ns16550_port_t *)_port;
+
+    tag->addr = port->base;
+
+    #ifdef CONFIG_TARGET_NS16550_IO
+        tag->io_type = KBOOT_IO_TYPE_PIO;
+    #else
+        tag->io_type = KBOOT_IO_TYPE_MMIO;
+    #endif
+
+    switch (port->type) {
+    case NS16550_TYPE_STANDARD:    tag->type = KBOOT_SERIAL_TYPE_NS16550; break;
+    case NS16550_TYPE_BCM2835_AUX: tag->type = KBOOT_SERIAL_TYPE_BCM2835_AUX; break;
+    default:
+        internal_error("Unhandled NS16550 type");
+        break;
+    }
+}
+
+#endif
+
 /** NS16550 serial port operations. */
 static serial_port_ops_t ns16550_port_ops = {
     .config = ns16550_port_config,
@@ -158,6 +187,9 @@ static serial_port_ops_t ns16550_port_ops = {
     .read = ns16550_port_read,
     .tx_empty = ns16550_port_tx_empty,
     .write = ns16550_port_write,
+    #if CONFIG_TARGET_HAS_KBOOT32 || CONFIG_TARGET_HAS_KBOOT64
+    .get_kboot_params = ns16550_port_get_kboot_params,
+    #endif
 };
 
 /**
@@ -169,17 +201,22 @@ static serial_port_ops_t ns16550_port_ops = {
  * ones set by platform firmware).
  *
  * @param base          Base of UART registers.
+ * @param type          Type of the UART.
  * @param index         Index of the UART, used to name the console.
  * @param clock_rate    UART base clock rate (0 will forbid reconfiguration).
  *
  * @return              Created port, or NULL if port does not exist.
  */
-serial_port_t *ns16550_register(ns16550_base_t base, unsigned index, uint32_t clock_rate) {
+serial_port_t *ns16550_register(
+    ns16550_base_t base, ns16550_type_t type, unsigned index,
+    uint32_t clock_rate)
+{
     ns16550_port_t *port = malloc(sizeof(*port));
 
     port->port.ops = &ns16550_port_ops;
     port->port.index = index;
     port->base = base;
+    port->type = type;
     port->clock_rate = clock_rate;
 
     /* See if this looks like a 16550. Check for registers that are known 0. */
@@ -198,18 +235,24 @@ serial_port_t *ns16550_register(ns16550_base_t base, unsigned index, uint32_t cl
 
 #if defined(CONFIG_TARGET_HAS_FDT) && !defined(__TEST)
 
-static const char *dt_ns16550_compatible[] = {
-    "ns8250",
-    "ns16550",
-    "ns16550a",
-    "brcm,bcm2835-aux-uart",
+typedef struct dt_ns16550_match {
+    const char *compatible;
+    ns16550_type_t type;
+} dt_ns16550_match_t;
+
+static dt_ns16550_match_t dt_ns16550_match[] = {
+    { "ns8250",                NS16550_TYPE_STANDARD },
+    { "ns16550",               NS16550_TYPE_STANDARD },
+    { "ns16550a",              NS16550_TYPE_STANDARD },
+    { "brcm,bcm2835-aux-uart", NS16550_TYPE_BCM2835_AUX },
 };
 
 /** Register a NS16550 from a device tree node if compatible.
  * @param node_offset   Offset of DT node.
  * @return              Registered port, or null if not supported. */
 serial_port_t *dt_ns16550_register(int node_offset) {
-    if (!dt_is_compatible(node_offset, dt_ns16550_compatible, array_size(dt_ns16550_compatible)))
+    int match = dt_match(node_offset, dt_ns16550_match);
+    if (match < 0)
         return NULL;
 
     phys_ptr_t base;
@@ -218,7 +261,7 @@ serial_port_t *dt_ns16550_register(int node_offset) {
         return NULL;
 
     /* TODO: Get clock rate. For now we just don't allow reconfiguration. */
-    return ns16550_register(base, 0, 0);
+    return ns16550_register(base, dt_ns16550_match[match].type, 0, 0);
 }
 
 #endif

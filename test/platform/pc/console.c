@@ -32,9 +32,9 @@ KBOOT_VIDEO(KBOOT_VIDEO_VGA | KBOOT_VIDEO_LFB, 0, 0, 0);
 #define SERIAL_PORT         0x3f8
 #define SERIAL_CLOCK        1843200
 
-/** Initialize the debug console. */
-void debug_console_init(void) {
-    serial_port_t *port = ns16550_register(SERIAL_PORT, 0, SERIAL_CLOCK);
+/** Initialize the fallback debug console. */
+void platform_debug_console_init(void) {
+    serial_port_t *port = ns16550_register(SERIAL_PORT, NS16550_TYPE_STANDARD, 0, SERIAL_CLOCK);
 
     if (port)
         debug_console = &port->console;

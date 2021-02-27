@@ -122,7 +122,7 @@ void target_console_init(void) {
 
     /* Register serial ports. */
     for (size_t i = 0; i < array_size(serial_ports); i++) {
-        serial_port_t *port = ns16550_register(serial_ports[i], i, SERIAL_CLOCK);
+        serial_port_t *port = ns16550_register(serial_ports[i], NS16550_TYPE_STANDARD, i, SERIAL_CLOCK);
 
         if (port) {
             serial_port_config(port, &config);

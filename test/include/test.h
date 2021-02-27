@@ -51,7 +51,8 @@ extern ptr_t virt_alloc(size_t size);
 extern void *phys_map(phys_ptr_t addr, size_t size);
 extern phys_ptr_t phys_alloc(phys_size_t size);
 
-extern void debug_console_init(void);
+extern void platform_debug_console_init(void);
+extern void debug_console_init(kboot_tag_t *tags);
 extern void primary_console_init(kboot_tag_t *tags);
 extern void mm_init(kboot_tag_t *tags);
 extern void mmu_init(kboot_tag_t *tags);

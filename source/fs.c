@@ -310,7 +310,7 @@ fs_mount_t *fs_probe(device_t *device) {
         ret = ops->mount(device, &mount);
         switch (ret) {
         case STATUS_SUCCESS:
-            dprintf("fs: mounted %s on %s ('%s') (uuid: %s)\n", ops->name, device->name, mount->label, mount->uuid);
+            dprintf("fs: mounted %s on %s (label: '%s', uuid: '%s')\n", ops->name, device->name, mount->label, mount->uuid);
 
             mount->ops = ops;
             mount->device = device;

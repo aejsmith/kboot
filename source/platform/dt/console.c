@@ -34,10 +34,12 @@
         /* Raspberry Pi 4 - mini UART is the primary UART by default. */
         #define EARLY_CONSOLE_NS16550       1
         #define EARLY_CONSOLE_ADDR          0xfe215040
+        #define EARLY_CONSOLE_TYPE          NS16550_TYPE_BCM2835_AUX
     #elif CONFIG_DT_PLATFORM_BCM2837
         /* Raspberry Pi 3 - mini UART is the primary UART by default. */
         #define EARLY_CONSOLE_NS16550       1
         #define EARLY_CONSOLE_ADDR          0x3f215040
+        #define EARLY_CONSOLE_TYPE          NS16550_TYPE_BCM2835_AUX
     #elif CONFIG_DT_PLATFORM_VIRT_ARM64
         /* QEMU virt machine. According to the docs we shouldn't rely on any
          * fixed address for it, but *shrug*, it's hardcoded to this in the code
@@ -57,7 +59,7 @@ void dt_early_console_init(void) {
         serial_port_t *port = NULL;
 
         #if EARLY_CONSOLE_NS16550
-            port = ns16550_register(EARLY_CONSOLE_ADDR, 999, 0);
+            port = ns16550_register(EARLY_CONSOLE_ADDR, EARLY_CONSOLE_TYPE, 999, 0);
         #elif EARLY_CONSOLE_PL011
             port = pl011_register(EARLY_CONSOLE_ADDR, 999, 0);
         #endif

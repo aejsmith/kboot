@@ -153,6 +153,18 @@ bool dt_get_reg(int node_offset, int index, phys_ptr_t *_address, phys_size_t *_
     return true;
 }
 
+/** Implementation of dt_match(). */
+int dt_match_impl(int node_offset, const void *data, size_t stride, size_t count) {
+    for (size_t i = 0; i < count; i++) {
+        if (fdt_node_check_compatible(fdt_address, node_offset, *(const char **)data) == 0)
+            return true;
+
+        data += stride;
+    }
+
+    return -1;
+}
+
 /** Check if a DT node is compatible with one of an array of strings.
  * @param node_offset   Node offset.
  * @param strings       String array.

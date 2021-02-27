@@ -71,13 +71,21 @@
 #define NS16550_LSR_TEMT        (1<<6)  /**< Transmitter empty. */
 #define NS16550_LSR_ERR         (1<<7)  /**< Error. */
 
+/** Type of a 16550. */
+typedef enum ns16550_type {
+    NS16550_TYPE_STANDARD,              /**< Standard 16550. */
+    NS16550_TYPE_BCM2835_AUX,           /**< BCM2835 auxiliary UART. */
+} ns16550_type_t;
+
 #ifdef CONFIG_TARGET_NS16550_IO
     typedef uint16_t ns16550_base_t;
 #else
     typedef ptr_t ns16550_base_t;
 #endif
 
-extern serial_port_t *ns16550_register(ns16550_base_t base, unsigned index, uint32_t clock_rate);
+extern serial_port_t *ns16550_register(
+    ns16550_base_t base, ns16550_type_t type, unsigned index,
+    uint32_t clock_rate);
 
 #ifdef CONFIG_TARGET_HAS_FDT
 

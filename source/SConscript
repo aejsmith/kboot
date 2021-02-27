@@ -80,21 +80,6 @@ env['CPPPATH'] = [
 if config['TARGET_HAS_FDT']:
     env['CPPPATH'] += [Dir('lib/fdt/include')]
 
-# Generate the configuration header.
-f = open('config.h', 'w')
-f.write('/* This file is automatically-generated, do not edit. */\n\n')
-for (k, v) in config.items():
-    if isinstance(v, str):
-        f.write("#define CONFIG_%s \"%s\"\n" % (k, v))
-    elif isinstance(v, bool):
-        if v:
-            f.write("#define CONFIG_%s 1\n" % (k))
-    elif isinstance(v, int):
-        f.write("#define CONFIG_%s %d\n" % (k, int(v)))
-    else:
-        raise Exception("Unsupported type %s in config" % (type(v)))
-f.close()
-
 # Generate the version string.
 def gen_version_c(target, source, env):
     f = open(str(target[0]), 'w')
@@ -117,6 +102,21 @@ platform_sources = SConscript(dirs = ['platform/' + config['PLATFORM']], exports
 drivers_sources = SConscript(dirs = ['drivers'], exports = vars)
 sources = arch_sources + platform_sources + drivers_sources + sources
 objects = list(map(env.Object, sources))
+
+# Generate the configuration header.
+f = open('config.h', 'w')
+f.write('/* This file is automatically-generated, do not edit. */\n\n')
+for (k, v) in config.items():
+    if isinstance(v, str):
+        f.write("#define CONFIG_%s \"%s\"\n" % (k, v))
+    elif isinstance(v, bool):
+        if v:
+            f.write("#define CONFIG_%s 1\n" % (k))
+    elif isinstance(v, int):
+        f.write("#define CONFIG_%s %d\n" % (k, int(v)))
+    else:
+        raise Exception("Unsupported type %s in config" % (type(v)))
+f.close()
 
 # Link the loader.
 linkflags = env['LINKFLAGS'] + ['-Wl,-T,$LDSCRIPT']

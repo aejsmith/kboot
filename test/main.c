@@ -384,11 +384,46 @@ static void dump_efi_tag(kboot_tag_efi_t *tag) {
     }
 }
 
+/** Dump a serial tag. */
+static void dump_serial_tag(kboot_tag_serial_t *tag) {
+    const char *io_type, *type, *parity;
+
+    switch (tag->io_type) {
+    case KBOOT_IO_TYPE_MMIO: io_type = "KBOOT_IO_TYPE_MMIO"; break;
+    case KBOOT_IO_TYPE_PIO:  io_type = "KBOOT_IO_TYPE_PIO"; break;
+    default:                 io_type = "???"; break;
+    }
+
+    switch (tag->type) {
+    case KBOOT_SERIAL_TYPE_NS16550:     type = "KBOOT_SERIAL_TYPE_NS16550"; break;
+    case KBOOT_SERIAL_TYPE_BCM2835_AUX: type = "KBOOT_SERIAL_TYPE_BCM2835_AUX"; break;
+    case KBOOT_SERIAL_TYPE_PL011:       type = "KBOOT_SERIAL_TYPE_PL011"; break;
+    default:                            type = "???"; break;
+    }
+
+    switch (tag->parity) {
+    case KBOOT_SERIAL_PARITY_NONE: parity = "KBOOT_SERIAL_PARITY_NONE"; break;
+    case KBOOT_SERIAL_PARITY_ODD:  parity = "KBOOT_SERIAL_PARITY_ODD"; break;
+    case KBOOT_SERIAL_PARITY_EVEN: parity = "KBOOT_SERIAL_PARITY_EVEN"; break;
+    default:                       parity = "???"; break;
+    }
+
+    printf("KBOOT_TAG_SERIAL:\n");
+    printf("  addr      = 0x%" PRIx64 "\n", tag->addr);
+    printf("  io_type   = %" PRIu8 " (%s)\n", tag->io_type, io_type);
+    printf("  type      = %" PRIu32 " (%s)\n", tag->type, type);
+    printf("  baud_rate = %" PRIu32 "\n", tag->baud_rate);
+    printf("  data_bits = %" PRIu8 "\n", tag->data_bits);
+    printf("  stop_bits = %" PRIu8 "\n", tag->stop_bits);
+    printf("  parity    = %" PRIu8 " (%s)\n", tag->parity, parity);
+}
+
 /** Entry point of the test kernel.
  * @param magic         KBoot magic number.
  * @param tags          Tag list pointer. */
 void kmain(uint32_t magic, kboot_tag_t *tags) {
-    debug_console_init();
+    /* Force fallback console if this is wrong. */
+    debug_console_init((magic == KBOOT_MAGIC) ? tags : NULL);
 
     if (magic != KBOOT_MAGIC) {
         printf("Incorrect magic number 0x%x\n", magic);
@@ -438,6 +473,9 @@ void kmain(uint32_t magic, kboot_tag_t *tags) {
             break;
         case KBOOT_TAG_EFI:
             dump_efi_tag((kboot_tag_efi_t *)tags);
+            break;
+        case KBOOT_TAG_SERIAL:
+            dump_serial_tag((kboot_tag_serial_t *)tags);
             break;
         }
 

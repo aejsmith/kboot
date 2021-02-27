@@ -22,6 +22,9 @@
 #include <drivers/console/fb.h>
 #include <drivers/console/vga.h>
 
+#include <drivers/serial/ns16550.h>
+#include <drivers/serial/pl011.h>
+
 #include <lib/ctype.h>
 #include <lib/printf.h>
 #include <lib/string.h>
@@ -169,6 +172,48 @@ void __noreturn internal_error(const char *fmt, ...) {
 
     while (true)
         arch_pause();
+}
+
+/** Initialize the debug console.
+ * @param tags          Tag list. */
+void debug_console_init(kboot_tag_t *tags) {
+    while (tags && tags->type != KBOOT_TAG_NONE) {
+        if (tags->type == KBOOT_TAG_SERIAL) {
+            kboot_tag_serial_t *serial = (kboot_tag_serial_t *)tags;
+
+            serial_port_t *port = NULL;
+            switch (serial->type) {
+            #ifdef CONFIG_DRIVER_SERIAL_NS16550
+                case KBOOT_SERIAL_TYPE_NS16550:
+                    port = ns16550_register(serial->addr, NS16550_TYPE_STANDARD, 0, 0);
+                    break;
+                case KBOOT_SERIAL_TYPE_BCM2835_AUX:
+                    port = ns16550_register(serial->addr, NS16550_TYPE_BCM2835_AUX, 0, 0);
+                    break;
+            #endif
+            #ifdef CONFIG_DRIVER_SERIAL_PL011
+                case KBOOT_SERIAL_TYPE_PL011:
+                    port = pl011_register(serial->addr, 0, 0);
+                    break;
+            #endif
+            }
+
+            if (port) {
+                debug_console = &port->console;
+                printf("Debug console initialized from KBoot tag\n");
+            }
+
+            break;
+        }
+
+        tags = (kboot_tag_t *)round_up((ptr_t)tags + tags->size, 8);
+    }
+
+    /* If no usable serial tag, use platform fallback. */
+    if (!debug_console) {
+        platform_debug_console_init();
+        printf("Debug console initialized from platform fallback\n");
+    }
 }
 
 /** Initialize the primary console.

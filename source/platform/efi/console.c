@@ -234,7 +234,7 @@ static serial_port_ops_t efi_serial_port_ops = {
  * @param config        Configuration to use. */
 static void register_fallback_port(const serial_config_t *config) {
     #ifdef CONFIG_ARCH_X86
-        serial_port_t *port = ns16550_register(SERIAL_PORT, 0, SERIAL_CLOCK);
+        serial_port_t *port = ns16550_register(SERIAL_PORT, NS16550_TYPE_STANDARD, 0, SERIAL_CLOCK);
 
         if (port) {
             serial_port_config(port, config);

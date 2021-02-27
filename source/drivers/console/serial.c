@@ -31,6 +31,7 @@
 
 #include <assert.h>
 #include <config.h>
+#include <kboot.h>
 #include <loader.h>
 #include <memory.h>
 #include <time.h>
@@ -621,6 +622,56 @@ void serial_port_puts(serial_port_t *port, const char *str) {
     }
 }
 
+/** Reconfigure a serial port.
+ * @param port          Port to reconfigure.
+ * @param config        Configuration to set (must be valid).
+ * @return              Status code describing the result of the operation. */
+status_t serial_port_config(serial_port_t *port, const serial_config_t *config) {
+    status_t ret = port->ops->config(port, config);
+    if (ret == STATUS_SUCCESS)
+        port->config = *config;
+
+    return ret;
+}
+
+#if CONFIG_TARGET_HAS_KBOOT32 || CONFIG_TARGET_HAS_KBOOT64
+
+/** Get KBoot parameters for a serial port.
+ * @param port          Port to get parameters for.
+ * @param tag           KBoot tag to fill in (type, addr, io_type).
+ * @return              Whether this is supported. */
+bool serial_port_get_kboot_params(serial_port_t *port, kboot_tag_serial_t *tag) {
+    if (!port->ops->get_kboot_params)
+        return false;
+
+    port->ops->get_kboot_params(port, tag);
+
+    /* These are 0 if unknown, matching KBoot spec. */
+    tag->baud_rate = port->config.baud_rate;
+    tag->data_bits = port->config.data_bits;
+    tag->stop_bits = port->config.stop_bits;
+
+    switch (port->config.parity) {
+    case SERIAL_PARITY_EVEN: tag->parity = KBOOT_SERIAL_PARITY_EVEN; break;
+    case SERIAL_PARITY_ODD:  tag->parity = KBOOT_SERIAL_PARITY_ODD; break;
+    default:                 tag->parity = KBOOT_SERIAL_PARITY_NONE; break;
+    }
+
+    return true;
+}
+
+#endif
+
+/** Return the serial port for a console if it is a serial port.
+ * @return              Serial port, or NULL if console is not a serial port. */
+serial_port_t *serial_port_from_console(console_t *console) {
+    if (console && console->out && console->out->ops == &serial_console_out_ops) {
+        return container_of(console, serial_port_t, console);
+    } else {
+        return NULL;
+    }
+}
+
 /** Register a serial port.
  * @param port          Port to register.
  * @return              Status code describing result of the operation. */
@@ -639,8 +690,11 @@ status_t serial_port_register(serial_port_t *port) {
     port->next_ch = 0;
     port->esc_len = -1;
 
-    /* Ensure the transmit esc_buffer is empty. Assume port is unusable if it never
-     * empties. */
+    /* Configuration is initially unknown. */
+    memset(&port->config, 0, sizeof(port->config));
+
+    /* Ensure the transmit esc_buffer is empty. Assume port is unusable if it
+     * never empties. */
     count = 0;
     while (!port->ops->tx_empty(port)) {
         if (++count == 100000) {
@@ -707,12 +761,13 @@ static bool config_cmd_serial(value_list_t *args) {
     if (!console) {
         config_error("Console '%s' not found", args->values[0].string);
         return false;
-    } else if (!console->out || console->out->ops != &serial_console_out_ops) {
+    }
+
+    port = serial_port_from_console(console);
+    if (!port) {
         config_error("Console '%s' is not a serial port", args->values[0].string);
         return false;
     }
-
-    port = container_of(console, serial_port_t, console);
 
     if (args->count >= 2) {
         if (args->values[1].type != VALUE_TYPE_INTEGER)

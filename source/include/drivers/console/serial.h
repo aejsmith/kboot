@@ -26,6 +26,9 @@
 #include <dt.h>
 #include <status.h>
 
+#ifdef CONFIG_DRIVER_CONSOLE_SERIAL
+
+struct kboot_tag_serial;
 struct serial_port;
 
 /** Serial port parity enumeration. */
@@ -76,6 +79,13 @@ typedef struct serial_port_ops {
      * @param port          Port to write to.
      * @param val           Value to write. */
     void (*write)(struct serial_port *port, uint8_t val);
+
+    #if CONFIG_TARGET_HAS_KBOOT32 || CONFIG_TARGET_HAS_KBOOT64
+    /** Get KBoot parameters for the port.
+     * @param port          Port to get parameters for.
+     * @param tag           KBoot tag to fill in (type, addr, io_type). */
+    void (*get_kboot_params)(struct serial_port *port, struct kboot_tag_serial *tag);
+    #endif
 } serial_port_ops_t;
 
 /** Buffer length for escape code parser. */
@@ -89,6 +99,8 @@ typedef struct serial_port {
 
     const serial_port_ops_t *ops;       /**< Port operations. */
     unsigned index;                     /**< Port index. */
+
+    serial_config_t config;             /**< Current configuration. */
 
     uint16_t next_ch;                   /**< Next character to read. */
     char esc_buffer[ESC_BUFFER_LEN];    /**< Buffer containing collected escape sequence. */
@@ -108,13 +120,13 @@ extern uint8_t serial_port_read(serial_port_t *port);
 extern void serial_port_write(serial_port_t *port, uint8_t val);
 extern void serial_port_puts(serial_port_t *port, const char *str);
 
-/** Reconfigure a serial port.
- * @param port          Port to reconfigure.
- * @param config        Configuration to set (must be valid).
- * @return              Status code describing the result of the operation. */
-static inline status_t serial_port_config(serial_port_t *port, const serial_config_t *config) {
-    return port->ops->config(port, config);
-}
+extern status_t serial_port_config(serial_port_t *port, const serial_config_t *config);
+
+#if CONFIG_TARGET_HAS_KBOOT32 || CONFIG_TARGET_HAS_KBOOT64
+extern bool serial_port_get_kboot_params(serial_port_t *port, struct kboot_tag_serial *tag);
+#endif
+
+extern serial_port_t *serial_port_from_console(console_t *console);
 
 extern status_t serial_port_register(serial_port_t *port);
 
@@ -123,4 +135,5 @@ extern status_t serial_port_register(serial_port_t *port);
 extern serial_port_t *dt_serial_port_register(int node_offset);
 
 #endif /* CONFIG_TARGET_HAS_FDT */
+#endif /* CONFIG_DRIVER_CONSOLE_SERIAL */
 #endif /* __DRIVERS_CONSOLE_SERIAL_H */

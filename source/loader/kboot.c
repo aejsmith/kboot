@@ -19,6 +19,8 @@
  * @brief               KBoot kernel loader.
  */
 
+#include <drivers/console/serial.h>
+
 #include <lib/string.h>
 #include <lib/utility.h>
 
@@ -574,6 +576,34 @@ static void add_vmem_tags(kboot_loader_t *loader) {
     }
 }
 
+/** Add serial port information to the tag list.
+ * @param loader        Loader internal data. */
+static void add_serial_tag(kboot_loader_t *loader) {
+    #ifdef CONFIG_DRIVER_CONSOLE_SERIAL
+        /* Add a serial tag if either current or debug console is set as a
+         * serial port. */
+        serial_port_t *port = serial_port_from_console(current_console);
+        if (!port)
+            port = serial_port_from_console(debug_console);
+        if (!port)
+            return;
+
+
+        kboot_tag_serial_t params;
+        if (serial_port_get_kboot_params(port, &params)) {
+            kboot_tag_serial_t *tag = kboot_alloc_tag(loader, KBOOT_TAG_SERIAL, sizeof(*tag));
+
+            tag->addr      = params.addr;
+            tag->io_type   = params.io_type;
+            tag->type      = params.type;
+            tag->baud_rate = params.baud_rate;
+            tag->data_bits = params.data_bits;
+            tag->stop_bits = params.stop_bits;
+            tag->parity    = params.parity;
+        }
+    #endif
+}
+
 /** Load a KBoot kernel.
  * @param _loader       Pointer to loader internal data. */
 static __noreturn void kboot_loader_load(void *_loader) {
@@ -657,6 +687,7 @@ static __noreturn void kboot_loader_load(void *_loader) {
     add_bootdev_tag(loader);
     add_memory_tags(loader);
     add_vmem_tags(loader);
+    add_serial_tag(loader);
 
     dprintf(
         "kboot: entry point at 0x%" PRIxLOAD ", stack at 0x%" PRIx64 "\n",

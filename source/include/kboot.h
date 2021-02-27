@@ -62,6 +62,7 @@ typedef struct kboot_tag {
 #define KBOOT_TAG_SECTIONS          10      /**< ELF section information. */
 #define KBOOT_TAG_BIOS_E820         11      /**< BIOS address range descriptor (BIOS-specific). */
 #define KBOOT_TAG_EFI               12      /**< EFI firmware information. */
+#define KBOOT_TAG_SERIAL            13      /**< Serial console information. */
 
 /** Tag containing core information for the kernel. */
 typedef struct kboot_tag_core {
@@ -341,6 +342,35 @@ typedef struct kboot_tag_efi {
 /** EFI firmware types. */
 #define KBOOT_EFI_32                0       /**< Firmware is 32-bit. */
 #define KBOOT_EFI_64                1       /**< Firmware is 64-bit. */
+
+/** Tag containing serial console information. */
+typedef struct kboot_tag_serial {
+    kboot_tag_t header;                     /**< Tag header. */
+
+    kboot_paddr_t addr;                     /**< Base address. */
+    uint8_t io_type;                        /**< I/O type. */
+
+    uint32_t type;                          /**< Type of the serial port. */
+
+    uint32_t baud_rate;                     /**< Baud rate. */
+    uint8_t data_bits;                      /**< Number of data bits. */
+    uint8_t stop_bits;                      /**< Number of stop bits. */
+    uint8_t parity;                         /**< Parity mode. */
+} kboot_tag_serial_t;
+
+/** I/O types. */
+#define KBOOT_IO_TYPE_MMIO              0   /**< Memory-mapped I/O. */
+#define KBOOT_IO_TYPE_PIO               1   /**< Port I/O. */
+
+/** Serial port types. */
+#define KBOOT_SERIAL_TYPE_NS16550       0   /**< Standard 16550. */
+#define KBOOT_SERIAL_TYPE_BCM2835_AUX   1   /**< BCM2835 auxiliary UART (16550-like). */
+#define KBOOT_SERIAL_TYPE_PL011         2   /**< ARM PL011. */
+
+/** Serial parity modes. */
+#define KBOOT_SERIAL_PARITY_NONE        0   /**< No parity. */
+#define KBOOT_SERIAL_PARITY_ODD         1   /**< Odd parity. */
+#define KBOOT_SERIAL_PARITY_EVEN        2   /**< Even parity. */
 
 /**
  * Image tags.

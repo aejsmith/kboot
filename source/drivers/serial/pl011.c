@@ -30,6 +30,7 @@
 #include <lib/utility.h>
 
 #include <console.h>
+#include <kboot.h>
 #include <loader.h>
 #include <memory.h>
 
@@ -131,6 +132,21 @@ static void pl011_port_write(serial_port_t *_port, uint8_t val) {
     pl011_write(port, PL011_REG_DR, val);
 }
 
+#if CONFIG_TARGET_HAS_KBOOT32 || CONFIG_TARGET_HAS_KBOOT64
+
+/** Get KBoot parameters for the port.
+ * @param port          Port to get parameters for.
+ * @param tag           KBoot tag to fill in (type, addr, io_type). */
+static void pl011_port_get_kboot_params(serial_port_t *_port, kboot_tag_serial_t *tag) {
+    pl011_port_t *port = (pl011_port_t *)_port;
+
+    tag->addr    = (ptr_t)port->base;
+    tag->io_type = KBOOT_IO_TYPE_MMIO;
+    tag->type    = KBOOT_SERIAL_TYPE_PL011;
+}
+
+#endif
+
 /** pl011 serial port operations. */
 static serial_port_ops_t pl011_port_ops = {
     .config = pl011_port_config,
@@ -138,6 +154,9 @@ static serial_port_ops_t pl011_port_ops = {
     .read = pl011_port_read,
     .tx_empty = pl011_port_tx_empty,
     .write = pl011_port_write,
+    #if CONFIG_TARGET_HAS_KBOOT32 || CONFIG_TARGET_HAS_KBOOT64
+    .get_kboot_params = pl011_port_get_kboot_params,
+    #endif
 };
 
 /**
