@@ -20,6 +20,8 @@ Import(*vars)
 from util import FeatureSources
 
 sources = FeatureSources(config, [
+    'loader/kboot.c',
+
     'console.c',
     'memory.c',
     'platform.c',

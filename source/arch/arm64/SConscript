@@ -18,10 +18,13 @@ Import('config', 'env')
 from util import FeatureSources
 
 sources = FeatureSources(config, [
+    'loader/kboot.c',
+
     'arch.c',
     'backtrace.c',
     'entry.S',
     'exception.c',
+    'mmu.c',
     'time.c',
 ])
 
