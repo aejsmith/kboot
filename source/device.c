@@ -88,7 +88,9 @@ device_t *device_lookup(const char *name) {
             if (!device->mount)
                 continue;
 
-            if (strcmp((uuid) ? device->mount->uuid : device->mount->label, name) == 0)
+            const char *str = (uuid) ? device->mount->uuid : device->mount->label;
+
+            if (str && str[0] && strcmp(str, name) == 0)
                 return device;
         } else {
             if (strcmp(device->name, name) == 0)
