@@ -78,6 +78,10 @@ FUNCTION_START(loader_entry)
     /* Preserve DTB address. */
     mov     x21, x0
 
+    /* Load the stack address. */
+    adr     x0, .Lloader_stack_end
+    mov     sp, x0
+
     /* Relocate ourself. */
     adr     x0, __start
     adr     x1, __rela_start
@@ -87,10 +91,6 @@ FUNCTION_START(loader_entry)
     b.ne    .Lerr_relocate
 
     PUTC    'R'
-
-    /* Load the stack address. */
-    adr     x0, .Lloader_stack_end
-    mov     sp, x0
 
     /* Clear out the BSS section. */
     adr     x0, __bss_start
