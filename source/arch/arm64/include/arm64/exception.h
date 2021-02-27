@@ -62,6 +62,8 @@ typedef struct exception_frame {
     unsigned long x1;
 } exception_frame_t;
 
+extern exception_frame_t *arm64_exception_frame;
+
 extern void arm64_sync_exception_handler(exception_frame_t *frame) __noreturn;
 extern void arm64_exception_init(void);
 

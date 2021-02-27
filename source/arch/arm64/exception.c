@@ -26,8 +26,12 @@
 
 extern uint8_t arm64_exception_vectors[];
 
+exception_frame_t *arm64_exception_frame;
+
 /** Synchronous exception handler. */
 void arm64_sync_exception_handler(exception_frame_t *frame) {
+    arm64_exception_frame = frame;
+
     unsigned long far   = arm64_read_sysreg_el(far);
     unsigned long esr   = arm64_read_sysreg_el(esr);
     unsigned long class = ARM64_ESR_ELx_EC(esr);

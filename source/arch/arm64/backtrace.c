@@ -19,6 +19,8 @@
  * @brief               ARM64 backtrace function.
  */
 
+#include <arm64/exception.h>
+
 #include <lib/backtrace.h>
 
 #include <loader.h>
@@ -42,10 +44,18 @@ void backtrace(printf_t func) {
     asm volatile("mov %0, x29" : "=r"(frame));
 
     while (frame && frame->addr) {
+        ptr_t addr = frame->addr;
+
+        /* Subtract 4 unless this the exception address so that the address
+         * points at the call site rather than after it - this can give more
+         * useful backtraces for tail calls. */
+        if (!arm64_exception_frame || addr != arm64_exception_frame->elr)
+            addr -= 4;
+
         #ifdef TARGET_RELOCATABLE
-            func(" %p (%p)\n", frame->addr, frame->addr - (ptr_t)__start);
+            func(" %p (%p)\n", addr, addr - (ptr_t)__start);
         #else
-            func(" %p\n", frame->addr);
+            func(" %p\n", addr);
         #endif
 
         frame = frame->next;
