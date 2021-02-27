@@ -44,7 +44,7 @@ __noreturn void target_halt(void) {
     __asm__ __volatile__("msr daifset, #2");
 
     while (true)
-        ;
+        __asm__ __volatile("wfi");
 }
 
 /** Halt the system. */
