@@ -21,7 +21,7 @@
 
 #include <arch/page.h>
 
-#include <lib/string.h>
+#include <arm64/mmu.h>
 
 #include <loader/kboot.h>
 
@@ -30,14 +30,27 @@
 /** Check whether a kernel image is supported.
  * @param loader        Loader internal data. */
 void kboot_arch_check_kernel(kboot_loader_t *loader) {
-    internal_error("TODO: kboot_arch_check_kernel");
+    /* Nothing we need to check. */
 }
 
 /** Validate kernel load parameters.
  * @param loader        Loader internal data.
  * @param load          Load image tag. */
 void kboot_arch_check_load_params(kboot_loader_t *loader, kboot_itag_load_t *load) {
-    internal_error("TODO: kboot_arch_check_load_params");
+    if (!(load->flags & KBOOT_LOAD_FIXED) && !load->alignment) {
+        /* Set default alignment parameters. */
+        load->alignment     = LARGE_PAGE_SIZE;
+        load->min_alignment = 0x100000;
+    }
+
+    if (load->virt_map_base || load->virt_map_size) {
+        if (!is_kernel_range(load->virt_map_base, load->virt_map_size))
+            boot_error("Kernel specifies invalid virtual map range");
+    } else {
+        /* Default to the kernel (upper) address space range */
+        load->virt_map_base = 0xffff000000000000;
+        load->virt_map_size = 0x1000000000000ull;
+    }
 }
 
 /** Perform architecture-specific setup tasks.

@@ -21,6 +21,8 @@
 
 #include <arch/page.h>
 
+#include <arm64/mmu.h>
+
 #include <lib/string.h>
 #include <lib/utility.h>
 
