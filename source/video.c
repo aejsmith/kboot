@@ -231,9 +231,11 @@ void video_env_init(environ_t *env, const char *name, uint32_t types, video_mode
         /* Not valid, create an entry referring to the default mode. */
         if (def) {
             mode = def;
-        } else {
-            assert(current_video_mode);
+        } else if (current_video_mode) {
             mode = current_video_mode;
+        } else {
+            environ_remove(env, name);
+            return;
         }
     }
 

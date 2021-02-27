@@ -359,7 +359,8 @@ static void set_video_mode(kboot_loader_t *loader) {
     video_mode_t *mode;
     kboot_tag_video_t *tag;
 
-    /* This will not do anything if the kernel hasn't enabled video support. */
+    /* This will not do anything if the kernel hasn't enabled video support or
+     * there is no usable video mode on the system. */
     mode = video_env_set(current_environ, "video_mode");
     if (!mode)
         return;
