@@ -15,18 +15,30 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-import sys
+import sys, os
 from subprocess import Popen, PIPE
 
-if len(sys.argv) != 2 and len(sys.argv) != 3:
-    print('Usage: %s <path to kboot.elf> [<path to addr2line>] << <output>' % (sys.argv[0]))
+if len(sys.argv) > 1 and (sys.argv[1] == "--help" or sys.argv[1] == "-h"):
+    print("Usage: %s [<path to kboot.elf> <path to addr2line>] << <output>" % (sys.argv[0]))
+    print()
+    print("Input the backtrace output from KBoot (after the 'Backtrace' line).")
+    print()
+    print("If no arguments are specified, then this will assume it is run from the root")
+    print("of the source directory, with .options.cache matching the configuration that")
+    print("the backtrace was from and the build tree containing the kboot.elf the trace")
+    print("came from.")
     sys.exit(1)
 
-loader = sys.argv[1]
-if len(sys.argv) == 3:
-    addr2line = sys.argv[2]
+if len(sys.argv) == 1:
+    exec(open(".options.cache").read())
+    loader = os.path.join('build', CONFIG, 'source', 'kboot.elf')
+    addr2line = CROSS_COMPILE + 'addr2line'
 else:
-    addr2line = 'addr2line'
+    if len(sys.argv) != 3:
+        print("Invalid arguments")
+        sys.exit(1)
+    loader = sys.argv[1]
+    addr2line = sys.argv[2]
 
 lines = sys.stdin.readlines()
 for line in lines:

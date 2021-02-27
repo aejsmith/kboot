@@ -23,8 +23,31 @@
 
 #include <loader.h>
 
+/** Structure containing a stack frame. */
+typedef struct stack_frame {
+    struct stack_frame *next;       /**< Pointer to next stack frame. */
+    ptr_t addr;                     /**< Function return address. */
+} stack_frame_t;
+
 /** Print out a backtrace.
  * @param func          Print function to use. */
 void backtrace(printf_t func) {
-    func("Backtrace TODO\n");
+    #if TARGET_RELOCATABLE
+        func("Backtrace (base = %p):\n", __start);
+    #else
+        func("Backtrace:\n");
+    #endif
+
+    stack_frame_t *frame;
+    asm volatile("mov %0, x29" : "=r"(frame));
+
+    while (frame && frame->addr) {
+        #ifdef TARGET_RELOCATABLE
+            func(" %p (%p)\n", frame->addr, frame->addr - (ptr_t)__start);
+        #else
+            func(" %p\n", frame->addr);
+        #endif
+
+        frame = frame->next;
+    }
 }
