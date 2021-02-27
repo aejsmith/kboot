@@ -20,9 +20,16 @@ version = 20151220
 # Build flags for both host and target.
 build_flags = {
     'CCFLAGS': [
-        '-Wall', '-Wextra', '-Wno-variadic-macros', '-Wno-unused-parameter',
-        '-Wwrite-strings', '-Wmissing-declarations', '-Wredundant-decls',
-        '-Wno-format', '-Werror', '-Wno-error=unused', '-pipe',
+        '-Wall',
+        '-Wextra',
+        '-Wwrite-strings',
+        '-Wmissing-declarations',
+        '-Wno-variadic-macros',
+        '-Wno-unused-parameter',
+        '-Wno-redundant-decls',
+        '-Wno-format',
+        '-Werror',
+        '-Wno-error=unused',
         '-Wno-error=unused-function',
     ],
     'CFLAGS': ['-std=gnu99'],
