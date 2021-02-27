@@ -1,0 +1,91 @@
+/*
+ * Copyright (C) 2009-2021 Alex Smith
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/**
+ * @file
+ * @brief               ARM64 test kernel linker script.
+ */
+
+#include <arch/page.h>
+
+ENTRY(kmain)
+OUTPUT_ARCH("aarch64")
+OUTPUT_FORMAT("elf64-littleaarch64")
+
+PHDRS {
+    text PT_LOAD FILEHDR PHDRS FLAGS(5);    /* R_X - Code + read-only data. */
+    data PT_LOAD FLAGS(6);                  /* RW_ - Data. */
+    note PT_NOTE FLAGS(0);
+}
+
+SECTIONS {
+    /DISCARD/ : {
+        *(.note.GNU-stack)
+        *(.note.gnu.*)
+        *(.comment*)
+    }
+
+    . = 0xffffffff80000000;
+    __text_seg_start = .;
+
+    . = . + SIZEOF_HEADERS;
+    .text : {
+        __text_start = .;
+        *(.text)
+        *(.text.*)
+        . = ALIGN(PAGE_SIZE);
+        __text_end = .;
+    } :text
+
+    .notes : {
+        *(.note.*)
+    } :text :note
+
+    . = ALIGN(PAGE_SIZE);
+    .rodata : {
+        __rodata_start = .;
+        *(.rodata)
+        *(.rodata.*)
+        . = ALIGN(PAGE_SIZE);
+        __rodata_end = .;
+    } :text
+
+    __text_seg_end = .;
+
+    . = ALIGN(PAGE_SIZE);
+    __data_seg_start = .;
+
+    .data : {
+        __data_start = .;
+        *(.data)
+        *(.data.*)
+        . = ALIGN(PAGE_SIZE);
+        __data_end = .;
+    } :data
+
+    . = ALIGN(PAGE_SIZE);
+    .bss : {
+        __bss_start = .;
+        *(.bss)
+        *(.bss.*)
+        *(COMMON)
+        . = ALIGN(PAGE_SIZE);
+        __bss_end = .;
+    } :data
+
+    __data_seg_end = .;
+    __end = .;
+}

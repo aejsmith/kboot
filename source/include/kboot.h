@@ -305,6 +305,13 @@ typedef struct kboot_tag_pagetables_arm {
     kboot_vaddr_t mapping;                  /**< Virtual address of temporary mapping region. */
 } kboot_tag_pagetables_arm_t;
 
+/** Tag containing page table information (ARM64). */
+typedef struct kboot_tag_pagetables_arm64 {
+    kboot_tag_t header;                     /**< Tag header. */
+
+    // TODO
+} kboot_tag_pagetables_arm64_t;
+
 /** Tag containing page table information. */
 #if defined(__i386__)
     typedef kboot_tag_pagetables_ia32_t kboot_tag_pagetables_t;
@@ -312,6 +319,8 @@ typedef struct kboot_tag_pagetables_arm {
     typedef kboot_tag_pagetables_amd64_t kboot_tag_pagetables_t;
 #elif defined(__arm__)
     typedef kboot_tag_pagetables_arm_t kboot_tag_pagetables_t;
+#elif defined(__aarch64__)
+    typedef kboot_tag_pagetables_arm64_t kboot_tag_pagetables_t;
 #endif
 
 /** Tag containing the E820 memory map (BIOS-specific). */

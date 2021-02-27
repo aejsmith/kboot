@@ -6,7 +6,7 @@ imagedir=${builddir}/image
 
 mkdir ${imagedir}
 
-#cp ${builddir}/test/test-arm64.elf ${imagedir}/
+cp ${builddir}/test/test-arm64.elf ${imagedir}/
 
 cat > ${imagedir}/kboot.cfg << EOF
 kboot "/test-arm64.elf" ["/test-arm64.elf"]

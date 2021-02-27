@@ -46,6 +46,20 @@ if config['ARCH'] == 'x86':
             ],
         },
     ]
+elif config['ARCH'] == 'arm64':
+    variants = [
+        {
+            'arch': 'arm64',
+            'ccflags': ['-mgeneral-regs-only', '-fno-pic'],
+            'asflags': ['-fno-pic'],
+            'sources': [
+                'arch/arm64/mmu.c',
+                'platform/dt/console.c',
+                '../source/drivers/serial/ns16550.c',
+                '../source/drivers/serial/pl011.c',
+            ]
+        }
+    ]
 else:
     variants = []
 

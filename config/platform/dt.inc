@@ -20,6 +20,7 @@ include = {
         'PLATFORM_DT': True,
         'TARGET_HAS_DISK': True,
         'TARGET_HAS_FDT': True,
+        'TARGET_HAS_VIDEO': True,
         'DRIVER_DISK_RAMDISK': True,
     },
 }
