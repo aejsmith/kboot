@@ -258,6 +258,13 @@ Mounts a disk image.
 This command will create a new disk device with the given name, which is backed
 by the file at the specified path.
 
+Images containing any filesystem and partition map type supported by the loader
+will be handled by this command: unpartitioned images with a single filesystem,
+partitioned images with multiple filesystems, and ISO images all work.
+
+You can also use a TAR archive (including gzip-compressed ones), which will
+present the archive contents as a filesystem.
+
 ### `include`
 
 Includes another configuration file into the current one.
