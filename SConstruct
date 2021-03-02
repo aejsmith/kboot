@@ -119,7 +119,7 @@ helptext = \
     'for later invocations of SCons, so you do not need to specify them every time:\n' + \
     opts.GenerateHelpText(env) + \
     '\n' + \
-    'For information on how to build KBoot, please refer to documentation/readme.txt.\n'
+    'For information on how to build KBoot, please refer to documentation/guide/building.md.\n'
 Help(helptext)
 
 # Check if the configuration specified is invalid.
