@@ -82,14 +82,21 @@ Fields:
 
  * `version`: Number defining the KBoot protocol version that the kernel is
    using. The version number can be used by a boot loader to determine whether
-   additions in later versions of this specification are present. The current
-   version number is 1.
+   additions in later versions of this specification are present. The version
+   number only needs to be changed when a change is not compatible with the
+   previous version (e.g. a struct size change). The current version number
+   is 2.
  * `flags`: Flags controlling whether certain optional features should be
    enabled. The following flags are currently defined:
     - `KBOOT_IMAGE_SECTIONS` (bit 0): Load additional ELF sections and pass
       section header table to the kernel (see `KBOOT_TAG_SECTIONS`).
     - `KBOOT_IMAGE_LOG` (bit 1): Enable the kernel log facility (see
       `KBOOT_TAG_LOG`).
+
+Version History:
+
+ * 1: Initial version.
+ * 2: Added `cache` field to `KBOOT_ITAG_MAPPING`.
 
 ### `KBOOT_ITAG_LOAD` (`1`)
 
@@ -180,6 +187,7 @@ address space.
         kboot_vaddr_t virt;
         kboot_paddr_t phys;
         kboot_vaddr_t size;
+        uint32_t cache;
     } kboot_itag_mapping_t;
 
 Fields:
@@ -192,6 +200,12 @@ Fields:
    the page size) is used.
  * `phys`: The physical address to map to (must be aligned to the page size).
  * `size`: The size of the range to map (must be a multiple of the page size).
+ * `cache`: Cacheability flags for the mapping:
+    - `KBOOT_CACHE_DEFAULT` (0): Default caching behaviour. This will typically
+      be cached. On x86, it will be overridden by the MTRRs, which are usually
+      configured to map memory-mapped devices as uncached.
+    - `KBOOT_CACHE_WT` (1): Map as write-through.
+    - `KBOOT_CACHE_UC` (2): Map as uncached.
 
 For more information on the procedure used to build the virtual address space
 for the kernel, see the _Kernel Environment_ section.
@@ -426,7 +440,7 @@ Standard. The machine state upon entry to the kernel is as follows:
    this section.
  * Both IRQs and FIQs are disabled.
  * MMU is enabled (TTBR1_ELx is set to the level 0 translation table for the
-   upper half of the address space).
+   upper half of the address space, ASID is set to 0).
  * Instruction and data caches are enabled.
 
 Other machine state is not defined.
@@ -437,16 +451,17 @@ range specified by `virt_map_base` and `virt_map_size`. If the virtual
 mapping range is unspecified in the `KBOOT_ITAG_LOAD` tag, then it will be
 within the upper half.
 
-The MMU will be configured to use the 4KB translation granule size. The boot
-loader may make use of large (2MB) block mappings within a single virtual
-mapping when constructing the virtual address space, however separate mappings
-should not be mapped together on a single large block.
+The MMU will be configured to use a 48-bit address space with the 4KB
+translation granule size. The boot loader may make use of large (2MB) block
+mappings within a single virtual mapping when constructing the virtual address
+space, however separate mappings should not be mapped together on a single large
+block.
 
-To allow the kernel to manipulate the virtual address space, the level 0
-translation table (TTL0) is recursively mapped. A 512GB (sized and aligned)
-region of the virtual address space is allocated, and the TTL0 entry for that
-range is set to point to itself. The same rules for allocation of this region
-as for IA32 apply here.
+To allow the kernel to manipulate the virtual address space, the upper half
+level 0 translation table (TTL0) is recursively mapped. A 512GB (sized and
+aligned) region of the virtual address space is allocated, and the TTL0 entry
+for that range is set to point to the kernel TTL0. The same rules for allocation
+of this region as for IA32 apply here.
 
 The format of the `KBOOT_TAG_PAGETABLES` tag for ARM64 is as follows:
 
@@ -460,7 +475,7 @@ The format of the `KBOOT_TAG_PAGETABLES` tag for ARM64 is as follows:
 Fields:
 
  * `pml4`: Physical address of the TTL0.
- * `mapping`: Virtual address of the recursive PML4 mapping.
+ * `mapping`: Virtual address of the recursive TTL0 mapping.
 
 Kernel Information
 ------------------

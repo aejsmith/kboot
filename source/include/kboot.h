@@ -26,7 +26,7 @@
 #define KBOOT_MAGIC                 0xb007cafe
 
 /** Current KBoot version. */
-#define KBOOT_VERSION               1
+#define KBOOT_VERSION               2
 
 #ifndef __ASM__
 
@@ -533,15 +533,27 @@ typedef struct kboot_itag_option {
         "   .p2align 2\n" \
         "6: .popsection\n")
 
+typedef struct kboot_itag_mapping_v1 {
+    kboot_vaddr_t virt;
+    kboot_paddr_t phys;
+    kboot_vaddr_t size;
+} kboot_itag_mapping_v1_t;
+
 /** Image tag containing a virtual memory mapping description. */
 typedef struct kboot_itag_mapping {
     kboot_vaddr_t virt;                     /**< Virtual address to map. */
     kboot_paddr_t phys;                     /**< Physical address to map to. */
     kboot_vaddr_t size;                     /**< Size of mapping to make. */
+    uint32_t cache;                         /**< Cacheability flags for the mapping. */
 } kboot_itag_mapping_t;
 
+/** Cacheability flags. */
+#define KBOOT_CACHE_DEFAULT         0       /**< Default caching behaviour. */
+#define KBOOT_CACHE_WT              1       /**< Map as write-through. */
+#define KBOOT_CACHE_UC              2       /**< Map as uncached. */
+
 /** Macro to declare a virtual memory mapping itag. */
-#define KBOOT_MAPPING(virt, phys, size) \
+#define KBOOT_MAPPING(virt, phys, size, cache) \
     __asm__( \
         "   .pushsection \".note.kboot.mapping.b" # virt "\", \"a\", " KBOOT_SECTION_TYPE "\n" \
         "   .long 1f - 0f\n" \
@@ -552,6 +564,7 @@ typedef struct kboot_itag_mapping {
         "2: .quad " STRINGIFY(virt) "\n" \
         "   .quad " STRINGIFY(phys) "\n" \
         "   .quad " STRINGIFY(size) "\n" \
+        "   .long " STRINGIFY(cache) "\n" \
         "   .p2align 2\n" \
         "3: .popsection\n")
 

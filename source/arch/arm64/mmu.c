@@ -36,8 +36,9 @@
  * @param virt          Virtual address to map.
  * @param phys          Physical address to map to.
  * @param size          Size of the mapping to create.
+ * @param flags         Mapping flags.
  * @return              Whether the supplied addresses were valid. */
-bool mmu_map(mmu_context_t *ctx, load_ptr_t virt, phys_ptr_t phys, load_size_t size) {
+bool mmu_map(mmu_context_t *ctx, load_ptr_t virt, phys_ptr_t phys, load_size_t size, uint32_t flags) {
     internal_error("TODO: mmu_map");
 }
 

@@ -49,9 +49,9 @@ __noreturn void dt_main(void *fdt) {
 
     arch_init();
 
-	int len;
-	const char *compatible = fdt_getprop(fdt, 0, "compatible", &len);
-	if (compatible) {
+    int len;
+    const char *compatible = fdt_getprop(fdt, 0, "compatible", &len);
+    if (compatible) {
         dprintf("dt: platform compatibility:");
 
         const char *end = compatible + len;

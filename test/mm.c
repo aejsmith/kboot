@@ -42,7 +42,7 @@ static size_t heap_offset;
 KBOOT_LOAD(0, 0, 0, VIRT_MAP_BASE, VIRT_MAP_SIZE);
 
 #ifdef PHYS_MAP_BASE
-    KBOOT_MAPPING(PHYS_MAP_BASE, 0, PHYS_MAP_SIZE);
+    KBOOT_MAPPING(PHYS_MAP_BASE, 0, PHYS_MAP_SIZE, KBOOT_CACHE_DEFAULT);
 #endif
 
 /** Map physical memory.
