@@ -181,19 +181,21 @@ void debug_console_init(kboot_tag_t *tags) {
         if (tags->type == KBOOT_TAG_SERIAL) {
             kboot_tag_serial_t *serial = (kboot_tag_serial_t *)tags;
 
+            ptr_t addr = (serial->io_type == KBOOT_IO_TYPE_MMIO) ? serial->addr_virt : serial->addr;
+
             serial_port_t *port = NULL;
             switch (serial->type) {
             #ifdef CONFIG_DRIVER_SERIAL_NS16550
                 case KBOOT_SERIAL_TYPE_NS16550:
-                    port = ns16550_register(serial->addr, NS16550_TYPE_STANDARD, 0, 0);
+                    port = ns16550_register(addr, NS16550_TYPE_STANDARD, 0, 0);
                     break;
                 case KBOOT_SERIAL_TYPE_BCM2835_AUX:
-                    port = ns16550_register(serial->addr, NS16550_TYPE_BCM2835_AUX, 0, 0);
+                    port = ns16550_register(addr, NS16550_TYPE_BCM2835_AUX, 0, 0);
                     break;
             #endif
             #ifdef CONFIG_DRIVER_SERIAL_PL011
                 case KBOOT_SERIAL_TYPE_PL011:
-                    port = pl011_register(serial->addr, 0, 0);
+                    port = pl011_register(addr, 0, 0);
                     break;
             #endif
             }

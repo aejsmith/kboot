@@ -981,6 +981,7 @@ configuration is unknown and therefore the other configuration fields
         kboot_tag_t header;
 
         kboot_paddr_t addr;
+        kboot_vaddr_t addr_virt;
         uint8_t io_type;
 
         uint32_t type;
@@ -994,6 +995,7 @@ configuration is unknown and therefore the other configuration fields
 Fields:
 
  * `addr`: Base I/O address of the serial port.
+ * `addr_virt`: Virtual mapping of the serial port if MMIO.
  * `io_type`: I/O address space that `addr` is in:
     - `KBOOT_IO_TYPE_MMIO` (0): Memory-mapped I/O.
     - `KBOOT_IO_TYPE_PIO` (1): Port I/O.

@@ -410,6 +410,7 @@ static void dump_serial_tag(kboot_tag_serial_t *tag) {
 
     printf("KBOOT_TAG_SERIAL:\n");
     printf("  addr      = 0x%" PRIx64 "\n", tag->addr);
+    printf("  addr_virt = 0x%" PRIx64 "\n", tag->addr_virt);
     printf("  io_type   = %" PRIu8 " (%s)\n", tag->io_type, io_type);
     printf("  type      = %" PRIu32 " (%s)\n", tag->type, type);
     printf("  baud_rate = %" PRIu32 "\n", tag->baud_rate);

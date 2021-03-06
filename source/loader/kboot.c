@@ -613,6 +613,14 @@ static void add_serial_tag(kboot_loader_t *loader) {
             tag->data_bits = params.data_bits;
             tag->stop_bits = params.stop_bits;
             tag->parity    = params.parity;
+
+            if (tag->io_type == KBOOT_IO_TYPE_MMIO) {
+                /* Provide a virtual mapping for MMIO devices. Needs to be page-
+                 * aligned, blindly assume that the port registers aren't
+                 * crossing a page boundary. */
+                kboot_paddr_t offset = tag->addr % PAGE_SIZE;
+                tag->addr_virt = kboot_alloc_virtual(loader, tag->addr - offset, PAGE_SIZE, MMU_MAP_CACHE_UC);
+            }
         }
     #endif
 }

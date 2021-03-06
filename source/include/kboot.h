@@ -358,6 +358,7 @@ typedef struct kboot_tag_serial {
     kboot_tag_t header;                     /**< Tag header. */
 
     kboot_paddr_t addr;                     /**< Base address. */
+    kboot_vaddr_t addr_virt;                /**< Virtual mapping (if MMIO). */
     uint8_t io_type;                        /**< I/O type. */
 
     uint32_t type;                          /**< Type of the serial port. */

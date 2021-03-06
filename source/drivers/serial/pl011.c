@@ -211,7 +211,7 @@ serial_port_t *dt_pl011_register(int node_offset) {
         return NULL;
 
     /* TODO: Get clock rate. For now we just don't allow reconfiguration. */
-    return pl011_register(base, 0, 0);
+    return pl011_register(phys_to_virt(base), 0, 0);
 }
 
 #endif

@@ -261,7 +261,7 @@ serial_port_t *dt_ns16550_register(int node_offset) {
         return NULL;
 
     /* TODO: Get clock rate. For now we just don't allow reconfiguration. */
-    return ns16550_register(base, dt_ns16550_match[match].type, 0, 0);
+    return ns16550_register(phys_to_virt(base), dt_ns16550_match[match].type, 0, 0);
 }
 
 #endif
