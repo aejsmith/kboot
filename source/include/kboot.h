@@ -293,7 +293,7 @@ typedef struct kboot_tag_pagetables_ia32 {
 typedef struct kboot_tag_pagetables_amd64 {
     kboot_tag_t header;                     /**< Tag header. */
 
-    kboot_paddr_t pml4;                     /**< Physical address of the page directory. */
+    kboot_paddr_t pml4;                     /**< Physical address of the PML4. */
     kboot_vaddr_t mapping;                  /**< Virtual address of recursive mapping. */
 } kboot_tag_pagetables_amd64_t;
 
@@ -309,7 +309,8 @@ typedef struct kboot_tag_pagetables_arm {
 typedef struct kboot_tag_pagetables_arm64 {
     kboot_tag_t header;                     /**< Tag header. */
 
-    // TODO
+    kboot_paddr_t ttl0;                     /**< Physical address of the level 0 translation table. */
+    kboot_vaddr_t mapping;                  /**< Virtual address of recursive mapping. */
 } kboot_tag_pagetables_arm64_t;
 
 /** Tag containing page table information. */
@@ -438,6 +439,7 @@ typedef struct kboot_itag_load {
 
 /** Flags controlling load behaviour. */
 #define KBOOT_LOAD_FIXED            (1<<0)  /**< Load at a fixed physical address. */
+#define KBOOT_LOAD_ARM64_EL2        (1<<1)  /**< Execute the kernel in EL2 if supported. */
 
 /** Macro to declare a load itag. */
 #define KBOOT_LOAD(flags, alignment, min_alignment, virt_map_base, virt_map_size) \

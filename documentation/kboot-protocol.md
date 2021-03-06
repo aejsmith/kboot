@@ -115,6 +115,9 @@ Fields:
       the `p_paddr` field in the program headers. The `alignment` and
       `min_alignment` fields will be ignored. When unset, the kernel image will
       be loaded at a physical address allocated by the boot loader.
+    - `KBOOT_LOAD_ARM64_EL2` (bit 1): ARM64-specific: If this bit is set and the
+      boot loader was executed in EL2, then the kernel will be as well.
+      Otherwise, the kernel will be executed in EL1.
  * `alignment`: Requested alignment of the kernel image in physical memory. If
    this is set to 0, the alignment will be chosen automatically by the boot
    loader. Otherwise, it must be a power of 2 greater than or equal to the
@@ -406,6 +409,58 @@ Fields:
 
  * `l1`: Physical address of the first level translation table.
  * `mapping`: Virtual address of the 1MB temporary mapping region.
+
+### ARM64
+
+The arguments to the kernel are passed as per the AArch64 Procedure Call
+Standard. The machine state upon entry to the kernel is as follows:
+
+ * X0 contains the KBoot magic value.
+ * X1 contains the tag list pointer.
+ * X29 (FP) is 0.
+ * SP points to a valid stack mapped in the virtual address space set up by the
+   boot loader.
+ * Current EL is EL2 if the `KBOOT_LOAD_ARM64_EL2` flag is set in the
+   `KBOOT_ITAG_LOAD` image tag and the boot loader was executed in EL2,
+   otherwise it is EL1. The current EL is referred to as ELx for the rest of
+   this section.
+ * Both IRQs and FIQs are disabled.
+ * MMU is enabled (TTBR1_ELx is set to the level 0 translation table for the
+   upper half of the address space).
+ * Instruction and data caches are enabled.
+
+Other machine state is not defined.
+
+All virtual memory mappings for the kernel are required to be in the upper
+half of the address space. This includes its virtual load address and the
+range specified by `virt_map_base` and `virt_map_size`. If the virtual
+mapping range is unspecified in the `KBOOT_ITAG_LOAD` tag, then it will be
+within the upper half.
+
+The MMU will be configured to use the 4KB translation granule size. The boot
+loader may make use of large (2MB) block mappings within a single virtual
+mapping when constructing the virtual address space, however separate mappings
+should not be mapped together on a single large block.
+
+To allow the kernel to manipulate the virtual address space, the level 0
+translation table (TTL0) is recursively mapped. A 512GB (sized and aligned)
+region of the virtual address space is allocated, and the TTL0 entry for that
+range is set to point to itself. The same rules for allocation of this region
+as for IA32 apply here.
+
+The format of the `KBOOT_TAG_PAGETABLES` tag for ARM64 is as follows:
+
+    typedef struct kboot_tag_pagetables {
+        kboot_tag_t   header;
+    
+        kboot_paddr_t ttl0;
+        kboot_vaddr_t mapping;
+    } kboot_tag_pagetables_t;
+
+Fields:
+
+ * `pml4`: Physical address of the TTL0.
+ * `mapping`: Virtual address of the recursive PML4 mapping.
 
 Kernel Information
 ------------------
