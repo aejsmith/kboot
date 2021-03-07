@@ -22,6 +22,23 @@
 #ifndef __TYPES_H
 #define __TYPES_H
 
+#ifdef __ASM__
+    #define SUFFIX(x, y)    x
+#else
+    #define _SUFFIX(x, y)   (x##y)
+    #define SUFFIX(x, y)    _SUFFIX(x, y)
+#endif
+
+/**
+ * Helpers for adding type suffixes to constants in headers shared with
+ * assembly code. We cannot use 'ul' and 'ull' suffixes in assembly but they
+ * may be needed for C for large constants.
+ */
+#define UL(x)               (SUFFIX(x, ul))
+#define ULL(x)              (SUFFIX(x, ull))
+
+#ifndef __ASM__
+
 #include <compiler.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -108,4 +125,5 @@ typedef int64_t mstime_t;               /**< Type used to store a time value in 
 /** For compatibility with 3rd party code. */
 typedef ptr_t uintptr_t;
 
+#endif /* __ASM__ */
 #endif /* __TYPES_H */
