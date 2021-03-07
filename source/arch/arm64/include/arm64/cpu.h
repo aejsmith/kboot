@@ -22,6 +22,8 @@
 #ifndef __ARM64_CPU_H
 #define __ARM64_CPU_H
 
+#include <types.h>
+
 /** Current Exception Level values, as contained in CurrentEL */
 #define ARM64_CURRENTEL_EL0     (0<<2)
 #define ARM64_CURRENTEL_EL1     (1<<2)
@@ -29,13 +31,28 @@
 #define ARM64_CURRENTEL_EL3     (3<<2)
 
 /** Exception Syndrome Register (ESR_ELx). */
-#define ARM64_ESR_ELx_EC_SHIFT  26
-#define ARM64_ESR_ELx_EC_MASK   (0x3ful << ARM64_ESR_ELx_EC_SHIFT)
-#define ARM64_ESR_ELx_EC(esr)   (((esr) & ARM64_ESR_ELx_EC_MASK) >> ARM64_ESR_ELx_EC_SHIFT)
+#define ARM64_ESR_EC_SHIFT      26
+#define ARM64_ESR_EC_MASK       (0x3ful << ARM64_ESR_EC_SHIFT)
+#define ARM64_ESR_EC(esr)       (((esr) & ARM64_ESR_EC_MASK) >> ARM64_ESR_EC_SHIFT)
+
+/** Hypervisor Control Register (HCR_EL2). */
+#define ARM64_HCR_RW            (1<<31)
+
+/** Saved Program Status Register (SPSR_ELx). */
+#define ARM64_SPSR_MODE_EL0T    (0<<0)
+#define ARM64_SPSR_MODE_EL1T    (4<<0)
+#define ARM64_SPSR_MODE_EL1H    (5<<0)
+#define ARM64_SPSR_MODE_EL2T    (8<<0)
+#define ARM64_SPSR_MODE_EL2H    (9<<0)
+#define ARM64_SPSR_F            (1<<6)
+#define ARM64_SPSR_I            (1<<7)
+#define ARM64_SPSR_A            (1<<8)
+#define ARM64_SPSR_D            (1<<9)
+
+/** System Control Register (SCTLR_ELx). */
+#define ARM64_SCTLR_EL1_RES1    ((1<<11) | (1<<20) | (1<<22) | (1<<28) | (1<<29))
 
 #ifndef __ASM__
-
-#include <types.h>
 
 extern int arm64_loader_el;
 
@@ -43,6 +60,8 @@ extern int arm64_loader_el;
 static inline bool arm64_is_el2(void) {
     return arm64_loader_el == 2;
 }
+
+extern void arm64_switch_to_el1(void);
 
 /** Read from a system register.
  * @param r             Register name.

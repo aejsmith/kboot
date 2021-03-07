@@ -138,3 +138,25 @@ fiq_ELl_32_handler:
 serror_ELl_32_handler:
     b       .
 
+FUNCTION_START(arm64_do_switch_to_el1)
+    /* Configure HCR: RW (EL1 is AArch64), no other traps or virtualization. */
+    mov     x9, #(ARM64_HCR_RW)
+    msr     hcr_el2, x9
+
+    /* Switch to EL1h with interrupts disabled. */
+    mov     x9, #(ARM64_SPSR_D | ARM64_SPSR_A | ARM64_SPSR_I | ARM64_SPSR_F | ARM64_SPSR_MODE_EL1H)
+    msr     spsr_el2, x9
+
+    /* Initialize SCTLR to known state (MMU off). */
+    ldr     x9, =(ARM64_SCTLR_EL1_RES1)
+    msr     sctlr_el1, x9
+
+    /* Keep our stack pointer. */
+    mov     x9, sp
+    msr     sp_el1, x9
+
+    /* Exception return into our return address. */
+    msr     elr_el2, lr
+    isb
+    eret
+FUNCTION_END(arm64_do_switch_to_el1)

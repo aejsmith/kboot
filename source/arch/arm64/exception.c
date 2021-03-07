@@ -34,7 +34,7 @@ void arm64_sync_exception_handler(exception_frame_t *frame) {
 
     unsigned long far   = arm64_read_sysreg_el(far);
     unsigned long esr   = arm64_read_sysreg_el(esr);
-    unsigned long class = ARM64_ESR_ELx_EC(esr);
+    unsigned long class = ARM64_ESR_EC(esr);
 
     internal_error(
         "Unhandled synchronous exception (class %lu)\n"

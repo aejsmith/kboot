@@ -24,6 +24,8 @@
 
 #include <loader.h>
 
+extern void arm64_do_switch_to_el1(void);
+
 /** Exception Level the loader is running in (EL1 or EL2). */
 int arm64_loader_el;
 
@@ -37,6 +39,18 @@ void arch_init(void) {
     dprintf("arch: booted in EL%d, SCTLR = 0x%lx\n", arm64_loader_el, sctlr);
 
     arm64_exception_init();
+}
+
+/** Switch to EL1 if we're in EL2. */
+void arm64_switch_to_el1(void) {
+    if (arm64_is_el2()) {
+        arm64_do_switch_to_el1();
+
+        arm64_loader_el = 1;
+
+        /* Re-enable exception handling in the new EL. */
+        arm64_exception_init();
+    }
 }
 
 /** Halt the system. */
