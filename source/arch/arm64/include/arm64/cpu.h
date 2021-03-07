@@ -36,21 +36,40 @@
 #define ARM64_ESR_EC(esr)       (((esr) & ARM64_ESR_EC_MASK) >> ARM64_ESR_EC_SHIFT)
 
 /** Hypervisor Control Register (HCR_EL2). */
-#define ARM64_HCR_RW            (1<<31)
+#define ARM64_HCR_RW            (UL(1)<<31)
 
 /** Saved Program Status Register (SPSR_ELx). */
-#define ARM64_SPSR_MODE_EL0T    (0<<0)
-#define ARM64_SPSR_MODE_EL1T    (4<<0)
-#define ARM64_SPSR_MODE_EL1H    (5<<0)
-#define ARM64_SPSR_MODE_EL2T    (8<<0)
-#define ARM64_SPSR_MODE_EL2H    (9<<0)
-#define ARM64_SPSR_F            (1<<6)
-#define ARM64_SPSR_I            (1<<7)
-#define ARM64_SPSR_A            (1<<8)
-#define ARM64_SPSR_D            (1<<9)
+#define ARM64_SPSR_MODE_EL0T    (UL(0)<<0)
+#define ARM64_SPSR_MODE_EL1T    (UL(4)<<0)
+#define ARM64_SPSR_MODE_EL1H    (UL(5)<<0)
+#define ARM64_SPSR_MODE_EL2T    (UL(8)<<0)
+#define ARM64_SPSR_MODE_EL2H    (UL(9)<<0)
+#define ARM64_SPSR_F            (UL(1)<<6)
+#define ARM64_SPSR_I            (UL(1)<<7)
+#define ARM64_SPSR_A            (UL(1)<<8)
+#define ARM64_SPSR_D            (UL(1)<<9)
 
 /** System Control Register (SCTLR_ELx). */
-#define ARM64_SCTLR_EL1_RES1    ((1<<11) | (1<<20) | (1<<22) | (1<<28) | (1<<29))
+#define ARM64_SCTLR_M           (UL(1)<<0)
+#define ARM64_SCTLR_A           (UL(1)<<1)
+#define ARM64_SCTLR_C           (UL(1)<<2)
+#define ARM64_SCTLR_I           (UL(1)<<12)
+#define ARM64_SCTLR_EL1_RES1    ((UL(1)<<11) | (UL(1)<<20) | (UL(1)<<22) | (UL(1)<<28) | (UL(1)<<29))
+
+/** Translation Control Register (TCR_ELx). */
+#define ARM64_TCR_T0SZ_SHIFT    0
+#define ARM64_TCR_IRGN0_WB_WA   (UL(1)<<8)
+#define ARM64_TCR_ORGN0_WB_WA   (UL(1)<<10)
+#define ARM64_TCR_SH0_INNER     (UL(3)<<12)
+#define ARM64_TCR_TG0_4         (UL(0)<<14)
+#define ARM64_TCR_T1SZ_SHIFT    16
+#define ARM64_TCR_IRGN1_WB_WA   (UL(1)<<24)
+#define ARM64_TCR_ORGN1_WB_WA   (UL(1)<<26)
+#define ARM64_TCR_SH1_INNER     (UL(3)<<28)
+#define ARM64_TCR_TG1_4         (UL(2)<<30)
+#define ARM64_TCR_IPS_48        (UL(5)<<32)
+#define ARM64_TCR_TBI0          (UL(1)<<37)
+#define ARM64_TCR_TBI1          (UL(1)<<38)
 
 #ifndef __ASM__
 

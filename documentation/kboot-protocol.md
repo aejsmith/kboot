@@ -438,12 +438,12 @@ Standard. The machine state upon entry to the kernel is as follows:
    `KBOOT_ITAG_LOAD` image tag and the boot loader was executed in EL2,
    otherwise it is EL1. The current EL is referred to as ELx for the rest of
    this section.
- * Both IRQs and FIQs are disabled.
- * MMU is enabled:
-    - TTBR1_ELx is set to the level 0 translation table for the upper half of
-      the address space, with ASID set to 0.
-    - MAIR_ELx is configured as detailed below.
- * Instruction and data caches are enabled.
+ * All forms of interrupts are masked (PSTATE.D/A/I/F = 1).
+ * MMU and data/instruction caches are enabled (SCTLR.M/C/I = 1).
+ * Unaligned access checks are disabled (SCTLR.A = 0).
+ * TTBR1_ELx is set to the level 0 translation table for the upper half of the
+   address space, with ASID set to 0.
+ * MAIR_ELx is configured as detailed below.
 
 Other machine state is not defined.
 

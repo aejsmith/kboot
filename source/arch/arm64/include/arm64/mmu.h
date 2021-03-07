@@ -22,7 +22,7 @@
 #ifndef __ARM64_MMU_H
 #define __ARM64_MMU_H
 
-#include <loader.h>
+#include <arm64/cpu.h>
 
 /** Definitions of paging structure bits. */
 #define ARM64_TTE_PRESENT               (1<<0)  /**< Entry is present. */
@@ -54,8 +54,12 @@
 #define ARM64_MAIR_NORMAL_WT            1
 #define ARM64_MAIR_DEVICE               2
 
-/** MAIR value. */
+/** MAIR value corresponding to the above indices. */
 #define ARM64_MAIR                      0x00aaff
+
+#ifndef __ASM__
+
+#include <loader.h>
 
 /** ARM64 MMU context structure. */
 struct mmu_context {
@@ -89,4 +93,10 @@ static inline bool is_valid_range(uint64_t start, uint64_t size) {
     return end >= start && is_valid_addr(start) && is_valid_addr(end);
 }
 
+/** Set up MAIR in the current EL for the ARM64_MAIR_* definitions. */
+static inline void arm64_set_mair(void) {
+    arm64_write_sysreg_el(mair, ARM64_MAIR);
+}
+
+#endif /* __ASM__ */
 #endif /* __ARM64_MMU_H */

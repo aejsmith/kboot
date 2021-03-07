@@ -21,11 +21,31 @@
 
 #include <arch/page.h>
 
+#include <arm64/cpu.h>
 #include <arm64/mmu.h>
+
+#include <lib/string.h>
 
 #include <loader/kboot.h>
 
-#include <loader.h>
+/** Entry arguments for the kernel. */
+typedef struct entry_args {
+    uint64_t trampoline_ttl0_hi;        /**< Trampoline address space (high). */
+    uint64_t trampoline_ttl0_lo;        /**< Trampoline address space (low). */
+    uint64_t trampoline_virt;           /**< Virtual location of trampoline. */
+    uint64_t kernel_ttl0_hi;            /**< Kernel address space (high). */
+    uint64_t kernel_ttl0_lo;            /**< Kernel address space (low). */
+    uint64_t sp;                        /**< Stack pointer for the kernel. */
+    uint64_t entry;                     /**< Entry point for kernel. */
+    uint64_t tags;                      /**< Tag list virtual address. */
+
+    char trampoline[];
+} entry_args_t;
+
+extern void kboot_arch_enter_64(entry_args_t *args) __noreturn;
+
+extern char kboot_trampoline_64[];
+extern uint32_t kboot_trampoline_64_size;
 
 /** Check whether a kernel image is supported.
  * @param loader        Loader internal data. */
@@ -88,5 +108,26 @@ void kboot_arch_setup(kboot_loader_t *loader) {
 /** Enter the kernel.
  * @param loader        Loader internal data. */
 __noreturn void kboot_arch_enter(kboot_loader_t *loader) {
-    internal_error("TODO: kboot_arch_enter");
+    /* TODO: Implement KBOOT_LOAD_ARM64_EL2 support. I'm just being a bit lazy
+     * for now, basically the entry code needs to handle setting system
+     * registers according to current EL. */
+    arm64_switch_to_el1();
+
+    /* Configure MAIR. */
+    arm64_set_mair();
+
+    entry_args_t *args = (entry_args_t *)phys_to_virt(loader->trampoline_phys);
+
+    args->trampoline_ttl0_hi = loader->trampoline_mmu->ttl0_hi;
+    args->trampoline_ttl0_lo = loader->trampoline_mmu->ttl0_lo;
+    args->trampoline_virt    = loader->trampoline_virt;
+    args->kernel_ttl0_hi     = loader->mmu->ttl0_hi;
+    args->kernel_ttl0_lo     = loader->mmu->ttl0_lo;
+    args->sp                 = loader->core->stack_base + loader->core->stack_size;
+    args->entry              = loader->entry;
+    args->tags               = loader->tags_virt;
+
+    /* Copy the trampoline and call the entry code. */
+    memcpy(args->trampoline, kboot_trampoline_64, kboot_trampoline_64_size);
+    kboot_arch_enter_64(args);
 }

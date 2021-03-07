@@ -134,7 +134,7 @@ bool mmu_map(mmu_context_t *ctx, load_ptr_t virt, phys_ptr_t phys, load_size_t s
         ARM64_TTE_PRESENT |
         ARM64_TTE_AF |
         ((flags & MMU_MAP_RO) ? ARM64_TTE_AP_P_RO_U_NA : ARM64_TTE_AP_P_RW_U_NA) |
-        ((cache_flag == MMU_MAP_CACHE_UC) ? ARM64_TTE_SH_NON_SHAREABLE : ARM64_TTE_SH_INNER_SHAREABLE) |
+        ((cache_flag == MMU_MAP_CACHE_UC) ? ARM64_TTE_SH_OUTER_SHAREABLE : ARM64_TTE_SH_INNER_SHAREABLE) |
         ARM64_TTE_ATTR_INDEX(mair_index);
 
     /* Map using large pages where possible. To do this, align up to a 2MB
