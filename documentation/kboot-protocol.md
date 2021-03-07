@@ -439,8 +439,10 @@ Standard. The machine state upon entry to the kernel is as follows:
    otherwise it is EL1. The current EL is referred to as ELx for the rest of
    this section.
  * Both IRQs and FIQs are disabled.
- * MMU is enabled (TTBR1_ELx is set to the level 0 translation table for the
-   upper half of the address space, ASID is set to 0).
+ * MMU is enabled:
+    - TTBR1_ELx is set to the level 0 translation table for the upper half of
+      the address space, with ASID set to 0.
+    - MAIR_ELx is configured as detailed below.
  * Instruction and data caches are enabled.
 
 Other machine state is not defined.
@@ -456,6 +458,16 @@ translation granule size. The boot loader may make use of large (2MB) block
 mappings within a single virtual mapping when constructing the virtual address
 space, however separate mappings should not be mapped together on a single large
 block.
+
+To allow configuration of cacheability of mappings in the virtual address space,
+the boot loader configures MAIR_ELx with 3 memory types corresponding to the
+`KBOOT_CACHE_*` flags:
+
+  - Attr0: `KBOOT_CACHE_DEFAULT` - Normal, Inner/Outer Write-Back Non-transient,
+    Read/Write Allocate.
+  - Attr1: `KBOOT_CACHE_WT` - Normal, Inner/Outer Write-Through Non-transient,
+    Read Allocate.
+  - Attr2: `KBOOT_CACHE_UC` - Device-nGnRnE.
 
 To allow the kernel to manipulate the virtual address space, the upper half
 level 0 translation table (TTL0) is recursively mapped. A 512GB (sized and

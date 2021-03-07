@@ -37,6 +37,9 @@ void kboot_arch_check_kernel(kboot_loader_t *loader) {
  * @param loader        Loader internal data.
  * @param load          Load image tag. */
 void kboot_arch_check_load_params(kboot_loader_t *loader, kboot_itag_load_t *load) {
+    if (load->flags & KBOOT_LOAD_ARM64_EL2)
+        internal_error("TODO: EL2 support");
+
     if (!(load->flags & KBOOT_LOAD_FIXED) && !load->alignment) {
         /* Set default alignment parameters. */
         load->alignment     = LARGE_PAGE_SIZE;
@@ -56,6 +59,13 @@ void kboot_arch_check_load_params(kboot_loader_t *loader, kboot_itag_load_t *loa
 /** Perform architecture-specific setup tasks.
  * @param loader        Loader internal data. */
 void kboot_arch_setup(kboot_loader_t *loader) {
+    /* We require kernel to be mapped in the upper address space. */
+    if (!is_kernel_range(loader->entry, 4))
+        boot_error("Kernel load adddres is invalid");
+
+    /* TODO: Set up recursive mapping and pagetables tag. We can actually map
+     * the upper half TTL0 into the lower half. */
+
     internal_error("TODO: kboot_arch_setup");
 }
 
