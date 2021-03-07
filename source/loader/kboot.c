@@ -601,7 +601,6 @@ static void add_serial_tag(kboot_loader_t *loader) {
         if (!port)
             return;
 
-
         kboot_tag_serial_t params;
         if (serial_port_get_kboot_params(port, &params)) {
             kboot_tag_serial_t *tag = kboot_alloc_tag(loader, KBOOT_TAG_SERIAL, sizeof(*tag));
@@ -712,12 +711,13 @@ static __noreturn void kboot_loader_load(void *_loader) {
         set_video_mode(loader);
     #endif
 
+    add_serial_tag(loader);
+
     /* Add other information tags. All memory allocation is done at this point. */
     add_option_tags(loader);
     add_bootdev_tag(loader);
     add_memory_tags(loader);
     add_vmem_tags(loader);
-    add_serial_tag(loader);
 
     dprintf(
         "kboot: entry point at 0x%" PRIxLOAD ", stack at 0x%" PRIx64 "\n",
