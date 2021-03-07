@@ -473,7 +473,11 @@ To allow the kernel to manipulate the virtual address space, the upper half
 level 0 translation table (TTL0) is recursively mapped. A 512GB (sized and
 aligned) region of the virtual address space is allocated, and the TTL0 entry
 for that range is set to point to the kernel TTL0. The same rules for allocation
-of this region as for IA32 apply here.
+of this region as for IA32 apply here. An additional ARM64-specific rule is that
+this region can in fact be allocated in the lower half of the address space (the
+only mapping that is allowed to be there). This is due to the rule that it is
+only a temporary mapping that must be placed outside of the kernel's virtual map
+area, which may be the entire upper portion of the address space.
 
 The format of the `KBOOT_TAG_PAGETABLES` tag for ARM64 is as follows:
 

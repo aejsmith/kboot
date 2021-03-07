@@ -61,12 +61,28 @@ void kboot_arch_check_load_params(kboot_loader_t *loader, kboot_itag_load_t *loa
 void kboot_arch_setup(kboot_loader_t *loader) {
     /* We require kernel to be mapped in the upper address space. */
     if (!is_kernel_range(loader->entry, 4))
-        boot_error("Kernel load adddres is invalid");
+        boot_error("Kernel load adddress is invalid");
 
-    /* TODO: Set up recursive mapping and pagetables tag. We can actually map
-     * the upper half TTL0 into the lower half. */
+    /* Find a location to recursively map the pagetables at. We'll drop this in
+     * the lower half to ensure it does not conflict with the kernel virtual
+     * map area. */
+    uint64_t *ttl0 = (uint64_t *)phys_to_virt(loader->mmu->ttl0_lo);
+    unsigned i = 512;
+    while (i--) {
+        if (!(ttl0[i] & ARM64_TTE_PRESENT)) {
+            ttl0[i] = loader->mmu->ttl0_hi | ARM64_TTE_PRESENT | ARM64_TTE_TABLE;
 
-    internal_error("TODO: kboot_arch_setup");
+            kboot_tag_pagetables_arm64_t *tag = kboot_alloc_tag(loader, KBOOT_TAG_PAGETABLES, sizeof(*tag));
+
+            tag->ttl0    = loader->mmu->ttl0_hi;
+            tag->mapping = i * ARM64_TTL1_RANGE;
+
+            dprintf("kboot: recursive PML4 mapping at 0x%" PRIx64 "\n", tag->mapping);
+            return;
+        }
+    }
+
+    boot_error("Unable to allocate page table mapping space");
 }
 
 /** Enter the kernel.
