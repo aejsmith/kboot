@@ -63,6 +63,7 @@ typedef struct kboot_tag {
 #define KBOOT_TAG_BIOS_E820         11      /**< BIOS address range descriptor (BIOS-specific). */
 #define KBOOT_TAG_EFI               12      /**< EFI firmware information. */
 #define KBOOT_TAG_SERIAL            13      /**< Serial console information. */
+#define KBOOT_TAG_FDT               14      /**< Flattened Device Tree (FDT). */
 
 /** Tag containing core information for the kernel. */
 typedef struct kboot_tag_core {
@@ -382,6 +383,15 @@ typedef struct kboot_tag_serial {
 #define KBOOT_SERIAL_PARITY_NONE        0   /**< No parity. */
 #define KBOOT_SERIAL_PARITY_ODD         1   /**< Odd parity. */
 #define KBOOT_SERIAL_PARITY_EVEN        2   /**< Even parity. */
+
+/** Tag containing Flattened Device Tree (FDT) information. */
+typedef struct kboot_tag_fdt {
+    kboot_tag_t header;                     /**< Tag header. */
+
+    kboot_vaddr_t addr_virt;                /**< Virtual address of the FDT. */
+    kboot_paddr_t addr_phys;                /**< Physical address of the FDT. */
+    uint32_t size;                          /**< Total size of the FDT. */
+} kboot_tag_fdt_t;
 
 /**
  * Image tags.

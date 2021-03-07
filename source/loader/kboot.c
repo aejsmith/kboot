@@ -30,6 +30,7 @@
 #include <config.h>
 #include <device.h>
 #include <disk.h>
+#include <dt.h>
 #include <loader.h>
 #include <memory.h>
 #include <net.h>
@@ -624,6 +625,29 @@ static void add_serial_tag(kboot_loader_t *loader) {
     #endif
 }
 
+/** Add FDT information to the tag list.
+ * @param loader        Loader internal data. */
+static void add_fdt_tag(kboot_loader_t *loader) {
+    #ifdef CONFIG_TARGET_HAS_FDT
+        if (!fdt_address)
+            return;
+
+        size_t size         = fdt_totalsize(fdt_address);
+        size_t aligned_size = round_up(size, PAGE_SIZE);
+
+        phys_ptr_t phys;
+        memory_alloc(aligned_size, 0, 0, 0, MEMORY_TYPE_RECLAIMABLE, MEMORY_ALLOC_HIGH, &phys);
+
+        memcpy((void *)phys_to_virt(phys), fdt_address, size);
+
+        kboot_tag_fdt_t *tag = kboot_alloc_tag(loader, KBOOT_TAG_FDT, sizeof(*tag));
+
+        tag->size      = size;
+        tag->addr_phys = phys;
+        tag->addr_virt = kboot_alloc_virtual(loader, tag->addr_phys, aligned_size, 0);
+    #endif
+}
+
 /** Load a KBoot kernel.
  * @param _loader       Pointer to loader internal data. */
 static __noreturn void kboot_loader_load(void *_loader) {
@@ -712,10 +736,11 @@ static __noreturn void kboot_loader_load(void *_loader) {
     #endif
 
     add_serial_tag(loader);
-
-    /* Add other information tags. All memory allocation is done at this point. */
     add_option_tags(loader);
     add_bootdev_tag(loader);
+    add_fdt_tag(loader);
+
+    /* All memory allocation is done at this point. */
     add_memory_tags(loader);
     add_vmem_tags(loader);
 

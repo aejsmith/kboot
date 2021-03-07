@@ -1027,6 +1027,29 @@ Fields:
     - `KBOOT_SERIAL_PARITY_ODD` (1): Odd parity.
     - `KBOOT_SERIAL_PARITY_EVEN` (2): Even parity.
 
+### `KBOOT_TAG_FDT` (`14`)
+
+Some platforms use a Device Tree to describe the hardware to the operating
+system. This tree is supplied to the OS a Flattened Device Tree (FDT) blob. On
+platforms where a FDT was available to the boot loader, this will be supplied to
+the kernel via this tag.
+
+    typedef struct kboot_tag_fdt {
+        kboot_tag_t   header;
+    
+        kboot_vaddr_t addr_virt;
+        kboot_paddr_t addr_phys;
+        uint32_t      size;
+    } kboot_tag_fdt_t;
+
+Fields:
+
+ * `addr_virt`: Virtual address of the FDT (aligned to page size).
+ * `addr_phys`: Physical address of the FDT.
+ * `size`: Total size of the FDT.
+
+The FDT will be placed in physical memory marked as `KBOOT_MEMORY_RECLAIMABLE`.
+
 Platform Specifics
 ------------------
 

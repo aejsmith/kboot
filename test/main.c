@@ -419,6 +419,14 @@ static void dump_serial_tag(kboot_tag_serial_t *tag) {
     printf("  parity    = %" PRIu8 " (%s)\n", tag->parity, parity);
 }
 
+/** Dump a FDT tag. */
+static void dump_fdt_tag(kboot_tag_fdt_t *tag) {
+    printf("KBOOT_TAG_FDT:\n");
+    printf("  addr_virt = 0x%" PRIx64 "\n", tag->addr_virt);
+    printf("  addr_phys = 0x%" PRIx64 "\n", tag->addr_phys);
+    printf("  size      = %" PRIu32 "\n", tag->size);
+}
+
 /** Entry point of the test kernel.
  * @param magic         KBoot magic number.
  * @param tags          Tag list pointer. */
@@ -477,6 +485,9 @@ void kmain(uint32_t magic, kboot_tag_t *tags) {
             break;
         case KBOOT_TAG_SERIAL:
             dump_serial_tag((kboot_tag_serial_t *)tags);
+            break;
+        case KBOOT_TAG_FDT:
+            dump_fdt_tag((kboot_tag_fdt_t *)tags);
             break;
         }
 

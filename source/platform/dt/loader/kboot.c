@@ -29,6 +29,5 @@
 /** Perform platform-specific setup for a KBoot kernel.
  * @param loader        Loader internal data. */
 void kboot_platform_setup(kboot_loader_t *loader) {
-    // Should pass the FDT
-    internal_error("TODO: kboot_platform_setup");
+    /* Nothing to do - FDT is handled by generic code. */
 }
