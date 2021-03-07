@@ -116,6 +116,9 @@ static void dump_pagetables_tag(kboot_tag_pagetables_t *tag) {
     #elif defined(__arm__)
         printf("  l1      = 0x%" PRIx64 "\n", tag->l1);
         printf("  mapping = 0x%" PRIx64 "\n", tag->mapping);
+    #elif defined(__aarch64__)
+        printf("  ttl0    = 0x%" PRIx64 "\n", tag->ttl0);
+        printf("  mapping = 0x%" PRIx64 "\n", tag->mapping);
     #endif
 }
 
