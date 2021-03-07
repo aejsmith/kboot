@@ -619,7 +619,8 @@ static void add_serial_tag(kboot_loader_t *loader) {
                  * aligned, blindly assume that the port registers aren't
                  * crossing a page boundary. */
                 kboot_paddr_t offset = tag->addr % PAGE_SIZE;
-                tag->addr_virt = kboot_alloc_virtual(loader, tag->addr - offset, PAGE_SIZE, MMU_MAP_CACHE_UC);
+                kboot_vaddr_t virt   = kboot_alloc_virtual(loader, tag->addr - offset, PAGE_SIZE, MMU_MAP_CACHE_UC);
+                tag->addr_virt       = virt + offset;
             }
         }
     #endif
