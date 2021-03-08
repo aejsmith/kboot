@@ -66,7 +66,7 @@ static status_t FUNC(iterate_notes)(kboot_loader_t *loader, kboot_note_cb_t cb) 
         size_t offset;
         status_t ret;
 
-        if (phdrs[i].p_type != ELF_PT_NOTE)
+        if (phdrs[i].p_type != ELF_PT_NOTE || phdrs[i].p_filesz == 0)
             continue;
 
         buf = malloc(phdrs[i].p_filesz);
