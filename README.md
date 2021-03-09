@@ -1,8 +1,8 @@
 KBoot
 =====
 
-KBoot is a general-purpose boot loader, which currently supports both BIOS- and
-UEFI-based x86 PCs.
+KBoot is a general-purpose boot loader, which supports both BIOS- and
+UEFI-based PCs.
 
 A short feature overview:
 

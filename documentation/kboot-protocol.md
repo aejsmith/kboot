@@ -6,9 +6,9 @@ License
 
 Copyright &copy; 2012-2021 Alex Smith
 
-This document is distributed under the terms of the [Creative Commons
-Attribution-ShareAlike 3.0 Unported](http://creativecommons.org/licenses/
-by-sa/3.0/) license.
+This document is distributed under the terms of the
+[Creative Commons Attribution-ShareAlike 3.0 Unported](http://creativecommons.org/licenses/by-sa/3.0/)
+license.
 
 Introduction
 ------------
