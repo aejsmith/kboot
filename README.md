@@ -20,6 +20,13 @@ A short feature overview:
  * [Custom boot protocol](documentation/kboot-protocol.md) targeting hobby OS
    projects
 
+KBoot also supports use as a second-stage boot loader on additional platforms,
+where its purpose is only to be able to load a kernel which uses the KBoot boot
+protocol. The platforms which support this are:
+
+ * QEMU ARM64 virt machine
+ * Raspberry Pi 3 & 4 (ARM64)
+
 Current limitations:
 
  * No FAT boot sector - cannot boot directly from a FAT filesystem on legacy

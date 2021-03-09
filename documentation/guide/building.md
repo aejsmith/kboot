@@ -33,6 +33,9 @@ UEFI) by running
 
 This will output either 64 or 32.
 
+See [Target Support](targets.md) for full details of all the supported targets,
+including usage on non-x86 targets.
+
 Building
 --------
 
