@@ -21,9 +21,107 @@
 
 #include <dt.h>
 #include <loader.h>
+#include <memory.h>
 
 /** Address of Flattened Device Tree (FDT) blob. */
 const void *fdt_address;
+
+static LIST_DECLARE(dt_devices);
+
+static void init_device(dt_device_t *device) {
+    if (device->state == DT_DEVICE_INIT) {
+        dprintf("dt: device '%s' is already being initialized, circular dependency?\n", device->name);
+    } else if (device->state == DT_DEVICE_UNINIT) {
+        device->state = DT_DEVICE_INIT;
+
+        dprintf("dt: initializing device '%s' (compatible: '%s')\n", device->name, *(const char **)device->match);
+
+        status_t ret = device->driver->init(device);
+        if (ret != STATUS_SUCCESS) {
+            dprintf("dt: failed to initialize device '%s': %pS\n", device->name, ret);
+            device->state = DT_DEVICE_FAILED;
+        } else {
+            device->state = DT_DEVICE_READY;
+        }
+    }
+}
+/**
+ * Gets the device for a given node and initializes it if it hasn't been
+ * already. Returns null if either no driver for the node is available or the
+ * device initialization fails.
+ *
+ * @param node_offset   Node offset.
+ * @param driver        Expected driver (NULL if don't care).
+ *
+ * @return              Pointer to initialized device or NULL if unavailable.
+ */
+dt_device_t *dt_device_get_by_offset(int node_offset, dt_driver_t *driver) {
+    list_foreach(&dt_devices, iter) {
+        dt_device_t *device = list_entry(iter, dt_device_t, link);
+
+        if (device->node_offset == node_offset) {
+            if (driver && device->driver != driver)
+                return NULL;
+
+            init_device(device);
+            return (device->state == DT_DEVICE_READY) ? device : NULL;
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * Gets the device for the node referred to by a given phandle and initializes
+ * it if it hasn't been already. Returns null if either no driver for the node
+ * is available or the device initialization fails.
+ *
+ * @param phandle       Node phandle.
+ * @param driver        Expected driver (NULL if don't care).
+ *
+ * @return              Pointer to initialized device or NULL if unavailable.
+ */
+dt_device_t *dt_device_get_by_phandle(uint32_t phandle, dt_driver_t *driver) {
+    int ret = fdt_node_offset_by_phandle(fdt_address, phandle);
+    if (ret < 0)
+        return NULL;
+
+    return dt_device_get_by_offset(ret, driver);
+}
+
+/** Instantiate devices for all supported devices in the DT. */
+void dt_device_probe(void) {
+    /* First detect all supported devices without initializing. Devices may have
+     * dependencies on each other so we detect them all first, and then
+     * dependencies can be initialized if needed by dt_device_get_*(). */
+    for (int node_offset = 0; node_offset >= 0; node_offset = fdt_next_node(fdt_address, node_offset, NULL)) {
+        if (dt_is_available(node_offset)) {
+            builtin_foreach(BUILTIN_TYPE_DT_DRIVER, dt_driver_t, driver) {
+                int match = dt_match_impl(node_offset, driver->matches.data, driver->matches.stride, driver->matches.count);
+                if (match >= 0) {
+                    dt_device_t *device = malloc(sizeof(dt_device_t));
+
+                    device->node_offset = node_offset;
+                    device->name        = fdt_get_name(fdt_address, device->node_offset, NULL);
+                    device->match       = ((const uint8_t *)driver->matches.data) + (match * driver->matches.stride);
+                    device->driver      = driver;
+                    device->private     = NULL;
+                    device->state       = DT_DEVICE_UNINIT;
+
+                    list_init(&device->link);
+                    list_append(&dt_devices, &device->link);
+                    break;
+                }
+            }
+        }
+    }
+
+    /* Initialize them all. */
+    list_foreach(&dt_devices, iter) {
+        dt_device_t *device = list_entry(iter, dt_device_t, link);
+        init_device(device);
+    }
+}
 
 static uint32_t get_num_cells(int node_offset, const char *name, uint32_t def) {
     while (true) {
@@ -153,11 +251,26 @@ bool dt_get_reg(int node_offset, int index, phys_ptr_t *_address, phys_size_t *_
     return true;
 }
 
+/** Get a uint32 DT property.
+ * @param node_offset   Node offset.
+ * @param name          Name of property.
+ * @param _value        Where to store property value.
+ * @return              Whether property was found/valid. */
+bool dt_get_prop_u32(int node_offset, const char *name, uint32_t *_value) {
+    int len;
+    const uint32_t *prop = fdt_getprop(fdt_address, node_offset, name, &len);
+    if (!prop || len != 4)
+        return false;
+
+    *_value = fdt32_to_cpu(*prop);
+    return true;
+}
+
 /** Implementation of dt_match(). */
 int dt_match_impl(int node_offset, const void *data, size_t stride, size_t count) {
     for (size_t i = 0; i < count; i++) {
         if (fdt_node_check_compatible(fdt_address, node_offset, *(const char **)data) == 0)
-            return true;
+            return i;
 
         data += stride;
     }

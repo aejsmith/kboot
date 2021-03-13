@@ -74,4 +74,6 @@ __noreturn void dt_main(void *fdt) {
 void target_device_probe(void) {
     if (dt_initrd_size != 0)
         ramdisk_create("initrd", (void *)dt_initrd_address, dt_initrd_size, true);
+
+    dt_device_probe();
 }

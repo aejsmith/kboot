@@ -95,6 +95,7 @@ typedef struct builtin {
         BUILTIN_TYPE_PARTITION,
         BUILTIN_TYPE_FS,
         BUILTIN_TYPE_COMMAND,
+        BUILTIN_TYPE_DT_DRIVER,
     } type;
 
     /** Pointer to object. */
