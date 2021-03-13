@@ -75,6 +75,7 @@ typedef struct dt_match_table {
 /** DT driver definition class. */
 typedef struct dt_driver {
     dt_match_table_t matches;           /**< Match table. */
+    bool ignore_status;                 /**< Ignore status of matching DT nodes and force use. */
 
     /** Initialize a device that matched this driver.
      * @param device        Device to initialize.

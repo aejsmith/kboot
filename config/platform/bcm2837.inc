@@ -15,7 +15,6 @@
 #
 
 include = {
-    'config': {
-        'DRIVER_SERIAL_NS16550': True,
-    },
+    'includes': ['platform/bcm283x'],
+    'config': {},
 }

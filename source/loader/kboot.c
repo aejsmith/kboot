@@ -381,6 +381,8 @@ static void set_video_mode(kboot_loader_t *loader) {
     tag = kboot_alloc_tag(loader, KBOOT_TAG_VIDEO, sizeof(*tag));
     tag->type = mode->type;
 
+    uint32_t mem_size = round_up(mode->mem_size, PAGE_SIZE);
+
     switch (mode->type) {
     case VIDEO_MODE_VGA:
         tag->vga.cols = mode->width;
@@ -389,7 +391,7 @@ static void set_video_mode(kboot_loader_t *loader) {
         tag->vga.y = mode->y;
         tag->vga.mem_phys = mode->mem_phys;
         tag->vga.mem_size = mode->mem_size;
-        tag->vga.mem_virt = kboot_alloc_virtual(loader, mode->mem_phys, mode->mem_size, MMU_MAP_CACHE_UC);
+        tag->vga.mem_virt = kboot_alloc_virtual(loader, mode->mem_phys, mem_size, MMU_MAP_CACHE_UC);
         break;
     case VIDEO_MODE_LFB:
         /* TODO: Indexed modes. */
@@ -406,7 +408,7 @@ static void set_video_mode(kboot_loader_t *loader) {
         tag->lfb.blue_pos = mode->format.blue_pos;
         tag->lfb.fb_phys = mode->mem_phys;
         tag->lfb.fb_size = mode->mem_size;
-        tag->lfb.fb_virt = kboot_alloc_virtual(loader, mode->mem_phys, mode->mem_size, MMU_MAP_CACHE_WT);
+        tag->lfb.fb_virt = kboot_alloc_virtual(loader, mode->mem_phys, mem_size, MMU_MAP_CACHE_WT);
         break;
     }
 }

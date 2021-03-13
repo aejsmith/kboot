@@ -15,6 +15,10 @@
 #
 
 include = {
-    'includes': ['platform/bcm283x'],
-    'config': {},
+    'config': {
+        'DRIVER_BCM283X_FIRMWARE': True,
+        'DRIVER_BCM283X_MBOX': True,
+        'DRIVER_SERIAL_NS16550': True,
+        'DRIVER_VIDEO_BCM283X': True,
+    },
 }

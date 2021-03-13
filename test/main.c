@@ -21,6 +21,9 @@
 
 #include <test.h>
 
+#include <fb.h>
+#include <video.h>
+
 KBOOT_IMAGE(KBOOT_IMAGE_SECTIONS | KBOOT_IMAGE_LOG);
 KBOOT_BOOLEAN_OPTION("bool_option", "Boolean option", true);
 KBOOT_STRING_OPTION("string_option", "String option", "Default Value");
@@ -502,6 +505,28 @@ void kmain(uint32_t magic, kboot_tag_t *tags) {
     #if defined(__i386__) || defined(__x86_64__)
         __asm__ volatile("wbinvd");
     #endif
+
+    video_mode_t *mode = current_video_mode;
+    if (mode->type == VIDEO_MODE_LFB) {
+        fb_fill_rect(
+            mode->width / 2,
+            0,
+            mode->width / 2,
+            mode->height / 3,
+            0xff0000);
+        fb_fill_rect(
+            mode->width / 2,
+            mode->height / 3,
+            mode->width / 2,
+            mode->height / 3,
+            0x00ff00);
+        fb_fill_rect(
+            mode->width / 2,
+            (mode->height / 3) * 2,
+            mode->width / 2,
+            mode->height / 3,
+            0x0000ff);
+    }
 
     while (true)
         arch_pause();

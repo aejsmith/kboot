@@ -95,8 +95,8 @@ void dt_device_probe(void) {
      * dependencies on each other so we detect them all first, and then
      * dependencies can be initialized if needed by dt_device_get_*(). */
     for (int node_offset = 0; node_offset >= 0; node_offset = fdt_next_node(fdt_address, node_offset, NULL)) {
-        if (dt_is_available(node_offset)) {
-            builtin_foreach(BUILTIN_TYPE_DT_DRIVER, dt_driver_t, driver) {
+        builtin_foreach(BUILTIN_TYPE_DT_DRIVER, dt_driver_t, driver) {
+            if (driver->ignore_status || dt_is_available(node_offset)) {
                 int match = dt_match_impl(node_offset, driver->matches.data, driver->matches.stride, driver->matches.count);
                 if (match >= 0) {
                     dt_device_t *device = malloc(sizeof(dt_device_t));
