@@ -261,14 +261,14 @@ static status_t bcm283x_video_init(dt_device_t *device) {
     video->mode.ops  = &bcm283x_video_ops;
     video->mbox      = mbox;
 
-	/* Query the current configuration. */
+    /* Query the current configuration. */
     message_get_config_t get_config;
-	BCM283X_FIRMWARE_MESSAGE_INIT(get_config);
+    BCM283X_FIRMWARE_MESSAGE_INIT(get_config);
     BCM283X_FIRMWARE_TAG_INIT(get_config.phys, TAG_GET_PHYSICAL_SIZE);
     BCM283X_FIRMWARE_TAG_INIT(get_config.virt, TAG_GET_VIRTUAL_SIZE);
     BCM283X_FIRMWARE_TAG_INIT(get_config.depth, TAG_GET_DEPTH);
     BCM283X_FIRMWARE_TAG_INIT(get_config.order, TAG_GET_PIXEL_ORDER);
-	if (!bcm283x_firmware_request(video->mbox, &get_config)) {
+    if (!bcm283x_firmware_request(video->mbox, &get_config)) {
         dprintf("bcm283x: video: failed to get current configuration\n");
         free(video);
         return STATUS_DEVICE_ERROR;
@@ -279,7 +279,7 @@ static status_t bcm283x_video_init(dt_device_t *device) {
 
     calculate_pixel_format(&video->mode.format, get_config.depth.resp.depth, get_config.order.resp.state);
 
-	dprintf(
+    dprintf(
         "bcm283x: video: display configuration is %" PRIu32 "x%" PRIu32 "x%" PRIu8 " (virtual: %" PRIu32 "x%" PRIu32 ")\n",
         video->mode.width, video->mode.height, video->mode.format.bpp,
         get_config.virt.resp.width, get_config.virt.resp.height);
@@ -288,16 +288,16 @@ static status_t bcm283x_video_init(dt_device_t *device) {
      * Set up a configuration.
      *
      * We're gonna assume that the firmware has left us with a physical size
-     * matching the display, and set the virtual size (actual output signal) to
-     * that. The behaviour of virtual at startup seems to differ between Pi
-     * versions, the Pi 4 has virtual matching the display size while the Pi 3
-     * has it as 2x2...
+     * matching the display, so we'll set the virtual size (actual output
+     * signal) to that. The behaviour of virtual at startup seems to differ
+     * between Pi versions, the Pi 4 has virtual matching the display size
+     * while the Pi 3 has it as 2x2...
      *
      * Also disable alpha - the firmware could theoretically currently have it
      * in a mode that the OS might not expect (there is an inverted alpha mode).
      */
     message_set_config_t set_config;
-	BCM283X_FIRMWARE_MESSAGE_INIT(set_config);
+    BCM283X_FIRMWARE_MESSAGE_INIT(set_config);
     BCM283X_FIRMWARE_TAG_INIT(set_config.size, TAG_SET_VIRTUAL_SIZE);
     BCM283X_FIRMWARE_TAG_INIT(set_config.offset, TAG_SET_VIRTUAL_OFFSET);
     BCM283X_FIRMWARE_TAG_INIT(set_config.alpha, TAG_SET_ALPHA_MODE);
@@ -320,7 +320,7 @@ static status_t bcm283x_video_init(dt_device_t *device) {
     video->mode.mem_virt = phys_to_virt(video->mode.mem_phys);
     video->mode.mem_size = set_config.allocate.resp.size;
 
-	dprintf(
+    dprintf(
         "bcm283x: video: framebuffer is at 0x%" PRIxPHYS " (size: 0x%" PRIx32 ", pitch: %" PRIu32 ")\n",
         video->mode.mem_phys, video->mode.mem_size, video->mode.pitch);
 
