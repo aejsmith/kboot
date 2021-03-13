@@ -23,6 +23,9 @@
 #include <loader.h>
 #include <memory.h>
 
+/** Dump a list of DT devices during device probing. */
+//#define DUMP_DEVICE_LIST 1
+
 /** Address of Flattened Device Tree (FDT) blob. */
 const void *fdt_address;
 
@@ -95,6 +98,24 @@ void dt_device_probe(void) {
      * dependencies on each other so we detect them all first, and then
      * dependencies can be initialized if needed by dt_device_get_*(). */
     for (int node_offset = 0; node_offset >= 0; node_offset = fdt_next_node(fdt_address, node_offset, NULL)) {
+        const char *name = fdt_get_name(fdt_address, node_offset, NULL);
+
+        #if DUMP_DEVICE_LIST
+            int len;
+            const char *compatible = fdt_getprop(fdt_address, node_offset, "compatible", &len);
+            if (compatible) {
+                dprintf("dt: device '%s', compatible:", name);
+
+                const char *end = compatible + len;
+                while (compatible < end) {
+                    dprintf(" '%s'", compatible);
+                    compatible += strlen(compatible) + 1;
+                }
+
+                dprintf("\n");
+            }
+        #endif
+
         builtin_foreach(BUILTIN_TYPE_DT_DRIVER, dt_driver_t, driver) {
             if (driver->ignore_status || dt_is_available(node_offset)) {
                 int match = dt_match_impl(node_offset, driver->matches.data, driver->matches.stride, driver->matches.count);
@@ -102,7 +123,7 @@ void dt_device_probe(void) {
                     dt_device_t *device = malloc(sizeof(dt_device_t));
 
                     device->node_offset = node_offset;
-                    device->name        = fdt_get_name(fdt_address, device->node_offset, NULL);
+                    device->name        = name;
                     device->match       = ((const uint8_t *)driver->matches.data) + (match * driver->matches.stride);
                     device->driver      = driver;
                     device->private     = NULL;
