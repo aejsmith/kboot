@@ -22,6 +22,8 @@
 #include <drivers/platform/bcm283x/firmware.h>
 #include <drivers/platform/bcm283x/memory.h>
 
+#include <drivers/video/bcm283x.h>
+
 #include <dt.h>
 #include <loader.h>
 #include <memory.h>
@@ -246,15 +248,9 @@ static void calculate_pixel_format(pixel_format_t *format, uint32_t depth, uint3
     }
 }
 
-static status_t bcm283x_video_init(dt_device_t *device) {
-    uint32_t firmware_handle;
-    if (!dt_get_prop_u32(device->node_offset, "brcm,firmware", &firmware_handle))
-        return STATUS_INVALID_ARG;
-
-    bcm283x_mbox_t *mbox = bcm283x_firmware_get(firmware_handle);
-    if (!mbox)
-        return STATUS_INVALID_ARG;
-
+/** Initialize video using BCM283x firmware.
+ * @param mbox          Firmware mailbox. */
+status_t bcm283x_video_init(bcm283x_mbox_t *mbox) {
     bcm283x_video_t *video = malloc(sizeof(*video));
 
     video->mode.type = VIDEO_MODE_LFB;
@@ -325,23 +321,5 @@ static status_t bcm283x_video_init(dt_device_t *device) {
         video->mode.mem_phys, video->mode.mem_size, video->mode.pitch);
 
     video_mode_register(&video->mode, true);
-
-    device->private = video;
     return STATUS_SUCCESS;
 }
-
-static const char *bcm283x_video_match[] = {
-    "raspberrypi,rpi-firmware-kms",
-    "raspberrypi,rpi-firmware-kms-2711",
-};
-
-BUILTIN_DT_DRIVER(bcm283x_video_driver) = {
-    .matches = DT_MATCH_TABLE(bcm283x_video_match),
-
-    /* We force use of this - this can be disabled in the DT depending on which
-     * video driver Linux is configured to use, but this is the only option we
-     * support. */
-    .ignore_status = true,
-
-    .init = bcm283x_video_init,
-};

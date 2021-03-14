@@ -21,6 +21,8 @@
 
 #include <drivers/platform/bcm283x/firmware.h>
 
+#include <drivers/video/bcm283x.h>
+
 #include <assert.h>
 #include <dt.h>
 #include <loader.h>
@@ -56,17 +58,37 @@ bool bcm283x_firmware_request(bcm283x_mbox_t *mbox, void *buffer) {
     return true;
 }
 
+static status_t bcm283x_firmware_init(dt_device_t *device) {
+    uint32_t mbox_handle;
+    if (!dt_get_prop_u32(device->node_offset, "mboxes", &mbox_handle))
+        return STATUS_INVALID_ARG;
+
+    bcm283x_mbox_t *mbox = bcm283x_mbox_get(mbox_handle);
+    if (!mbox)
+        return STATUS_INVALID_ARG;
+
+    device->private = mbox;
+
+    #ifdef CONFIG_DRIVER_VIDEO_BCM283X
+        bcm283x_video_init(mbox);
+    #endif
+
+    return STATUS_SUCCESS;
+}
+
+static const char *bcm283x_firmware_match[] = {
+    "raspberrypi,bcm2835-firmware",
+};
+
+BUILTIN_DT_DRIVER(bcm283x_firmware_driver) = {
+    .matches = DT_MATCH_TABLE(bcm283x_firmware_match),
+    .init = bcm283x_firmware_init,
+};
+
 /** Get the firmware mailbox from a DT phandle.
  * @param phandle       Handle to the firmware DT node.
  * @return              Pointer to mailbox or NULL if not available. */
 bcm283x_mbox_t *bcm283x_firmware_get(uint32_t phandle) {
-    int firmware_offset = fdt_node_offset_by_phandle(fdt_address, phandle);
-    if (firmware_offset < 0)
-        return NULL;
-
-    uint32_t mbox_handle;
-    if (!dt_get_prop_u32(firmware_offset, "mboxes", &mbox_handle))
-        return NULL;
-
-    return bcm283x_mbox_get(mbox_handle);
+    dt_device_t *device = dt_device_get_by_phandle(phandle, &bcm283x_firmware_driver);
+    return (device) ? (bcm283x_mbox_t *)device->private : NULL;
 }
