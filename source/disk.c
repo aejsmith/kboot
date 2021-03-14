@@ -327,7 +327,7 @@ void disk_image_register(const char *name, fs_handle_t *handle, bool boot) {
 
     list_init(&image->disk.partitions);
 
-    image->disk.device.type   = DEVICE_TYPE_DISK;
+    image->disk.device.type   = DEVICE_TYPE_VIRTUAL;
     image->disk.device.ops    = &disk_device_ops;
     image->disk.device.name   = strdup(name);
     image->disk.type          = DISK_TYPE_HD;

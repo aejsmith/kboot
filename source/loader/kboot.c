@@ -540,9 +540,7 @@ static void add_bootdev_tag(kboot_loader_t *loader) {
     if (device->type == DEVICE_TYPE_NET) {
         add_net_bootdev_tag(loader, device);
         return;
-    }
-
-    if (device->mount && device->mount->uuid) {
+    } else if (device->type == DEVICE_TYPE_DISK && device->mount && device->mount->uuid) {
         add_fs_bootdev_tag(loader, device->mount->uuid);
         return;
     }
