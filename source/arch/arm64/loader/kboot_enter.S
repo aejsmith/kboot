@@ -64,6 +64,7 @@ FUNCTION_START(kboot_trampoline_64)
     ldr     x9, [x0, #ENTRY_ARGS_SP]
     mov     sp, x9
     mov     fp, #0
+    mov     lr, #0
 
     /* Retrieve tag list address and entry point. */
     ldr     x1, [x0, #ENTRY_ARGS_TAGS]
@@ -71,7 +72,7 @@ FUNCTION_START(kboot_trampoline_64)
 
     /* Call the kernel. */
     ldr     x0, =KBOOT_MAGIC
-    blr     x9
+    br      x9
     b       .
 .pool
 SYMBOL(kboot_trampoline_64_size)
