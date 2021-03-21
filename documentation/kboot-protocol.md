@@ -85,7 +85,7 @@ Fields:
    additions in later versions of this specification are present. The version
    number only needs to be changed when a change is not compatible with the
    previous version (e.g. a struct size change). The current version number
-   is 2.
+   is 3.
  * `flags`: Flags controlling whether certain optional features should be
    enabled. The following flags are currently defined:
     - `KBOOT_IMAGE_SECTIONS` (bit 0): Load additional ELF sections and pass
@@ -97,6 +97,7 @@ Version History:
 
  * 1: Initial version.
  * 2: Added `cache` field to `KBOOT_ITAG_MAPPING`.
+ * 3: Added `cache` field to `KBOOT_TAG_VMEM`.
 
 ### `KBOOT_ITAG_LOAD` (`1`)
 
@@ -639,6 +640,7 @@ in the tag list by lowest start address first.
         kboot_vaddr_t start;
         kboot_vaddr_t size;
         kboot_paddr_t phys;
+        uint32_t cache;
     } kboot_tag_vmem_t;
 
 Fields:
@@ -646,6 +648,8 @@ Fields:
  * `start`: Start address of the virtual memory range. Aligned to the page size.
  * `size`: Size of the virtual memory range. Multiple of the page size.
  * `phys`: Start of the physical memory range that this range maps to.
+ * `cache`: Cacheability flags for the mapping (`KBOOT_CACHE_*` flags as
+   described for `KBOOT_ITAG_MAPPING`).
 
 ### `KBOOT_TAG_PAGETABLES` (`5`)
 

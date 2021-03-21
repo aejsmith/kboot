@@ -69,42 +69,42 @@ static void dump_option_tag(kboot_tag_option_t *tag) {
     }
 }
 
-/** Get a memory range tag type. */
-static const char *memory_tag_type(uint32_t type) {
-    switch (type) {
-    case KBOOT_MEMORY_FREE:
-        return "Free";
-    case KBOOT_MEMORY_ALLOCATED:
-        return "Allocated";
-    case KBOOT_MEMORY_RECLAIMABLE:
-        return "Reclaimable";
-    case KBOOT_MEMORY_PAGETABLES:
-        return "Pagetables";
-    case KBOOT_MEMORY_STACK:
-        return "Stack";
-    case KBOOT_MEMORY_MODULES:
-        return "Modules";
-    default:
-        return "???";
-    }
-}
-
 /** Dump a memory tag. */
 static void dump_memory_tag(kboot_tag_memory_t *tag) {
+    const char *type;
+    switch (tag->type) {
+    case KBOOT_MEMORY_FREE:         type = "Free"; break;
+    case KBOOT_MEMORY_ALLOCATED:    type = "Allocated"; break;
+    case KBOOT_MEMORY_RECLAIMABLE:  type = "Reclaimable"; break;
+    case KBOOT_MEMORY_PAGETABLES:   type = "Pagetables"; break;
+    case KBOOT_MEMORY_STACK:        type = "Stack"; break;
+    case KBOOT_MEMORY_MODULES:      type = "Modules"; break;
+    default:                        type = "???"; break;
+    }
+
     printf("KBOOT_TAG_MEMORY:\n");
     printf("  start = 0x%" PRIx64 "\n", tag->start);
     printf("  size  = 0x%" PRIx64 "\n", tag->size);
     printf("  end   = 0x%" PRIx64 "\n", tag->start + tag->size);
-    printf("  type  = %u (%s)\n", tag->type, memory_tag_type(tag->type));
+    printf("  type  = %u (%s)\n", tag->type, type);
 }
 
 /** Dump a virtual memory tag. */
 static void dump_vmem_tag(kboot_tag_vmem_t *tag) {
+    const char *cache;
+    switch (tag->cache) {
+    case KBOOT_CACHE_DEFAULT:   cache = "DEFAULT"; break;
+    case KBOOT_CACHE_UC:        cache = "UC"; break;
+    case KBOOT_CACHE_WT:        cache = "WT"; break;
+    default:                    cache = "???"; break;
+    }
+
     printf("KBOOT_TAG_VMEM:\n");
     printf("  start = 0x%" PRIx64 "\n", tag->start);
     printf("  size  = 0x%" PRIx64 "\n", tag->size);
     printf("  end   = 0x%" PRIx64 "\n", tag->start + tag->size);
     printf("  phys  = 0x%" PRIx64 "\n", tag->phys);
+    printf("  cache = %" PRIu32 " (%s)\n", tag->cache, cache);
 }
 
 /** Dump a pagetables tag. */
@@ -144,7 +144,7 @@ static void dump_video_tag(kboot_tag_video_t *tag) {
 
     switch (tag->type) {
     case KBOOT_VIDEO_VGA:
-        printf("  type     = %u (KBOOT_VIDEO_VGA)\n", tag->type);
+        printf("  type     = %u (VGA)\n", tag->type);
         printf("  cols     = %u\n", tag->vga.cols);
         printf("  lines    = %u\n", tag->vga.lines);
         printf("  x        = %u\n", tag->vga.x);
@@ -154,7 +154,7 @@ static void dump_video_tag(kboot_tag_video_t *tag) {
         printf("  mem_size = 0x%" PRIx32 "\n", tag->vga.mem_size);
         break;
     case KBOOT_VIDEO_LFB:
-        printf("  type       = %u (KBOOT_VIDEO_LFB)\n", tag->type);
+        printf("  type       = %u (LFB)\n", tag->type);
         printf("  flags      = 0x%" PRIx32 "\n", tag->lfb.flags);
         if (tag->lfb.flags & KBOOT_LFB_RGB)
             printf("    KBOOT_LFB_RGB\n");
@@ -199,15 +199,15 @@ static void dump_bootdev_tag(kboot_tag_bootdev_t *tag) {
 
     switch (tag->type) {
     case KBOOT_BOOTDEV_NONE:
-        printf("  type = %" PRIu32 " (KBOOT_BOOTDEV_NONE)\n", tag->type);
+        printf("  type = %" PRIu32 " (NONE)\n", tag->type);
         break;
     case KBOOT_BOOTDEV_FS:
-        printf("  type  = %" PRIu32 " (KBOOT_BOOTDEV_FS)\n", tag->type);
+        printf("  type  = %" PRIu32 " (FS)\n", tag->type);
         printf("  flags = 0x%" PRIx32 "\n", tag->fs.flags);
         printf("  uuid  = `%s'\n", tag->fs.uuid);
         break;
     case KBOOT_BOOTDEV_NET:
-        printf("  type         = %" PRIu32 " (KBOOT_BOOTDEV_NET)\n", tag->type);
+        printf("  type         = %" PRIu32 " (NET)\n", tag->type);
         printf("  flags        = 0x%" PRIx32 "\n", tag->net.flags);
 
         if (tag->net.flags & KBOOT_NET_IPV6) {
@@ -227,7 +227,7 @@ static void dump_bootdev_tag(kboot_tag_bootdev_t *tag) {
         printf("  hw_type      = %u\n", tag->net.hw_type);
         break;
     case KBOOT_BOOTDEV_OTHER:
-        printf("  type         = %" PRIu32 " (KBOOT_BOOTDEV_OTHER)\n", tag->type);
+        printf("  type         = %" PRIu32 " (OTHER)\n", tag->type);
         printf("  str_size     = %" PRIu32 "\n", tag->other.str_size);
 
         str = (const char *)round_up((ptr_t)tag + sizeof(*tag), 8);
@@ -358,15 +358,9 @@ static void dump_efi_tag(kboot_tag_efi_t *tag) {
     const char *name;
 
     switch (tag->type) {
-    case KBOOT_EFI_64:
-        name = "KBOOT_EFI_64";
-        break;
-    case KBOOT_EFI_32:
-        name = "KBOOT_EFI_32";
-        break;
-    default:
-        name = "???";
-        break;
+    case KBOOT_EFI_64: name = "64"; break;
+    case KBOOT_EFI_32: name = "32"; break;
+    default:           name = "???"; break;
     }
 
     printf("KBOOT_TAG_EFI:\n");
@@ -395,22 +389,22 @@ static void dump_serial_tag(kboot_tag_serial_t *tag) {
     const char *io_type, *type, *parity;
 
     switch (tag->io_type) {
-    case KBOOT_IO_TYPE_MMIO: io_type = "KBOOT_IO_TYPE_MMIO"; break;
-    case KBOOT_IO_TYPE_PIO:  io_type = "KBOOT_IO_TYPE_PIO"; break;
+    case KBOOT_IO_TYPE_MMIO: io_type = "MMIO"; break;
+    case KBOOT_IO_TYPE_PIO:  io_type = "PIO"; break;
     default:                 io_type = "???"; break;
     }
 
     switch (tag->type) {
-    case KBOOT_SERIAL_TYPE_NS16550:     type = "KBOOT_SERIAL_TYPE_NS16550"; break;
-    case KBOOT_SERIAL_TYPE_BCM2835_AUX: type = "KBOOT_SERIAL_TYPE_BCM2835_AUX"; break;
-    case KBOOT_SERIAL_TYPE_PL011:       type = "KBOOT_SERIAL_TYPE_PL011"; break;
+    case KBOOT_SERIAL_TYPE_NS16550:     type = "NS16550"; break;
+    case KBOOT_SERIAL_TYPE_BCM2835_AUX: type = "BCM2835_AUX"; break;
+    case KBOOT_SERIAL_TYPE_PL011:       type = "PL011"; break;
     default:                            type = "???"; break;
     }
 
     switch (tag->parity) {
-    case KBOOT_SERIAL_PARITY_NONE: parity = "KBOOT_SERIAL_PARITY_NONE"; break;
-    case KBOOT_SERIAL_PARITY_ODD:  parity = "KBOOT_SERIAL_PARITY_ODD"; break;
-    case KBOOT_SERIAL_PARITY_EVEN: parity = "KBOOT_SERIAL_PARITY_EVEN"; break;
+    case KBOOT_SERIAL_PARITY_NONE: parity = "NONE"; break;
+    case KBOOT_SERIAL_PARITY_ODD:  parity = "ODD"; break;
+    case KBOOT_SERIAL_PARITY_EVEN: parity = "EVEN"; break;
     default:                       parity = "???"; break;
     }
 

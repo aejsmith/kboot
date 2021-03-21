@@ -53,6 +53,7 @@ typedef struct kboot_mapping {
     kboot_vaddr_t start;                /**< Start of the virtual memory range. */
     kboot_vaddr_t size;                 /**< Size of the virtual memory range. */
     kboot_paddr_t phys;                 /**< Physical address that this range maps to. */
+    uint32_t cache;                     /**< Cacheability flag. */
 } kboot_mapping_t;
 
 /** Structure containing KBoot loader data. */
@@ -88,10 +89,10 @@ extern void *kboot_alloc_tag(kboot_loader_t *loader, uint32_t type, size_t size)
 
 extern kboot_vaddr_t kboot_alloc_virtual(
     kboot_loader_t *loader, kboot_paddr_t phys, kboot_vaddr_t size,
-    uint32_t flags);
+    uint32_t cache);
 extern void kboot_map_virtual(
     kboot_loader_t *loader, kboot_vaddr_t addr, kboot_paddr_t phys,
-    kboot_vaddr_t size, uint32_t flags);
+    kboot_vaddr_t size, uint32_t cache);
 
 /** Iterate over all tags of a certain type in the image tag list. */
 #define kboot_itag_foreach(_loader, _type, _vtype, _vname) \

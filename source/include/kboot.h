@@ -26,7 +26,7 @@
 #define KBOOT_MAGIC                 0xb007cafe
 
 /** Current KBoot version. */
-#define KBOOT_VERSION               2
+#define KBOOT_VERSION               3
 
 #ifndef __ASM__
 
@@ -112,13 +112,25 @@ typedef struct kboot_tag_memory {
 #define KBOOT_MEMORY_MODULES        5       /**< Module data. */
 
 /** Tag describing a virtual memory range. */
-typedef struct kboot_tag_vmem {
+typedef struct kboot_tag_vmem_v1 {
     kboot_tag_t header;                     /**< Tag header. */
 
     kboot_vaddr_t start;                    /**< Start of the virtual memory range. */
     kboot_vaddr_t size;                     /**< Size of the virtual memory range. */
     kboot_paddr_t phys;                     /**< Physical address that this range maps to. */
-} kboot_tag_vmem_t;
+} kboot_tag_vmem_v1_t;
+
+/** Tag describing a virtual memory range. */
+typedef struct kboot_tag_vmem_v3 {
+    kboot_tag_t header;                     /**< Tag header. */
+
+    kboot_vaddr_t start;                    /**< Start of the virtual memory range. */
+    kboot_vaddr_t size;                     /**< Size of the virtual memory range. */
+    kboot_paddr_t phys;                     /**< Physical address that this range maps to. */
+    uint32_t cache;                         /**< Cacheability flag (KBOOT_CACHE_*). */
+} kboot_tag_vmem_v3_t;
+
+typedef kboot_tag_vmem_v3_t kboot_tag_vmem_t;
 
 /** Tag describing a boot module. */
 typedef struct kboot_tag_module {

@@ -98,13 +98,7 @@ void *kboot_alloc_tag(kboot_loader_t *loader, uint32_t type, size_t size) {
     return ret;
 }
 
-/** Check whether a virtual mapping is valid.
- * @param loader        Loader internal data.
- * @param mapping       Mapping to check.
- * @param addr          Virtual address to map at.
- * @param phys          Physical address to map to (or ~0 for no mapping).
- * @param size          Size of the range.
- * @return              Whether mapping is valid. */
+/** Check whether a virtual mapping is valid. */
 static bool check_mapping(kboot_loader_t *loader, kboot_vaddr_t addr, kboot_paddr_t phys, kboot_vaddr_t size) {
     if (!size || size % PAGE_SIZE)
         return false;
@@ -125,12 +119,23 @@ static bool check_mapping(kboot_loader_t *loader, kboot_vaddr_t addr, kboot_padd
     return true;
 }
 
-/** Insert a virtual address mapping.
- * @param loader        Loader internal data.
- * @param start         Virtual address of start of mapping.
- * @param size          Size of the mapping.
- * @param phys          Physical address. */
-static void add_mapping(kboot_loader_t *loader, load_ptr_t start, load_size_t size, phys_ptr_t phys) {
+/** Convert KBOOT_CACHE_* to MMU_MAP_CACHE_*. */
+static uint32_t convert_mmu_flags(uint32_t cache) {
+    switch (cache) {
+    case KBOOT_CACHE_UC:
+        return MMU_MAP_CACHE_UC;
+    case KBOOT_CACHE_WT:
+        return MMU_MAP_CACHE_WT;
+    default:
+        return MMU_MAP_CACHE_DEFAULT;
+    }
+}
+
+/** Insert a virtual address mapping. */
+static void add_mapping(
+    kboot_loader_t *loader, load_ptr_t start, load_size_t size, phys_ptr_t phys,
+    uint32_t cache)
+{
     kboot_mapping_t *mapping;
 
     /* All virtual memory tags should be provided together in the tag list,
@@ -140,6 +145,7 @@ static void add_mapping(kboot_loader_t *loader, load_ptr_t start, load_size_t si
     mapping->start = start;
     mapping->size = size;
     mapping->phys = (phys == ~(phys_ptr_t)0) ? ~(kboot_paddr_t)0 : phys;
+    mapping->cache = cache;
 
     list_init(&mapping->header);
 
@@ -159,11 +165,11 @@ static void add_mapping(kboot_loader_t *loader, load_ptr_t start, load_size_t si
  * @param loader        Loader internal data.
  * @param phys          Physical address to map to (or ~0 for no mapping).
  * @param size          Size of the range.
- * @return              Virtual address of mapping.
- * @param flags         MMU_MAP_* flags. */
+ * @param cache         KBOOT_CACHE_* cacheability flag.
+ * @return              Virtual address of mapping. */
 kboot_vaddr_t kboot_alloc_virtual(
     kboot_loader_t *loader, kboot_paddr_t phys, kboot_vaddr_t size,
-    uint32_t flags)
+    uint32_t cache)
 {
     load_ptr_t addr;
 
@@ -175,11 +181,12 @@ kboot_vaddr_t kboot_alloc_virtual(
 
     if (phys != ~(kboot_paddr_t)0) {
         /* Architecture code does extra validation. */
+        uint32_t flags = convert_mmu_flags(cache);
         if (!mmu_map(loader->mmu, addr, phys, size, flags))
             boot_error("Invalid virtual mapping (physical 0x%" PRIx64 ")", phys);
     }
 
-    add_mapping(loader, addr, size, phys);
+    add_mapping(loader, addr, size, phys, cache);
     return addr;
 }
 
@@ -188,10 +195,10 @@ kboot_vaddr_t kboot_alloc_virtual(
  * @param addr          Virtual address to map at.
  * @param phys          Physical address to map to (or ~0 for no mapping).
  * @param size          Size of the range.
- * @param flags         MMU_MAP_* flags. */
+ * @param cache         KBOOT_CACHE_* cacheability flag. */
 void kboot_map_virtual(
     kboot_loader_t *loader, kboot_vaddr_t addr, kboot_paddr_t phys,
-    kboot_vaddr_t size, uint32_t flags)
+    kboot_vaddr_t size, uint32_t cache)
 {
     if (!check_mapping(loader, addr, phys, size))
         boot_error("Invalid virtual mapping (virtual 0x%" PRIx64 ")", addr);
@@ -200,11 +207,12 @@ void kboot_map_virtual(
         boot_error("Mapping 0x%" PRIxLOAD " conflicts with another", addr);
 
     if (phys != ~(kboot_paddr_t)0) {
+        uint32_t flags = convert_mmu_flags(cache);
         if (!mmu_map(loader->mmu, addr, phys, size, flags))
             boot_error("Invalid virtual mapping (virtual 0x%" PRIx64 ")", addr);
     }
 
-    add_mapping(loader, addr, size, phys);
+    add_mapping(loader, addr, size, phys, cache);
 }
 
 /**
@@ -351,13 +359,13 @@ static void setup_trampoline(kboot_loader_t *loader) {
 
     /* Allocate a page and map it. */
     memory_alloc(PAGE_SIZE, 0, 0, 0, MEMORY_TYPE_INTERNAL, MEMORY_ALLOC_HIGH, &loader->trampoline_phys);
-    loader->trampoline_virt = kboot_alloc_virtual(loader, loader->trampoline_phys, PAGE_SIZE, MMU_MAP_CACHE_UC);
+    loader->trampoline_virt = kboot_alloc_virtual(loader, loader->trampoline_phys, PAGE_SIZE, KBOOT_CACHE_UC);
 
     /* Create an MMU context which maps the loader and the trampoline page. */
     loader->trampoline_mmu = mmu_context_create(loader->mode, MEMORY_TYPE_INTERNAL);
     loader_phys = virt_to_phys(loader_start);
-    mmu_map(loader->trampoline_mmu, loader_start, loader_phys, loader_size, MMU_MAP_CACHE_UC);
-    mmu_map(loader->trampoline_mmu, loader->trampoline_virt, loader->trampoline_phys, PAGE_SIZE, MMU_MAP_CACHE_UC);
+    mmu_map(loader->trampoline_mmu, loader_start, loader_phys, loader_size, KBOOT_CACHE_UC);
+    mmu_map(loader->trampoline_mmu, loader->trampoline_virt, loader->trampoline_phys, PAGE_SIZE, KBOOT_CACHE_UC);
 
     dprintf(
         "kboot: trampoline at physical 0x%" PRIxPHYS ", virtual 0x%" PRIxLOAD "\n",
@@ -391,7 +399,7 @@ static void set_video_mode(kboot_loader_t *loader) {
         tag->vga.y = mode->y;
         tag->vga.mem_phys = mode->mem_phys;
         tag->vga.mem_size = mode->mem_size;
-        tag->vga.mem_virt = kboot_alloc_virtual(loader, mode->mem_phys, mem_size, MMU_MAP_CACHE_UC);
+        tag->vga.mem_virt = kboot_alloc_virtual(loader, mode->mem_phys, mem_size, KBOOT_CACHE_UC);
         break;
     case VIDEO_MODE_LFB:
         /* TODO: Indexed modes. */
@@ -408,7 +416,7 @@ static void set_video_mode(kboot_loader_t *loader) {
         tag->lfb.blue_pos = mode->format.blue_pos;
         tag->lfb.fb_phys = mode->mem_phys;
         tag->lfb.fb_size = mode->mem_size;
-        tag->lfb.fb_virt = kboot_alloc_virtual(loader, mode->mem_phys, mem_size, MMU_MAP_CACHE_WT);
+        tag->lfb.fb_virt = kboot_alloc_virtual(loader, mode->mem_phys, mem_size, KBOOT_CACHE_WT);
         break;
     }
 }
@@ -580,13 +588,25 @@ static void add_vmem_tags(kboot_loader_t *loader) {
 
     list_foreach(&loader->mappings, iter) {
         kboot_mapping_t *mapping = list_entry(iter, kboot_mapping_t, header);
-        kboot_tag_vmem_t *tag = kboot_alloc_tag(loader, KBOOT_TAG_VMEM, sizeof(*tag));
 
-        tag->start = mapping->start;
-        tag->size = mapping->size;
-        tag->phys = mapping->phys;
+        dprintf(
+            " 0x%" PRIx64 "-0x%" PRIx64 " -> 0x%" PRIx64 " (%" PRIu32 ")\n",
+            mapping->start, mapping->start + mapping->size, mapping->phys, mapping->cache);
 
-        dprintf(" 0x%" PRIx64 "-0x%" PRIx64 " -> 0x%" PRIx64 "\n", tag->start, tag->start + tag->size, tag->phys);
+        if (loader->image->version >= 3) {
+            kboot_tag_vmem_v3_t *tag = kboot_alloc_tag(loader, KBOOT_TAG_VMEM, sizeof(*tag));
+
+            tag->start = mapping->start;
+            tag->size  = mapping->size;
+            tag->phys  = mapping->phys;
+            tag->cache = mapping->cache;
+        } else {
+            kboot_tag_vmem_v1_t *tag = kboot_alloc_tag(loader, KBOOT_TAG_VMEM, sizeof(*tag));
+
+            tag->start = mapping->start;
+            tag->size  = mapping->size;
+            tag->phys  = mapping->phys;
+        }
     }
 }
 
@@ -619,7 +639,7 @@ static void add_serial_tag(kboot_loader_t *loader) {
                  * aligned, blindly assume that the port registers aren't
                  * crossing a page boundary. */
                 kboot_paddr_t offset = tag->addr % PAGE_SIZE;
-                kboot_vaddr_t virt   = kboot_alloc_virtual(loader, tag->addr - offset, PAGE_SIZE, MMU_MAP_CACHE_UC);
+                kboot_vaddr_t virt   = kboot_alloc_virtual(loader, tag->addr - offset, PAGE_SIZE, KBOOT_CACHE_UC);
                 tag->addr_virt       = virt + offset;
             }
         }
@@ -645,7 +665,7 @@ static void add_fdt_tag(kboot_loader_t *loader) {
 
         tag->size      = size;
         tag->addr_phys = phys;
-        tag->addr_virt = kboot_alloc_virtual(loader, tag->addr_phys, aligned_size, 0);
+        tag->addr_virt = kboot_alloc_virtual(loader, tag->addr_phys, aligned_size, KBOOT_CACHE_DEFAULT);
     #endif
 }
 
@@ -696,16 +716,10 @@ static __noreturn void kboot_loader_load(void *_loader) {
         /* Cache field added in v2. */
         uint32_t cache = (loader->image->version >= 2) ? mapping->cache : KBOOT_CACHE_DEFAULT;
 
-        uint32_t flags = 0;
-        switch (cache) {
-        case KBOOT_CACHE_UC: flags |= MMU_MAP_CACHE_UC; break;
-        case KBOOT_CACHE_WT: flags |= MMU_MAP_CACHE_WT; break;
-        }
-
         if (mapping->virt == ~(kboot_vaddr_t)0) {
-            kboot_alloc_virtual(loader, mapping->phys, mapping->size, flags);
+            kboot_alloc_virtual(loader, mapping->phys, mapping->size, cache);
         } else {
-            kboot_map_virtual(loader, mapping->virt, mapping->phys, mapping->size, flags);
+            kboot_map_virtual(loader, mapping->virt, mapping->phys, mapping->size, cache);
         }
     }
 
@@ -713,7 +727,7 @@ static __noreturn void kboot_loader_load(void *_loader) {
     kboot_arch_setup(loader);
 
     /* Now we can allocate a virtual mapping for the tag list. */
-    loader->tags_virt = kboot_alloc_virtual(loader, loader->core->tags_phys, KBOOT_TAGS_SIZE, 0);
+    loader->tags_virt = kboot_alloc_virtual(loader, loader->core->tags_phys, KBOOT_TAGS_SIZE, KBOOT_CACHE_DEFAULT);
 
     /* Load additional sections if requested. */
     if (loader->image->flags & KBOOT_IMAGE_SECTIONS)
@@ -724,7 +738,7 @@ static __noreturn void kboot_loader_load(void *_loader) {
 
     /* Allocate the stack. */
     memory_alloc(PAGE_SIZE, 0, 0, 0, MEMORY_TYPE_STACK, MEMORY_ALLOC_HIGH, &phys);
-    loader->core->stack_base = kboot_alloc_virtual(loader, phys, PAGE_SIZE, 0);
+    loader->core->stack_base = kboot_alloc_virtual(loader, phys, PAGE_SIZE, KBOOT_CACHE_DEFAULT);
     loader->core->stack_phys = phys;
     loader->core->stack_size = PAGE_SIZE;
 

@@ -65,7 +65,7 @@ static void *allocate_kernel(kboot_loader_t *loader, load_ptr_t virt_base, load_
             "min_alignment: 0x%" PRIx64 ", base: 0x%" PRIxLOAD ", size: 0x%" PRIxLOAD ")\n",
         phys, loader->load->alignment, loader->load->min_alignment, virt_base, size);
 
-    kboot_map_virtual(loader, virt_base, phys, size, 0);
+    kboot_map_virtual(loader, virt_base, phys, size, KBOOT_CACHE_DEFAULT);
 
     loader->core->kernel_phys = phys;
     return dest;
@@ -91,7 +91,7 @@ static void *allocate_segment(kboot_loader_t *loader, load_ptr_t virt, phys_ptr_
         "kboot: loading segment %zu to 0x%" PRIxPHYS " (size: 0x%" PRIxLOAD ", virt: 0x%" PRIxLOAD ")\n",
         idx, phys, size, virt);
 
-    kboot_map_virtual(loader, virt, phys, size, 0);
+    kboot_map_virtual(loader, virt, phys, size, KBOOT_CACHE_DEFAULT);
 
     return dest;
 }
