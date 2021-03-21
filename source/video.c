@@ -118,9 +118,13 @@ video_mode_t *video_find_mode(video_mode_type_t type, uint32_t width, uint32_t h
         case VIDEO_MODE_VGA:
             return video_find_mode(type, 80, 25, 0);
         case VIDEO_MODE_LFB:
-            ret = video_find_mode(type, PREFERRED_MODE_WIDTH, PREFERRED_MODE_HEIGHT, 0);
-            if (!ret)
-                ret = video_find_mode(type, FALLBACK_MODE_WIDTH, FALLBACK_MODE_HEIGHT, 0);
+            if (current_video_mode && current_video_mode->type == VIDEO_MODE_LFB) {
+                ret = current_video_mode;
+            } else {
+                ret = video_find_mode(type, PREFERRED_MODE_WIDTH, PREFERRED_MODE_HEIGHT, 0);
+                if (!ret)
+                    ret = video_find_mode(type, FALLBACK_MODE_WIDTH, FALLBACK_MODE_HEIGHT, 0);
+            }
 
             return ret;
         }
