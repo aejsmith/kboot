@@ -667,7 +667,7 @@ static void do_menu(menu_state_t *state, const char *title) {
     current_environ = prev_env;
 
     /* Propagate action back to the previous menu. */
-    if (state->action != MENU_ACTION_NONE) {
+    if (current_menu && state->action != MENU_ACTION_NONE) {
         current_menu->action = state->action;
         current_menu->selected = state->selected;
     }
