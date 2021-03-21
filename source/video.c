@@ -85,7 +85,7 @@ void video_set_mode(video_mode_t *mode, bool set_console) {
 
     primary_console.out = NULL;
 
-    if (mode)
+    if (mode && mode != prev)
         mode->ops->set_mode(mode);
 
     set_current_mode(mode, set_console);
