@@ -53,7 +53,7 @@ extern void linux_initrd_load(linux_loader_t *loader, void *addr);
 /** Set the video mode for a Linux kernel.
  * @param loader            Loader internal data. */
 static inline void linux_video_set(linux_loader_t *loader) {
-    loader->video = video_env_set(current_environ, "video_mode");
+    loader->video = video_env_set(current_environ, VIDEO_MODE_ENV, false);
 }
 
 #endif /* CONFIG_TARGET_HAS_VIDEO */

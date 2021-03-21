@@ -68,7 +68,7 @@ static ui_window_t *linux_loader_configure(void *_loader, const char *title) {
     ui_list_insert(window, entry, false);
 
     #ifdef CONFIG_TARGET_HAS_VIDEO
-        entry = video_env_chooser(current_environ, "video_mode", LINUX_VIDEO_TYPES);
+        entry = video_env_chooser(current_environ, VIDEO_MODE_ENV, LINUX_VIDEO_TYPES);
         ui_list_insert(window, entry, false);
     #endif
 
@@ -175,7 +175,7 @@ static bool config_cmd_linux(value_list_t *args) {
         goto err_initrd;
 
     #ifdef CONFIG_TARGET_HAS_VIDEO
-        video_env_init(current_environ, "video_mode", LINUX_VIDEO_TYPES, NULL);
+        video_env_init(current_environ, VIDEO_MODE_ENV, LINUX_VIDEO_TYPES, NULL);
     #endif
 
     environ_set_loader(current_environ, &linux_loader_ops, loader);

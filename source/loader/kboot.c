@@ -382,7 +382,7 @@ static void set_video_mode(kboot_loader_t *loader) {
 
     /* This will not do anything if the kernel hasn't enabled video support or
      * there is no usable video mode on the system. */
-    mode = video_env_set(current_environ, "video_mode");
+    mode = video_env_set(current_environ, VIDEO_MODE_ENV, false);
     if (!mode)
         return;
 
@@ -795,7 +795,7 @@ static ui_window_t *kboot_loader_configure(void *_loader, const char *title) {
         kboot_itag_video_t *video = kboot_find_itag(loader, KBOOT_ITAG_VIDEO);
 
         if (video && video->types) {
-            entry = video_env_chooser(current_environ, "video_mode", video->types);
+            entry = video_env_chooser(current_environ, VIDEO_MODE_ENV, video->types);
             ui_list_insert(window, entry, false);
         }
     #endif
@@ -972,7 +972,9 @@ static void init_video(kboot_loader_t *loader) {
     if (video) {
         types = video->types;
 
-        /* If the kernel specifies a preferred mode, try to find it. */
+        /* If the kernel specifies a preferred mode, try to find it. If it is
+         * not found, and there is a type-compatible current mode, we'll use
+         * that. */
         if (types & KBOOT_VIDEO_LFB) {
             def = video_find_mode(VIDEO_MODE_LFB, video->width, video->height, video->bpp);
         } else {
@@ -985,9 +987,9 @@ static void init_video(kboot_loader_t *loader) {
     }
 
     if (types) {
-        video_env_init(current_environ, "video_mode", types, def);
+        video_env_init(current_environ, VIDEO_MODE_ENV, types, def);
     } else {
-        environ_remove(current_environ, "video_mode");
+        environ_remove(current_environ, VIDEO_MODE_ENV);
     }
 }
 

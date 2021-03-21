@@ -334,7 +334,7 @@ static __noreturn void multiboot_loader_load(void *_loader) {
 
     /* Set the video mode. */
     loader->mode = (loader->header.flags & MULTIBOOT_VIDEO_MODE)
-        ? video_env_set(current_environ, "video_mode")
+        ? video_env_set(current_environ, VIDEO_MODE_ENV, false)
         : NULL;
 
     /* Print out a memory map for informational purposes. */
@@ -371,7 +371,7 @@ static ui_window_t *multiboot_loader_configure(void *_loader, const char *title)
     ui_list_insert(window, entry, false);
 
     if (loader->header.flags & MULTIBOOT_VIDEO_MODE) {
-        entry = video_env_chooser(current_environ, "video_mode", MULTIBOOT_VIDEO_TYPES);
+        entry = video_env_chooser(current_environ, VIDEO_MODE_ENV, MULTIBOOT_VIDEO_TYPES);
         ui_list_insert(window, entry, false);
     }
 
@@ -547,7 +547,7 @@ static bool config_cmd_multiboot(value_list_t *args) {
                 loader->header.depth);
         }
 
-        video_env_init(current_environ, "video_mode", MULTIBOOT_VIDEO_TYPES, mode);
+        video_env_init(current_environ, VIDEO_MODE_ENV, MULTIBOOT_VIDEO_TYPES, mode);
     }
 
     environ_set_loader(current_environ, &multiboot_loader_ops, loader);

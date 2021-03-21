@@ -657,6 +657,13 @@ static void do_menu(menu_state_t *state, const char *title) {
     }
 
     if (display) {
+        /* Set a video mode if this is the root menu and we have one specified.
+         * Don't allow specifying a mode for sub-menus. */
+        #ifdef CONFIG_TARGET_HAS_VIDEO
+            if (!state->prev)
+                video_env_set(current_environ, VIDEO_MODE_ENV, true);
+        #endif
+
         if (!display_gui_menu(title, timeout))
             display_text_menu(title, timeout);
     } else {
@@ -679,6 +686,13 @@ static void do_menu(menu_state_t *state, const char *title) {
 environ_t *menu_select(environ_t *env) {
     menu_state_t state;
 
+    #ifdef CONFIG_TARGET_HAS_VIDEO
+        /* Prepare video mode for the menu if one was specified, otherwise we
+         * just go with whatever we have right now. */
+        if (environ_lookup(env, VIDEO_MODE_ENV))
+            video_env_init(env, VIDEO_MODE_ENV, VIDEO_MODE_LFB | VIDEO_MODE_VGA, NULL);
+    #endif
+
     if (list_empty(&env->menu_entries)) {
         assert(!current_menu);
 
@@ -687,8 +701,13 @@ environ_t *menu_select(environ_t *env) {
          * user the option to bring up the configuration menu by pressing F8
          * here. */
         if (env->loader && env->loader->configure) {
-            if (check_key_press())
+            if (check_key_press()) {
+                #ifdef CONFIG_TARGET_HAS_VIDEO
+                    video_env_set(env, VIDEO_MODE_ENV, true);
+                #endif
+
                 display_config_menu(env, NULL);
+            }
         }
 
         return env;

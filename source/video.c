@@ -235,7 +235,7 @@ void video_env_init(environ_t *env, const char *name, uint32_t types, video_mode
         /* Not valid, create an entry referring to the default mode. */
         if (def) {
             mode = def;
-        } else if (current_video_mode) {
+        } else if (current_video_mode && (types & current_video_mode->type)) {
             mode = current_video_mode;
         } else {
             environ_remove(env, name);
@@ -257,8 +257,9 @@ void video_env_init(environ_t *env, const char *name, uint32_t types, video_mode
 /** Set the video mode from the environment.
  * @param env           Environment to use.
  * @param name          Name of the variable.
+ * @param set_console   Whether to set the mode as console.
  * @return              Pointer to mode set, or NULL if non-existant. */
-video_mode_t *video_env_set(environ_t *env, const char *name) {
+video_mode_t *video_env_set(environ_t *env, const char *name, bool set_console) {
     value_t *value;
     video_mode_t *mode;
 
@@ -271,8 +272,7 @@ video_mode_t *video_env_set(environ_t *env, const char *name) {
     mode = video_parse_and_find_mode(value->string);
     assert(mode);
 
-    /* Assume we're setting for the OS, so don't enable the console. */
-    video_set_mode(mode, false);
+    video_set_mode(mode, set_console);
     return mode;
 }
 

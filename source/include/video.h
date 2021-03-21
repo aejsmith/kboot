@@ -96,6 +96,8 @@ typedef struct video_ops {
     struct console_out *(*create_console)(video_mode_t *mode);
 } video_ops_t;
 
+#define VIDEO_MODE_ENV  "video_mode"
+
 extern video_mode_t *current_video_mode;
 
 extern void video_set_mode(video_mode_t *mode, bool set_console);
@@ -104,7 +106,7 @@ extern video_mode_t *video_find_mode(video_mode_type_t type, uint32_t width, uin
 extern video_mode_t *video_parse_and_find_mode(const char *str);
 
 extern void video_env_init(struct environ *env, const char *name, uint32_t types, video_mode_t *def);
-extern video_mode_t *video_env_set(struct environ *env, const char *name);
+extern video_mode_t *video_env_set(struct environ *env, const char *name, bool set_console);
 
 #ifdef CONFIG_TARGET_HAS_UI
 extern struct ui_entry *video_env_chooser(struct environ *env, const char *name, uint32_t types);
