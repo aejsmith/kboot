@@ -300,6 +300,19 @@ incdir = Popen([env['CC'], '-print-file-name=include'], stdout=PIPE).communicate
 env['CCFLAGS'] += ['-isystem%s' % (incdir)]
 env['ASFLAGS'] += ['-isystem%s' % (incdir)]
 
+# Add emitters to handle command line -include arguments.
+from SCons.Script import *
+static_obj, shared_obj = SCons.Tool.createObjBuilders(env)
+def static_obj_emitter(target, source, env):
+    for idx, flag in enumerate(env['CCFLAGS']):
+        if flag == '-include':
+            next = env.subst(env['CCFLAGS'][idx + 1], conv = lambda x: x)
+            Depends(target[0], File(next))
+    return SCons.Defaults.StaticObjectEmitter(target, source, env)
+suffixes = ['.c', '.S']
+for suffix in suffixes:
+    static_obj.add_emitter(suffix, static_obj_emitter)
+
 # Change the Decider to MD5-timestamp to speed up the build a bit.
 Decider('MD5-timestamp')
 
