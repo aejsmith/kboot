@@ -100,7 +100,10 @@ opts.AddVariables(
 env = Environment(ENV = os.environ, variables = opts, tools = ['default', 'textfile'])
 opts.Save('.options.cache', env)
 
-env.Tool('compilation_db', toolpath = ['dev/build'])
+env.Tool('compilation_db')
+# Setting COMPILATION_DBCOMSTR to None or empty results in the function name
+# being printed, this silences it completely.
+env.CompilationDatabase.builder.action.cmdstr = None
 
 # Define the version string.
 env['VERSION'] = '%d+%s' % (version, revision) if revision is not None else '%d' % (version)
@@ -303,15 +306,16 @@ env['ASFLAGS'] += ['-isystem%s' % (incdir)]
 # Add emitters to handle command line -include arguments.
 from SCons.Script import *
 static_obj, shared_obj = SCons.Tool.createObjBuilders(env)
-def static_obj_emitter(target, source, env):
+def cmdline_deps_emitter(target, source, env):
     for idx, flag in enumerate(env['CCFLAGS']):
         if flag == '-include':
             next = env.subst(env['CCFLAGS'][idx + 1], conv = lambda x: x)
             Depends(target[0], File(next))
-    return SCons.Defaults.StaticObjectEmitter(target, source, env)
+    return (target, source)
 suffixes = ['.c', '.S']
 for suffix in suffixes:
-    static_obj.add_emitter(suffix, static_obj_emitter)
+    emitter = static_obj.emitter.get(suffix, False)
+    static_obj.emitter[suffix] = SCons.Builder.ListEmitter([emitter, cmdline_deps_emitter])
 
 # Change the Decider to MD5-timestamp to speed up the build a bit.
 Decider('MD5-timestamp')
