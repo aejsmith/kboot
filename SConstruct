@@ -64,7 +64,7 @@ target_flags = {
         '-fno-optimize-sibling-calls',
     ],
     'ASFLAGS': ['-nostdinc'],
-    'LINKFLAGS': ['-nostdlib', '-Wl,--build-id=none'],
+    'LINKFLAGS': ['-nostdlib', '-Wl,--build-id=none', '-Wl,-z,noexecstack', '-Wl,--no-warn-rwx-segments'],
 }
 
 ###############
@@ -150,7 +150,7 @@ for (k, v) in build_flags.items():
 
 # Add a builder to preprocess linker scripts.
 env['BUILDERS']['LDScript'] = Builder(action = Action(
-    '$CC $_CCCOMCOM $ASFLAGS -E -x c $SOURCE | grep -v "^\#" > $TARGET',
+    '$CC $_CCCOMCOM $ASFLAGS -E -x c $SOURCE | grep -v "^#" > $TARGET',
     '$GENCOMSTR'))
 
 # Define installation paths.

@@ -161,7 +161,7 @@ efi_handle_t efi_disk_get_handle(disk_device_t *_disk) {
 /** Detect and register all disk devices. */
 void efi_disk_init(void) {
     efi_handle_t *handles;
-    efi_uintn_t num_handles, num_raw_devices = 0;
+    efi_uintn_t num_handles;
     list_t raw_devices, child_devices;
     efi_status_t ret;
 
@@ -254,7 +254,6 @@ void efi_disk_init(void) {
             }
 
             list_append(&raw_devices, &disk->disk.device.header);
-            num_raw_devices++;
         }
     }
 
