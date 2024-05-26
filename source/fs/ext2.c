@@ -50,7 +50,8 @@
     EXT4_FEATURE_INCOMPAT_EXTENTS  |    \
     EXT4_FEATURE_INCOMPAT_64BIT |       \
     EXT4_FEATURE_INCOMPAT_MMP |         \
-    EXT4_FEATURE_INCOMPAT_FLEX_BG)
+    EXT4_FEATURE_INCOMPAT_FLEX_BG |     \
+    EXT4_FEATURE_INCOMPAT_CSUM_SEED)
 
 /** Mounted ext2 filesystem structure. */
 typedef struct ext2_mount {

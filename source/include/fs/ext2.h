@@ -105,6 +105,7 @@
 #define EXT4_FEATURE_INCOMPAT_64BIT             0x0080
 #define EXT4_FEATURE_INCOMPAT_MMP               0x0100
 #define EXT4_FEATURE_INCOMPAT_FLEX_BG           0x0200
+#define EXT4_FEATURE_INCOMPAT_CSUM_SEED         0x2000
 
 /** Structure sizes. */
 #define EXT2_SUPERBLOCK_SIZE                    1024
