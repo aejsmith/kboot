@@ -40,22 +40,12 @@ static void find_initrd(void) {
 
     int len;
     const void *prop = fdt_getprop(fdt_address, chosen_offset, "linux,initrd-start", &len);
-    if (prop) {
-        if (len == 4) {
-            start = fdt32_to_cpu(*(const uint32_t *)prop);
-        } else if (len == 8) {
-            start = fdt64_to_cpu(*(const uint64_t *)prop);
-        }
-    }
+    if (prop)
+        start = dt_get_value((const uint32_t *)prop, (len == 8) ? 2 : 1);
 
     prop = fdt_getprop(fdt_address, chosen_offset, "linux,initrd-end", &len);
-    if (prop) {
-        if (len == 4) {
-            end = fdt32_to_cpu(*(const uint32_t *)prop);
-        } else if (len == 8) {
-            end = fdt64_to_cpu(*(const uint64_t *)prop);
-        }
-    }
+    if (prop)
+        end = dt_get_value((const uint32_t *)prop, (len == 8) ? 2 : 1);
 
     dt_initrd_address = start;
     dt_initrd_size    = end - start;
