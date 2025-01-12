@@ -30,16 +30,20 @@
 
 /* Early console configuration. */
 #if CONFIG_DEBUG && CONFIG_DT_SINGLE_PLATFORM
-    #if CONFIG_DT_PLATFORM_BCM2711
-        /* Raspberry Pi 4 - mini UART is the primary UART by default. */
-        #define EARLY_CONSOLE_NS16550       1
-        #define EARLY_CONSOLE_ADDR          0xfe215040
-        #define EARLY_CONSOLE_TYPE          NS16550_TYPE_BCM2835_AUX
-    #elif CONFIG_DT_PLATFORM_BCM2837
+    #if CONFIG_DT_PLATFORM_BCM2837
         /* Raspberry Pi 3 - mini UART is the primary UART by default. */
         #define EARLY_CONSOLE_NS16550       1
         #define EARLY_CONSOLE_ADDR          0x3f215040
         #define EARLY_CONSOLE_TYPE          NS16550_TYPE_BCM2835_AUX
+    #elif CONFIG_DT_PLATFORM_BCM2711
+        /* Raspberry Pi 4 - mini UART is the primary UART by default. */
+        #define EARLY_CONSOLE_NS16550       1
+        #define EARLY_CONSOLE_ADDR          0xfe215040
+        #define EARLY_CONSOLE_TYPE          NS16550_TYPE_BCM2835_AUX
+    #elif CONFIG_DT_PLATFORM_BCM2712
+        /* Raspberry Pi 5 - PL011 on the debug port. */
+        #define EARLY_CONSOLE_PL011         1
+        #define EARLY_CONSOLE_ADDR          0x107d001000ul
     #elif CONFIG_DT_PLATFORM_VIRT_ARM64
         /* QEMU virt machine. According to the docs we shouldn't rely on any
          * fixed address for it, but *shrug*, it's hardcoded to this in the code

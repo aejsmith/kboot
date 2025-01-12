@@ -25,7 +25,7 @@ where its purpose is only to be able to load a kernel which uses the KBoot boot
 protocol. The platforms which support this are:
 
  * QEMU ARM64 virt machine
- * Raspberry Pi 3 & 4 (ARM64)
+ * Raspberry Pi 3/4/5 (ARM64)
 
 Current limitations:
 
